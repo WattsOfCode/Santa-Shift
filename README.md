@@ -63,7 +63,7 @@ The tests load the real data files, so `dotnet test` catches a broken edit.
 
 ## Adding Blender models
 
-Save the `.blend` in `source-assets/blender/` named after the model, then run `.	oolsblenderexport.ps1`.
+Save the `.blend` in `source-assets/blender/` named after the model, then run `.\tools\blender\export.ps1`.
 It exports to `Content/models/` and checks the rules in [docs/blender-export.md](docs/blender-export.md).
 Or export by hand and drop the `.glb` into `Content/models/`
 with the name used in `toys.json` / `stations.json` (or `elf.glb`, `kit_crate.glb`, `ribbon_bow.glb`).
