@@ -1,0 +1,50 @@
+// All player-facing text (GDD section 15).
+// cues: Santa's flavour line plus the plain mechanical text shown with it.
+// messages: functional text. {0}, {1} are filled in by the game (toy name, points...).
+{
+  "cues": {
+    "intro":          { "santa": "Welcome aboard. We are one big festive family. Your break is next year.", "text": "Collect a train kit." },
+    "ribbon_warning": { "santa": "A memo from Branding. Apparently joy needs a bow.", "text": "In 5 seconds, new orders will require ribbons." },
+    "ribbon_start":   { "santa": "Every present deserves presentation. Especially mine.", "text": "New orders require ribbons for 30 seconds." },
+    "rush_warning":   { "santa": "I may have promised a very important child a very impossible deadline.", "text": "The next new order will be RUSH." },
+    "ribbon_second":  { "santa": "Good news. We have standardized the festive compliance initiative.", "text": "New orders require ribbons for 30 seconds." },
+    "final_rush":     { "santa": "One last tiny favor. It is only Christmas at stake.", "text": "The next new order will be RUSH." },
+    "quota_met":      { "santa": "Excellent. I shall mention my leadership in the newsletter.", "text": "Quota reached. Keep going for a higher score." },
+    "review_pass":    { "santa": "Another successful Christmas. My system works beautifully.", "text": "Shift complete." },
+    "review_miss":    { "santa": "Let us call this a development opportunity.", "text": "Quota missed. Try another shift." }
+  },
+  "messages": {
+    "prompt_collect": "E  Collect {0} kit",
+    "prompt_assemble": "E  Assemble {0}",
+    "prompt_ribbon": "E  Add ribbon to {0}",
+    "prompt_ship": "E  Ship {0}",
+    "prompt_recycle": "E  Recycle {0}",
+    "prompt_recycle_confirm": "Recycle {0}?  E Confirm  /  move to cancel",
+    "working_assemble": "Assembling {0}...",
+    "working_ribbon": "Adding ribbon to {0}...",
+
+    "hands_full": "Hands full",
+    "bench_needs_kit": "Bring a kit to assemble",
+    "already_assembled": "Already assembled",
+    "ribbon_needs_toy": "Bring a finished toy",
+    "already_ribboned": "Already has a ribbon",
+    "assemble_first": "Assemble it first",
+    "ribbon_needed": "Ribbon needed",
+    "no_matching_order": "No matching order",
+    "nothing_to_ship": "Bring a finished toy",
+    "nothing_to_recycle": "Nothing to recycle",
+    "assembly_cancelled": "Assembly cancelled",
+    "ribbon_cancelled": "Ribbon cancelled",
+    "order_expired": "Order expired",
+    "delivered": "{0} delivered!  +{1}",
+    "recycled": "Recycled",
+
+    "empty_hands": "Empty hands",
+    "item_kit": "{0} kit",
+    "item_ribboned": "{0} with ribbon",
+
+    "review_low": "Needs more cocoa",
+    "review_survivor": "Shift survivor",
+    "review_legend": "Workshop legend"
+  }
+}

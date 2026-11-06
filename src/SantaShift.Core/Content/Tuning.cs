@@ -1,0 +1,64 @@
+using SantaShift.Core.Models;
+
+namespace SantaShift.Core.Content;
+
+/// <summary>
+/// Every gameplay number in one place, loaded from tuning.json (GDD section 1: tuning values live in configuration).
+/// Times are in seconds and distances in logical pixels; rules convert seconds to ticks with <see cref="Ticks"/>.
+/// The defaults below match the GDD and are used for any value missing from the file.
+/// </summary>
+public sealed class Tuning
+{
+    public int TicksPerSecond { get; init; } = 60;
+    public double ShiftSeconds { get; init; } = 300;
+
+    // Player and floor (GDD section 13)
+    public double PlayerSpeed { get; init; } = 200;
+    public double InteractRange { get; init; } = 54;
+    public Point2 PlayerStart { get; init; } = new(470, 410);
+    public double PlayerColliderWidth { get; init; } = 22;
+    public double PlayerColliderHeight { get; init; } = 18;
+    public FloorBounds Floor { get; init; } = new();
+
+    // Crafting (GDD section 8)
+    public double RibbonSeconds { get; init; } = 1.0;
+
+    // Orders (GDD section 9)
+    public double[] SpawnTimes { get; init; } =
+        [0, 18, 36, 54, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 252];
+    public int MaxLiveOrders { get; init; } = 3;
+    public string[] ToySequence { get; init; } = ["train", "bear", "robot"];
+    public double DeadlineSeconds { get; init; } = 55;
+    public double RibbonDeadlineSeconds { get; init; } = 65;
+    public double RushDeadlineSeconds { get; init; } = 45;
+    public double RelaxedDeadlineMultiplier { get; init; } = 1.5;
+
+    // Scoring and review (GDD section 12)
+    public ScoreTuning Score { get; init; } = new();
+    public int Quota { get; init; } = 9;
+    public int RelaxedQuota { get; init; } = 6;
+    public int SurvivorDelivered { get; init; } = 9;
+    public int LegendDelivered { get; init; } = 12;
+
+    public long Ticks(double seconds) => (long)Math.Round(seconds * TicksPerSecond);
+    public long ShiftTicks => Ticks(ShiftSeconds);
+    public int QuotaFor(GameMode mode) => mode == GameMode.Relaxed ? RelaxedQuota : Quota;
+}
+
+public sealed class FloorBounds
+{
+    public double Left { get; init; } = 20;
+    public double Top { get; init; } = 120;
+    public double Right { get; init; } = 940;
+    public double Bottom { get; init; } = 480;
+}
+
+public sealed class ScoreTuning
+{
+    public int Base { get; init; } = 100;
+    public int RibbonBonus { get; init; } = 25;
+    public int RushBonus { get; init; } = 25;
+    public int TimeBonusMax { get; init; } = 20;
+    public int StreakStep { get; init; } = 5;
+    public int StreakCap { get; init; } = 4;
+}

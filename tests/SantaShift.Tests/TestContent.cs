@@ -1,0 +1,81 @@
+using SantaShift.Core.Content;
+using SantaShift.Core.Models;
+using SantaShift.Core.Rules;
+
+namespace SantaShift.Tests;
+
+/// <summary>
+/// GDD-default content built in code, so rule tests don't change when someone tunes the JSON files.
+/// The dialogue book is empty on purpose: messages then come back as their keys ("hands_full"), which tests can check.
+/// </summary>
+public static class TestContent
+{
+    public static GameContent Create(List<ChildLetter>? letters = null, Tuning? tuning = null) =>
+        ContentLoader.Build(
+            tuning ?? new Tuning(),
+            [
+                new Toy { Id = "train", Name = "Train" },
+                new Toy { Id = "bear", Name = "Bear" },
+                new Toy { Id = "robot", Name = "Robot" },
+            ],
+            [
+                Station("kits_train", StationType.Dispenser, 180, 145, 90, 40, 180, 180, "train"),
+                Station("kits_bear", StationType.Dispenser, 420, 145, 90, 40, 420, 180, "bear"),
+                Station("kits_robot", StationType.Dispenser, 660, 145, 90, 40, 660, 180, "robot"),
+                Station("bench", StationType.Bench, 300, 255, 120, 40, 300, 285),
+                Station("ribbon", StationType.Ribbon, 610, 255, 100, 40, 610, 285),
+                Station("recycle", StationType.Recycle, 120, 420, 50, 50, 165, 420),
+                Station("shipping", StationType.Shipping, 830, 420, 70, 60, 780, 420),
+            ],
+            [
+                new SantaEvent { Id = "presentation", Type = SantaEventType.RibbonWindow, WarnAt = 55, StartAt = 60, EndAt = 90 },
+                new SantaEvent { Id = "executive", Type = SantaEventType.Rush, WarnAt = 115, StartAt = 120 },
+                new SantaEvent { Id = "compliance", Type = SantaEventType.RibbonWindow, WarnAt = 175, StartAt = 180, EndAt = 210 },
+                new SantaEvent { Id = "last_minute", Type = SantaEventType.Rush, WarnAt = 235, StartAt = 240 },
+            ],
+            new DialogueBook(),
+            letters ?? []);
+
+    private static Station Station(string id, StationType type, double x, double y, double w, double h, double ix, double iy, string? toy = null) =>
+        new() { Id = id, Type = type, ToyId = toy, Label = id, Body = new Box2(x, y, w, h), Interact = new Point2(ix, iy) };
+}
+
+/// <summary>Small helpers that make rule tests read like play steps.</summary>
+public static class SimExtensions
+{
+    public static Station StationById(this Simulation sim, string id) => sim.Content.Stations.First(s => s.Id == id);
+
+    /// <summary>Walks (teleports) to a station and presses interact once. Returns the events from that step.</summary>
+    public static IReadOnlyList<SimEvent> Use(this Simulation sim, string stationId)
+    {
+        sim.PlacePlayer(sim.StationById(stationId).Interact);
+        sim.DrainEvents();
+        sim.Step(new PlayerCommand(0, 0, Interact: true));
+        return sim.DrainEvents();
+    }
+
+    /// <summary>Steps with no input.</summary>
+    public static void Wait(this Simulation sim, long ticks)
+    {
+        for (long i = 0; i < ticks; i++) sim.Step(PlayerCommand.None);
+    }
+
+    public static void WaitSeconds(this Simulation sim, double seconds) => sim.Wait(sim.Tuning.Ticks(seconds));
+
+    /// <summary>Waits until a timed action finishes.</summary>
+    public static void FinishCrafting(this Simulation sim)
+    {
+        while (sim.State.CraftingAction != null) sim.Step(PlayerCommand.None);
+    }
+
+    /// <summary>Collects a kit and assembles it at the bench.</summary>
+    public static void MakeToy(this Simulation sim, string toyId, bool ribbon = false)
+    {
+        sim.Use("kits_" + toyId);
+        sim.Use("bench");
+        sim.FinishCrafting();
+        if (!ribbon) return;
+        sim.Use("ribbon");
+        sim.FinishCrafting();
+    }
+}

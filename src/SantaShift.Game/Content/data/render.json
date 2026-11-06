@@ -1,0 +1,18 @@
+// Display settings for the Raylib window (not gameplay). Lower internalWidth/Height for very weak devices;
+// the picture is drawn at this size and scaled to the window, so cost stays flat on big screens.
+{
+  "internalWidth": 960,
+  "internalHeight": 540,
+  "windowWidth": 1280,
+  "windowHeight": 720,
+  "vsync": true,
+  "targetFps": 60,
+  "msaa": false,
+  "camera": {
+    "distance": 19,
+    "pitchDegrees": 70,
+    "fovDegrees": 40,
+    "targetZ": -0.7
+  },
+  "pixelsPerMetre": 40
+}

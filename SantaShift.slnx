@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SantaShift.Core/SantaShift.Core.csproj" />
+    <Project Path="src/SantaShift.Game/SantaShift.Game.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SantaShift.Tests/SantaShift.Tests.csproj" />
+  </Folder>
+</Solution>

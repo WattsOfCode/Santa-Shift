@@ -1,0 +1,25 @@
+// Children's letters. Each new order uses the next unused letter for its toy (wrapping if they run out).
+// Add or remove letters freely: a letter naming an unknown toy is skipped with a warning, never a crash.
+// Keep "line" short enough to fit an order card.
+{
+  "schemaVersion": 1,
+  "letters": [
+    { "id": "mia_train",    "child": "Mia",    "age": 7, "toyId": "train", "line": "A train that goes really fast please!" },
+    { "id": "leo_train",    "child": "Leo",    "age": 6, "toyId": "train", "line": "Choo choo. That is the whole letter." },
+    { "id": "ava_train",    "child": "Ava",    "age": 8, "toyId": "train", "line": "Red train. Not a blue one. RED." },
+    { "id": "sam_train",    "child": "Sam",    "age": 5, "toyId": "train", "line": "Can it carry my dinosaurs?" },
+    { "id": "zoe_train",    "child": "Zoe",    "age": 9, "toyId": "train", "line": "My brother broke my last one." },
+
+    { "id": "omar_bear",    "child": "Omar",   "age": 5, "toyId": "bear",  "line": "My old bear lost an ear. New one?" },
+    { "id": "ivy_bear",     "child": "Ivy",    "age": 4, "toyId": "bear",  "line": "A bear for hugging. Lots of hugging." },
+    { "id": "noah_bear",    "child": "Noah",   "age": 6, "toyId": "bear",  "line": "Please make it extra fluffy." },
+    { "id": "ella_bear",    "child": "Ella",   "age": 7, "toyId": "bear",  "line": "My bear needs a friend bear." },
+    { "id": "finn_bear",    "child": "Finn",   "age": 3, "toyId": "bear",  "line": "BEAR (Mum wrote this for me)" },
+
+    { "id": "kai_robot",    "child": "Kai",    "age": 9, "toyId": "robot", "line": "A robot that does my homework." },
+    { "id": "lily_robot",   "child": "Lily",   "age": 8, "toyId": "robot", "line": "Beep boop means thank you." },
+    { "id": "ravi_robot",   "child": "Ravi",   "age": 7, "toyId": "robot", "line": "Antenna is very important." },
+    { "id": "nora_robot",   "child": "Nora",   "age": 6, "toyId": "robot", "line": "Can it dance? It should dance." },
+    { "id": "theo_robot",   "child": "Theo",   "age": 10,"toyId": "robot", "line": "I have been mostly good." }
+  ]
+}

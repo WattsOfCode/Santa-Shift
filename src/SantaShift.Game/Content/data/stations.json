@@ -1,0 +1,22 @@
+// Workshop layout (GDD section 13), in logical pixels on the 960 x 540 canvas.
+// body = solid box (centre x/y, width w, height h). interact = where the elf stands; keep it outside the body.
+{
+  "stations": [
+    { "id": "kits_train", "type": "dispenser", "toyId": "train", "label": "TRAIN KITS",
+      "body": { "x": 180, "y": 145, "w": 90, "h": 40 }, "interact": { "x": 180, "y": 180 }, "model": "station_bin.glb" },
+    { "id": "kits_bear", "type": "dispenser", "toyId": "bear", "label": "BEAR KITS",
+      "body": { "x": 420, "y": 145, "w": 90, "h": 40 }, "interact": { "x": 420, "y": 180 }, "model": "station_bin.glb" },
+    { "id": "kits_robot", "type": "dispenser", "toyId": "robot", "label": "ROBOT KITS",
+      "body": { "x": 660, "y": 145, "w": 90, "h": 40 }, "interact": { "x": 660, "y": 180 }, "model": "station_bin.glb" },
+
+    { "id": "bench", "type": "bench", "label": "ASSEMBLY BENCH",
+      "body": { "x": 300, "y": 255, "w": 120, "h": 40 }, "interact": { "x": 300, "y": 285 }, "model": "station_bench.glb" },
+    { "id": "ribbon", "type": "ribbon", "label": "RIBBON STATION",
+      "body": { "x": 610, "y": 255, "w": 100, "h": 40 }, "interact": { "x": 610, "y": 285 }, "model": "station_ribbon.glb" },
+
+    { "id": "recycle", "type": "recycle", "label": "RECYCLE",
+      "body": { "x": 120, "y": 420, "w": 50, "h": 50 }, "interact": { "x": 165, "y": 420 }, "model": "station_recycle.glb" },
+    { "id": "shipping", "type": "shipping", "label": "SHIPPING",
+      "body": { "x": 830, "y": 420, "w": 70, "h": 60 }, "interact": { "x": 780, "y": 420 }, "model": "station_shipping.glb" }
+  ]
+}

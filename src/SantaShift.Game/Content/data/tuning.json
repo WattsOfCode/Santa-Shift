@@ -1,0 +1,29 @@
+// Gameplay numbers (GDD sections 8, 9, 12, 13). Times in seconds, distances in logical pixels.
+// Any value left out uses the default in SantaShift.Core/Content/Tuning.cs.
+{
+  "ticksPerSecond": 60,
+  "shiftSeconds": 300,
+
+  "playerSpeed": 200,
+  "interactRange": 54,
+  "playerStart": { "x": 470, "y": 410 },
+  "playerColliderWidth": 22,
+  "playerColliderHeight": 18,
+  "floor": { "left": 20, "top": 120, "right": 940, "bottom": 480 },
+
+  "ribbonSeconds": 1.0,
+
+  "spawnTimes": [0, 18, 36, 54, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 252],
+  "maxLiveOrders": 3,
+  "toySequence": ["train", "bear", "robot"],
+  "deadlineSeconds": 55,
+  "ribbonDeadlineSeconds": 65,
+  "rushDeadlineSeconds": 45,
+  "relaxedDeadlineMultiplier": 1.5,
+
+  "score": { "base": 100, "ribbonBonus": 25, "rushBonus": 25, "timeBonusMax": 20, "streakStep": 5, "streakCap": 4 },
+  "quota": 9,
+  "relaxedQuota": 6,
+  "survivorDelivered": 9,
+  "legendDelivered": 12
+}

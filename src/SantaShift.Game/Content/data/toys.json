@@ -1,0 +1,9 @@
+// Toys the workshop can build. Add a toy here, add it to toySequence in tuning.json,
+// and give it a dispenser in stations.json. Missing model files fall back to grey-box shapes.
+{
+  "toys": [
+    { "id": "train", "name": "Train", "assembleSeconds": 2.2, "model": "toy_train.glb", "color": "#B94146" },
+    { "id": "bear",  "name": "Bear",  "assembleSeconds": 2.2, "model": "toy_bear.glb",  "color": "#8C6043" },
+    { "id": "robot", "name": "Robot", "assembleSeconds": 2.2, "model": "toy_robot.glb", "color": "#8EC9CF" }
+  ]
+}

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Models and game rules. Plain C#: this project must never reference Raylib. -->
+  <PropertyGroup>
+    <RootNamespace>SantaShift.Core</RootNamespace>
+  </PropertyGroup>
+</Project>

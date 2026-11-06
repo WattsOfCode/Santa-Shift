@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+TestResults/
+publish/
+santashift-error.log
+
+# Blender autosaves and backups (keep the .blend files themselves)
+*.blend1
+*.blend2
