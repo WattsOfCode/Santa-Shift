@@ -43,8 +43,12 @@ public sealed class WorkshopController : IScreen
 
     public Simulation Simulation => _sim;
 
+    /// <summary>Debug builds only (--carry toy[:assembled][:ribbon]): start holding an item, for screenshots.</summary>
+    public static Item? DebugCarry;
+
     public void Enter()
     {
+        if (DebugCarry != null) _sim.State.CarriedItem = DebugCarry;
         _pause.BeginReady();
         _camera.Update(System.Numerics.Vector2.Zero, _sim.State.PlayerPosition);
     }

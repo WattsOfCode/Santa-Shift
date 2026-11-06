@@ -41,6 +41,16 @@ public static class Program
             if (args[i] == "--screenshot" && i + 1 < args.Length) shot = Path.GetFullPath(args[++i]);
             else if (args[i] == "--frame" && i + 1 < args.Length && int.TryParse(args[++i], out int f)) frame = f;
             else if (args[i] == "--workshop") workshop = true;
+            else if (args[i] == "--carry" && i + 1 < args.Length)
+            {
+                var parts = args[++i].Split(':');
+                Controllers.WorkshopController.DebugCarry = new Core.Models.Item
+                {
+                    ToyId = parts[0],
+                    Stage = parts.Contains("assembled") ? Core.Models.ItemStage.Assembled : Core.Models.ItemStage.Kit,
+                    HasRibbon = parts.Contains("ribbon"),
+                };
+            }
             else if (args[i] == "--yaw" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float yaw)) Controllers.CameraController.DebugStartYaw = yaw;
             else if (args[i] == "--pitch" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float pitch)) Controllers.CameraController.DebugStartPitch = pitch;
         }

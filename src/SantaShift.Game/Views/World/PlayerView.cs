@@ -10,6 +10,9 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
 {
     public const float CarryHeight = 1.4f;
 
+    /// <summary>Carried items are drawn smaller so they do not block the view ahead.</summary>
+    public const float CarriedScale = 0.75f;
+
     /// <param name="facingDegrees">0 = facing the camera.</param>
     /// <param name="bob">Small vertical offset for walking/working; 0 under reduced motion.</param>
     public void Draw(RunState state, float facingDegrees, float bob)
@@ -18,9 +21,11 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
 
         Raylib.DrawCylinder(p + new Vector3(0, 0.01f, 0), 0.32f, 0.32f, 0.01f, 16, Palette.Shadow);
 
+        float carryHeight = CarryHeight;
         if (assets.TryGetModel(AssetLibrary.ElfModel, out var model))
         {
             Raylib.DrawModelEx(model, p + new Vector3(0, bob, 0), Vector3.UnitY, facingDegrees, Vector3.One, Color.White);
+            carryHeight = ModelTop(model) + 0.08f; // carry above the hat, whatever height the elf model is
         }
         else
         {
@@ -32,8 +37,12 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
         }
 
         if (state.CarriedItem != null)
-            items.Draw(state.CarriedItem, p + new Vector3(0, CarryHeight + bob, 0));
+            items.Draw(state.CarriedItem, p + new Vector3(0, carryHeight + bob, 0), CarriedScale);
     }
+
+    private float? _modelTop;
+
+    private float ModelTop(Model model) => _modelTop ??= Raylib.GetModelBoundingBox(model).Max.Y;
 
     /// <summary>A tired little elf made of primitives, facing +Z.</summary>
     private static void DrawGreyBoxElf()

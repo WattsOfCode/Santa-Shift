@@ -12,20 +12,29 @@ namespace SantaShift.Game.Views.World;
 /// </summary>
 public sealed class ItemView(GameContent content, IAssetLibrary assets)
 {
-    /// <summary>Draws an item standing on <paramref name="basePos"/>.</summary>
-    public void Draw(Item item, Vector3 basePos)
+    /// <summary>Draws an item standing on <paramref name="basePos"/>, optionally scaled (carried items are smaller).</summary>
+    public void Draw(Item item, Vector3 basePos, float scale = 1f)
+    {
+        Rlgl.PushMatrix();
+        Rlgl.Translatef(basePos.X, basePos.Y, basePos.Z);
+        Rlgl.Scalef(scale, scale, scale);
+        DrawAtOrigin(item);
+        Rlgl.PopMatrix();
+    }
+
+    private void DrawAtOrigin(Item item)
     {
         var toy = content.FindToy(item.ToyId);
         var color = toy != null ? Palette.Hex(toy.Color) : Palette.Wood;
 
-        if (item.Stage == ItemStage.Kit) { DrawKit(basePos, color); return; }
+        if (item.Stage == ItemStage.Kit) { DrawKit(Vector3.Zero, color); return; }
 
         if (toy?.Model != null && assets.TryGetModel(toy.Model, out var model))
-            Raylib.DrawModel(model, basePos, 1f, Color.White);
+            Raylib.DrawModel(model, Vector3.Zero, 1f, Color.White);
         else
-            DrawToyShape(item.ToyId, basePos, color);
+            DrawToyShape(item.ToyId, Vector3.Zero, color);
 
-        if (item.HasRibbon) DrawRibbon(basePos + new Vector3(0, ToyHeight(item.ToyId), 0));
+        if (item.HasRibbon) DrawRibbon(new Vector3(0, ToyHeight(item.ToyId), 0));
     }
 
     public void DrawKit(Vector3 p, Color toyColor)

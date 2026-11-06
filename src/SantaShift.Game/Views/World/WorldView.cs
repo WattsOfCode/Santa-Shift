@@ -83,8 +83,20 @@ public sealed class WorldView
         return _world.InFront(p) ? _world.ToUi(p) : null;
     }
 
+    /// <summary>Furniture and decorations, each from its own model. Missing models are simply skipped.</summary>
+    private void DrawProps()
+    {
+        foreach (var prop in _content.Props)
+        {
+            if (!_assets.TryGetModel(AssetLibrary.PropFile(prop.Model), out var model)) continue;
+            float s = (float)prop.Scale;
+            Raylib.DrawModelEx(model, _world.ToWorld(prop.Position), Vector3.UnitY, (float)prop.Yaw, new Vector3(s), Color.White);
+        }
+    }
+
     private void DrawRoomShell()
     {
+        DrawProps();
         if (_assets.TryGetModel(AssetLibrary.RoomModel, out var room))
         {
             Raylib.DrawModel(room, Vector3.Zero, 1f, Color.White);

@@ -16,6 +16,19 @@ public sealed class RoomLayout
     public MetrePoint? PlayerStart { get; init; }
     public List<MetreBox> Colliders { get; init; } = [];
     public Dictionary<string, StationPlacement> Stations { get; init; } = new();
+
+    /// <summary>Furniture and decorations, each drawn from its own model file.</summary>
+    public List<PropPlacement> Props { get; init; } = [];
+}
+
+public sealed class PropPlacement
+{
+    /// <summary>Model name without extension, e.g. "prop_tree" (drawn from prop_tree.glb).</summary>
+    public string Model { get; init; } = "";
+    public double X { get; init; }
+    public double Z { get; init; }
+    public double Yaw { get; init; }
+    public double Scale { get; init; } = 1;
 }
 
 public sealed class MetrePoint

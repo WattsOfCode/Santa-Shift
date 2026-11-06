@@ -76,6 +76,34 @@ public class RoomLayoutTests : IDisposable
     }
 
     [Fact]
+    public void Props_are_loaded_with_pixel_positions_and_default_scale()
+    {
+        WriteLayout("""
+            { "props": [
+                { "model": "prop_tree", "x": 10, "z": -3, "yaw": 0 },
+                { "model": "prop_window", "x": -4.5, "z": -4.5, "yaw": 180, "scale": 1.5 },
+                { "model": "", "x": 0, "z": 0 }
+            ] }
+            """);
+
+        var props = ContentLoader.LoadFromDirectory(_dir).Props;
+
+        Assert.Equal(2, props.Count); // the nameless one is skipped
+        Assert.Equal(new Prop("prop_tree", new Point2(880, 180), 0, 1), props[0]);
+        Assert.Equal(new Prop("prop_window", new Point2(300, 120), 180, 1.5), props[1]);
+    }
+
+    [Fact]
+    public void Shipped_room_layout_places_every_prop_model_that_exists()
+    {
+        var content = ContentLoader.LoadFromDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        Assert.True(content.HasRoomLayout);
+        Assert.NotEmpty(content.Props);
+        Assert.Contains(content.Props, p => p.Model == "prop_tree");
+        Assert.Empty(content.Warnings);
+    }
+
+    [Fact]
     public void Placing_an_unknown_station_warns_instead_of_failing()
     {
         WriteLayout("""{ "stations": { "hot_cocoa": { "x": 0, "z": 0, "w": 1, "d": 1, "interactX": 0, "interactZ": 1 } } }""");

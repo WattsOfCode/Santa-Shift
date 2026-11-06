@@ -31,6 +31,7 @@ public sealed class AssetLibrary : IAssetLibrary
         var names = new HashSet<string> { ElfModel, KitModel, RibbonModel, RoomModel };
         foreach (var toy in content.Toys) if (toy.Model != null) names.Add(toy.Model);
         foreach (var station in content.Stations) if (station.Model != null) names.Add(station.Model);
+        foreach (var prop in content.Props) names.Add(PropFile(prop.Model));
 
         foreach (var name in names)
         {
@@ -43,6 +44,9 @@ public sealed class AssetLibrary : IAssetLibrary
     }
 
     public IReadOnlyCollection<string> LoadedModels => _models.Keys;
+
+    /// <summary>The model file for a prop name from the room layout ("prop_tree" -> "prop_tree.glb").</summary>
+    public static string PropFile(string model) => model.EndsWith(".glb", StringComparison.OrdinalIgnoreCase) ? model : model + ".glb";
 
     public bool TryGetModel(string? fileName, out Model model)
     {

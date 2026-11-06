@@ -89,6 +89,10 @@ public static class ContentLoader
             Tuning = tuning, Toys = toys, Stations = stations, Events = events,
             Dialogue = dialogue, Letters = goodLetters, Warnings = warnings,
             Floor = floor, Colliders = colliders, HasRoomLayout = room != null, PlayerStart = start,
+            Props = room?.Props
+                .Where(p => !string.IsNullOrWhiteSpace(p.Model))
+                .Select(p => new Prop(p.Model, tuning.MetresToPixels(p.X, p.Z), p.Yaw, p.Scale > 0 ? p.Scale : 1))
+                .ToList() ?? [],
         };
     }
 

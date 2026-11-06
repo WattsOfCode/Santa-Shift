@@ -21,6 +21,9 @@ public sealed class GameContent
     /// <summary>Extra solid obstacles from the Blender room (furniture, decorations).</summary>
     public IReadOnlyList<Box2> Colliders { get; init; } = [];
 
+    /// <summary>Furniture and decorations from the Blender room, each drawn from its own model.</summary>
+    public IReadOnlyList<Prop> Props { get; init; } = [];
+
     /// <summary>True when the layout came from a Blender room export.</summary>
     public bool HasRoomLayout { get; init; }
 

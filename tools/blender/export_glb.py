@@ -15,7 +15,7 @@ import os
 import sys
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 # Triangle budgets from docs/blender-export.md, picked by file name.
 BUDGETS = [("elf", 10_000), ("toy_", 2_000), ("room", 30_000), ("", 5_000)]
@@ -26,8 +26,10 @@ EXPECTED_ACTIONS = {"Idle", "Walk", "Work"}
 #   player_start   empty:    where the elf starts
 #   st_<id>        box mesh: a station's solid footprint (rotation = model turn)
 #   ip_<id>        empty:    where the elf stands to use station <id>
-#   col_<name>     box mesh: an invisible obstacle (put one around furniture)
-MARKER_PREFIXES = ("floor_bounds", "player_start", "st_", "ip_", "col_")
+#   col_<name>     box mesh: an extra invisible obstacle
+#   pr_<model>.<n> empty showing a linked prop_<model>.blend: drawn by the game as its own model;
+#                  solid props also become obstacles, sized from the prop's actual shape
+MARKER_PREFIXES = ("floor_bounds", "player_start", "st_", "ip_", "col_", "pr_")
 
 
 def is_marker(ob) -> bool:
@@ -114,7 +116,45 @@ def build_layout(source_name, warnings):
     for ob in objects:
         if ob.name.startswith("ip_") and ("st_" + ob.name[3:]) not in objects:
             warnings.append(f"'{ob.name}' has no matching 'st_{ob.name[3:]}' box")
+
+    # Props: each pr_ empty shows a linked model file. The game draws that model; solid ones block the elf.
+    layout["props"] = []
+    for ob in objects:
+        if not ob.name.startswith("pr_"):
+            continue
+        coll = ob.instance_collection if ob.instance_type == "COLLECTION" else None
+        model = coll.name if coll else ob.name[3:].split(".")[0]
+        x, z = to_game(ob.matrix_world.translation.x, ob.matrix_world.translation.y)
+        layout["props"].append({
+            "model": model, "x": x, "z": z,
+            "yaw": round(math.degrees(ob.matrix_world.to_euler().z), 2),
+            "scale": round(ob.matrix_world.to_scale().x, 4),
+        })
+        if coll is None:
+            warnings.append(f"'{ob.name}' does not show a linked model; it gets no obstacle")
+            continue
+        if not coll.get("solid", True):
+            continue
+        footprint = instance_bbox(ob, coll)
+        if footprint is None:
+            continue
+        lo, hi = footprint
+        cx, cz = to_game((lo.x + hi.x) / 2, (lo.y + hi.y) / 2)
+        layout["colliders"].append({"name": ob.name, "x": cx, "z": cz,
+                                    "w": round(hi.x - lo.x, 4), "d": round(hi.y - lo.y, 4)})
     return layout
+
+
+def instance_bbox(empty, coll):
+    """World-space bounds of everything an instance empty shows."""
+    base = empty.matrix_world @ Matrix.Translation(-coll.instance_offset)
+    corners = [base @ ob.matrix_world @ Vector(c)
+               for ob in coll.all_objects if ob.type == "MESH" for c in ob.bound_box]
+    if not corners:
+        return None
+    lo = Vector((min(c.x for c in corners), min(c.y for c in corners), 0))
+    hi = Vector((max(c.x for c in corners), max(c.y for c in corners), 0))
+    return lo, hi
 
 
 def main() -> int:
@@ -156,7 +196,8 @@ def main() -> int:
     budget = next(b for prefix, b in BUDGETS if name.startswith(prefix))
     if triangles > budget:
         warnings.append(f"{triangles} triangles is over the {budget} budget for '{name}'")
-    if not is_room and lowest_z is not None and abs(lowest_z) > 0.01:
+    wall_mounted = bool(bpy.context.scene.get("wall_mounted", False))
+    if not is_room and lowest_z is not None and (lowest_z < -0.01 or (lowest_z > 0.01 and not wall_mounted)):
         warnings.append(f"lowest point is at z={lowest_z:.3f} m; the origin should sit on the floor (z=0)")
 
     if name == "elf":
@@ -165,18 +206,15 @@ def main() -> int:
         if missing:
             warnings.append(f"elf is missing actions: {', '.join(sorted(missing))}")
 
-    # For the room, export only the visible scenery, not the layout markers, and merge pieces that share
-    # materials so the game draws a few dozen meshes instead of hundreds. (The .blend itself is not changed.)
-    use_selection = False
-    if is_room:
-        scenery = [ob for ob in bpy.context.scene.objects if not is_marker(ob)]
-        meshes_before = sum(1 for ob in scenery if ob.type == "MESH")
-        scenery = join_by_material(scenery)
-        bpy.ops.object.select_all(action="DESELECT")
-        for ob in scenery:
-            ob.select_set(True)
-        use_selection = True
-        print(f"RESULT room: merged {meshes_before} pieces into {sum(1 for ob in scenery if ob.type == 'MESH')} meshes")
+    # Export only visible scenery (never the room's layout markers), and merge pieces that share materials
+    # so the game draws a few meshes per model instead of dozens. (The .blend file itself is not changed.)
+    scenery = [ob for ob in bpy.context.scene.objects if not (is_room and is_marker(ob))]
+    meshes_before = sum(1 for ob in scenery if ob.type == "MESH")
+    scenery = join_by_material(scenery)
+    bpy.ops.object.select_all(action="DESELECT")
+    for ob in scenery:
+        ob.select_set(True)
+    print(f"RESULT {name}: merged {meshes_before} pieces into {sum(1 for ob in scenery if ob.type == 'MESH')} meshes")
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     bpy.ops.export_scene.gltf(
@@ -186,7 +224,7 @@ def main() -> int:
         export_apply=True,       # apply modifiers
         export_animations=True,
         export_materials="EXPORT",
-        use_selection=use_selection,
+        use_selection=True,
     )
 
     size_kb = os.path.getsize(out_path) // 1024

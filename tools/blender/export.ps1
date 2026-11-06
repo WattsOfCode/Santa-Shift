@@ -11,7 +11,7 @@
   names in docs/blender-export.md (toy_train.blend -> toy_train.glb).
   Blender location: $env:SANTASHIFT_BLENDER, or D:\Blender\blender.cmd by default.
 #>
-param([string[]]$Names)
+param([Parameter(ValueFromRemainingArguments = $true)][string[]]$Names)
 
 $ErrorActionPreference = 'Stop'
 $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
