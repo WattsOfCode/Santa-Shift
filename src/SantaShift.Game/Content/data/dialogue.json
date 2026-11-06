@@ -45,6 +45,9 @@
 
     "review_low": "Needs more cocoa",
     "review_survivor": "Shift survivor",
-    "review_legend": "Workshop legend"
+    "review_legend": "Workshop legend",
+
+    "round_complete": "Round {0} complete!",
+    "game_over": "Game over"
   }
 }

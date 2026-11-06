@@ -1,7 +1,8 @@
 # Santa Shift
 
 Finish your shift in Santa's workshop while your boss keeps shifting the rules.
-A small 3D time-management game for **Game Off 2026** (theme: SHIFT).
+A small third-person 3D time-management game for **Game Off 2026** (theme: SHIFT).
+Meet each round's quota to move on to a harder round; miss it and the run is over.
 
 Built in C# with .NET 10 and [Raylib-cs](https://github.com/ChrisDill/Raylib-cs). No engine. Models are made in Blender.
 
@@ -9,7 +10,8 @@ Built in C# with .NET 10 and [Raylib-cs](https://github.com/ChrisDill/Raylib-cs)
 
 | Key | Action |
 |---|---|
-| WASD / Arrows | Move |
+| Mouse | Look around (the camera follows behind the elf) |
+| WASD / Arrows | Move (relative to the camera) |
 | E / Space | Collect, assemble, add ribbon, ship, recycle |
 | Esc | Pause (or cancel the recycle prompt) |
 | Tab (title screen) | Switch Standard / Relaxed mode |
@@ -63,7 +65,8 @@ The tests load the real data files, so `dotnet test` catches a broken edit.
 
 ## Adding Blender models
 
-Save the `.blend` in `source-assets/blender/` named after the model, then run `.\tools\blender\export.ps1`.
+The room itself is `source-assets/blender/room.blend`; see "Designing the room" in the export guide.
+For other models, save the `.blend` in `source-assets/blender/` named after the model, then run `.\tools\blender\export.ps1`.
 It exports to `Content/models/` and checks the rules in [docs/blender-export.md](docs/blender-export.md).
 Or export by hand and drop the `.glb` into `Content/models/`
 with the name used in `toys.json` / `stations.json` (or `elf.glb`, `kit_crate.glb`, `ribbon_bow.glb`).

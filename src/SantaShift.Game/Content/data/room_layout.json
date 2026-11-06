@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "source": "room.blend",
+  "colliders": [
+    {
+      "x": 10.5,
+      "z": -3.5,
+      "w": 1.7,
+      "d": 1.7,
+      "name": "tree"
+    }
+  ],
+  "stations": {
+    "kits_train": {
+      "x": -7.5,
+      "z": -3.875,
+      "w": 2.25,
+      "d": 1.0,
+      "yaw": 0.0,
+      "interactX": -7.5,
+      "interactZ": -3.0
+    },
+    "kits_bear": {
+      "x": -1.5,
+      "z": -3.875,
+      "w": 2.25,
+      "d": 1.0,
+      "yaw": 0.0,
+      "interactX": -1.5,
+      "interactZ": -3.0
+    },
+    "kits_robot": {
+      "x": 4.5,
+      "z": -3.875,
+      "w": 2.25,
+      "d": 1.0,
+      "yaw": 0.0,
+      "interactX": 4.5,
+      "interactZ": -3.0
+    },
+    "bench": {
+      "x": -4.5,
+      "z": -1.125,
+      "w": 3.0,
+      "d": 1.0,
+      "yaw": 0.0,
+      "interactX": -4.5,
+      "interactZ": -0.375
+    },
+    "ribbon": {
+      "x": 3.25,
+      "z": -1.125,
+      "w": 2.5,
+      "d": 1.0,
+      "yaw": 0.0,
+      "interactX": 3.25,
+      "interactZ": -0.375
+    },
+    "recycle": {
+      "x": -9.0,
+      "z": 3.0,
+      "w": 1.25,
+      "d": 1.25,
+      "yaw": 0.0,
+      "interactX": -7.875,
+      "interactZ": 3.0
+    },
+    "shipping": {
+      "x": 8.75,
+      "z": 3.0,
+      "w": 1.75,
+      "d": 1.5,
+      "yaw": 0.0,
+      "interactX": 7.5,
+      "interactZ": 3.0
+    }
+  },
+  "floor": {
+    "minX": -11.5,
+    "minZ": -4.5,
+    "maxX": 11.5,
+    "maxZ": 4.5
+  },
+  "playerStart": {
+    "x": -0.25,
+    "z": 2.75
+  }
+}

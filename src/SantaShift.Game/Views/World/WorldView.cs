@@ -8,10 +8,17 @@ using SantaShift.Game.Views.UI;
 
 namespace SantaShift.Game.Views.World;
 
-/// <summary>Draws the whole 3D workshop: room, stations and elf. Reads state; never changes it.</summary>
+/// <summary>
+/// Draws the whole 3D workshop: room, stations and elf. Reads state; never changes it.
+/// The room is room.glb from Blender when present; otherwise grey-box floor, walls and obstacles.
+/// </summary>
 public sealed class WorldView
 {
+    private const float WallHeight = 3.0f;
+    private const float LabelRange = 9f; // metres; farther stations aren't labelled
+
     private readonly GameContent _content;
+    private readonly IAssetLibrary _assets;
     private readonly WorldSpace _world;
     private readonly StationView _stations;
     private readonly PlayerView _player;
@@ -19,6 +26,7 @@ public sealed class WorldView
     public WorldView(GameContent content, IAssetLibrary assets, WorldSpace world)
     {
         _content = content;
+        _assets = assets;
         _world = world;
         var items = new ItemView(content, assets);
         _stations = new StationView(content, assets, world, items);
@@ -27,12 +35,12 @@ public sealed class WorldView
 
     public WorldSpace Space => _world;
 
-    /// <summary>Draws the room only (used behind the title screen).</summary>
+    /// <summary>Draws the room and stations without the elf (behind menus).</summary>
     public void DrawRoom()
     {
         Raylib.ClearBackground(Palette.Ink);
         Raylib.BeginMode3D(_world.Camera);
-        DrawFloorAndWalls();
+        DrawRoomShell();
         foreach (var s in _content.Stations) _stations.Draw(s, selected: false);
         Raylib.EndMode3D();
     }
@@ -41,7 +49,7 @@ public sealed class WorldView
     {
         Raylib.ClearBackground(Palette.Ink);
         Raylib.BeginMode3D(_world.Camera);
-        DrawFloorAndWalls();
+        DrawRoomShell();
 
         var selected = sim.SelectedStation();
         foreach (var s in _content.Stations) _stations.Draw(s, s == selected);
@@ -50,12 +58,16 @@ public sealed class WorldView
         Raylib.EndMode3D();
     }
 
-    /// <summary>Station names, drawn in the UI pass so they stay sharp.</summary>
+    /// <summary>Station names for nearby stations in view, drawn in the UI pass so they stay sharp.</summary>
     public void DrawLabels(UiCanvas ui, Station? selected)
     {
         foreach (var s in _content.Stations)
         {
-            var at = _world.ToUi(_stations.LabelAnchor(s));
+            var anchor = _stations.LabelAnchor(s);
+            if (!_world.InFront(anchor)) continue;
+            if (s != selected && _world.DistanceFromCamera(anchor) > LabelRange) continue;
+
+            var at = _world.ToUi(anchor);
             float w = ui.MeasureText(s.Label, 14) + 12;
             var bg = s == selected ? Palette.Gold : Palette.WithAlpha(Palette.Ink, 200);
             var fg = s == selected ? Palette.Ink : Palette.Snow;
@@ -64,13 +76,22 @@ public sealed class WorldView
         }
     }
 
-    /// <summary>Where to draw things above the elf's head (progress bar), in UI coordinates.</summary>
-    public Vector2 AbovePlayer(RunState state, float height = 1.95f) =>
-        _world.ToUi(_world.ToWorld(state.PlayerPosition, height));
-
-    private void DrawFloorAndWalls()
+    /// <summary>Where to draw things above the elf's head (progress bar), in UI coordinates. Null if off-screen.</summary>
+    public Vector2? AbovePlayer(RunState state, float height = 1.95f)
     {
-        var f = _content.Tuning.Floor;
+        var p = _world.ToWorld(state.PlayerPosition, height);
+        return _world.InFront(p) ? _world.ToUi(p) : null;
+    }
+
+    private void DrawRoomShell()
+    {
+        if (_assets.TryGetModel(AssetLibrary.RoomModel, out var room))
+        {
+            Raylib.DrawModel(room, Vector3.Zero, 1f, Color.White);
+            return;
+        }
+
+        var f = _content.Floor;
         var centre = _world.ToWorld(new Point2((f.Left + f.Right) / 2, (f.Top + f.Bottom) / 2));
         float w = _world.Metres(f.Right - f.Left), d = _world.Metres(f.Bottom - f.Top);
 
@@ -78,10 +99,20 @@ public sealed class WorldView
         for (float z = -d / 2 + 0.5f; z < d / 2; z += 1f) // plank stripes
             Raylib.DrawPlane(centre + new Vector3(0, 0.002f, z), new Vector2(w, 0.5f), Palette.FloorStripe);
 
-        float back = centre.Z - d / 2;
-        Raylib.DrawCube(new Vector3(centre.X, 1.0f, back - 0.15f), w + 0.6f, 2.0f, 0.3f, Palette.Pine);         // back wall
-        Raylib.DrawCube(new Vector3(centre.X, 1.4f, back - 0.0f), w + 0.6f, 0.25f, 0.05f, Palette.Berry);       // decorative strip
-        Raylib.DrawCube(new Vector3(centre.X - w / 2 - 0.15f, 0.3f, centre.Z), 0.3f, 0.6f, d, Palette.Shade(Palette.Pine, 0.8f)); // side walls
-        Raylib.DrawCube(new Vector3(centre.X + w / 2 + 0.15f, 0.3f, centre.Z), 0.3f, 0.6f, d, Palette.Shade(Palette.Pine, 0.8f));
+        const float t = 0.3f, h = WallHeight;
+        var wall = Palette.Pine;
+        var side = Palette.Shade(Palette.Pine, 0.8f);
+        Raylib.DrawCube(new Vector3(centre.X, h / 2, centre.Z - d / 2 - t / 2), w + 2 * t, h, t, wall);                // back
+        Raylib.DrawCube(new Vector3(centre.X, h / 2, centre.Z + d / 2 + t / 2), w + 2 * t, h, t, Palette.Shade(wall, 0.9f)); // front
+        Raylib.DrawCube(new Vector3(centre.X - w / 2 - t / 2, h / 2, centre.Z), t, h, d, side);                        // left
+        Raylib.DrawCube(new Vector3(centre.X + w / 2 + t / 2, h / 2, centre.Z), t, h, d, side);                        // right
+        Raylib.DrawCube(new Vector3(centre.X, 1.4f, centre.Z - d / 2 + 0.01f), w, 0.25f, 0.02f, Palette.Berry);        // decorative strip
+
+        foreach (var c in _content.Colliders) // obstacles from a room layout, when there is no room model
+        {
+            var p = _world.ToWorld(new Point2(c.X, c.Y), 0.5f);
+            Raylib.DrawCube(p, _world.Metres(c.W), 1f, _world.Metres(c.H), Palette.WoodDark);
+            Raylib.DrawCubeWires(p, _world.Metres(c.W), 1f, _world.Metres(c.H), Palette.Ink);
+        }
     }
 }

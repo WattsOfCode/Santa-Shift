@@ -25,5 +25,12 @@
   "quota": 9,
   "relaxedQuota": 6,
   "survivorDelivered": 9,
-  "legendDelivered": 12
+  "legendDelivered": 12,
+
+  // Rounds: meeting the quota starts the next round; missing it ends the run.
+  "rounds": { "quotaIncrease": 1, "deadlineMultiplierPerRound": 0.95, "minDeadlineMultiplier": 0.7 },
+
+  // World scale shared with the Blender room export: 40 logical pixels = 1 metre, and pixel (480, 300) is the world origin.
+  "pixelsPerMetre": 40,
+  "worldOrigin": { "x": 480, "y": 300 }
 }

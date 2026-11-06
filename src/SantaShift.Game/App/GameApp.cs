@@ -45,7 +45,8 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
 
         var input = new KeyboardInputService();
         var assets = new AssetLibrary(Path.Combine(contentDir, "models"));
-        assets.Preload(content);
+        var lighting = new Lighting();
+        assets.Preload(content, lighting.Apply);
         var audio = RaylibAudioService.Create(Path.Combine(contentDir, "audio"));
 
         var save = new SaveData(new JsonFileStore(JsonFileStore.DefaultDirectory));
@@ -63,7 +64,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
             Assets = assets,
             Save = save,
             Scenes = new SceneManager(input),
-            World = new WorldSpace(render),
+            World = new WorldSpace(render, content.Tuning),
             Settings = settings,
             Best = best,
             PauseOnFocusLoss = options.ScreenshotPath == null,
@@ -74,7 +75,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
         var font = Raylib.GetFontDefault();
 
         services.Scenes.Switch(options.StartInWorkshop
-            ? new WorkshopController(services, settings.PreferredMode)
+            ? WorkshopController.NewRun(services, settings.PreferredMode)
             : new TitleController(services));
 
         double accumulator = 0;
@@ -91,6 +92,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
                 screen.FixedUpdate();
                 accumulator -= StepSeconds;
             }
+            screen.FrameUpdate();
 
             Raylib.BeginTextureMode(target);
             screen.DrawWorld();
@@ -117,6 +119,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
         services.Scenes.Current?.Exit();
         Raylib.UnloadRenderTexture(target);
         assets.Dispose();
+        lighting.Dispose();
         audio.Dispose();
         Raylib.CloseWindow();
     }

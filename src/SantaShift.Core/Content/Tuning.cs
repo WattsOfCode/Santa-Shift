@@ -40,9 +40,40 @@ public sealed class Tuning
     public int SurvivorDelivered { get; init; } = 9;
     public int LegendDelivered { get; init; } = 12;
 
+    // Rounds: passing a round (meeting the quota) starts a harder one; missing it ends the run.
+    public RoundTuning Rounds { get; init; } = new();
+
+    // World scale: rules work in logical pixels; the 3D world and Blender work in metres.
+    public double PixelsPerMetre { get; init; } = 40;
+    public Point2 WorldOrigin { get; init; } = new(480, 300);
+
     public long Ticks(double seconds) => (long)Math.Round(seconds * TicksPerSecond);
     public long ShiftTicks => Ticks(ShiftSeconds);
-    public int QuotaFor(GameMode mode) => mode == GameMode.Relaxed ? RelaxedQuota : Quota;
+
+    public int QuotaFor(GameMode mode, int round = 1) =>
+        (mode == GameMode.Relaxed ? RelaxedQuota : Quota) + Rounds.QuotaIncrease * Math.Max(0, round - 1);
+
+    /// <summary>Multiplies every order deadline: relaxed mode lengthens them, later rounds shorten them.</summary>
+    public double DeadlineMultiplier(GameMode mode, int round = 1)
+    {
+        double roundFactor = Math.Max(Rounds.MinDeadlineMultiplier, Math.Pow(Rounds.DeadlineMultiplierPerRound, Math.Max(0, round - 1)));
+        return (mode == GameMode.Relaxed ? RelaxedDeadlineMultiplier : 1.0) * roundFactor;
+    }
+
+    /// <summary>Converts a point in game-world metres (x right, z towards the player's start) to logical pixels.</summary>
+    public Point2 MetresToPixels(double x, double z) => new(WorldOrigin.X + x * PixelsPerMetre, WorldOrigin.Y + z * PixelsPerMetre);
+}
+
+public sealed class RoundTuning
+{
+    /// <summary>Extra deliveries needed for each round after the first.</summary>
+    public int QuotaIncrease { get; init; } = 1;
+
+    /// <summary>Deadlines are multiplied by this once per round after the first (0.95 = 5% shorter each round).</summary>
+    public double DeadlineMultiplierPerRound { get; init; } = 0.95;
+
+    /// <summary>Deadlines never shrink below this fraction of their round 1 length.</summary>
+    public double MinDeadlineMultiplier { get; init; } = 0.7;
 }
 
 public sealed class FloorBounds

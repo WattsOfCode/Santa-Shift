@@ -18,6 +18,7 @@ $root = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $blender = if ($env:SANTASHIFT_BLENDER) { $env:SANTASHIFT_BLENDER } else { 'D:\Blender\blender.cmd' }
 $sourceDir = Join-Path $root 'source-assets\blender'
 $outDir = Join-Path $root 'src\SantaShift.Game\Content\models'
+$dataDir = Join-Path $root 'src\SantaShift.Game\Content\data'   # room.blend also writes room_layout.json here
 $script = Join-Path $PSScriptRoot 'export_glb.py'
 
 if (-not (Test-Path $blender)) { throw "Blender not found at $blender. Set SANTASHIFT_BLENDER to blender.exe." }
@@ -28,7 +29,7 @@ if (-not $files) { Write-Host "No .blend files to export in $sourceDir"; exit 0 
 $failed = 0
 foreach ($file in $files) {
     $out = Join-Path $outDir ($file.BaseName + '.glb')
-    $lines = & $blender --background --factory-startup $file.FullName --python $script -- $out 2>&1 |
+    $lines = & $blender --background --factory-startup $file.FullName --python $script -- $out $dataDir 2>&1 |
         ForEach-Object { "$_" } | Where-Object { $_ -match '^(RESULT|WARNING|ERROR)' }
     if ($LASTEXITCODE -ne 0 -or -not ($lines -match '^RESULT')) { $failed++ }
     $lines | ForEach-Object {

@@ -23,6 +23,12 @@ public interface IInputService
 
     /// <summary>Forgets pending presses. Called on every screen change so one press can't act twice.</summary>
     void Clear();
+
+    /// <summary>Mouse movement since the last frame, in pixels. Zero while the mouse is not captured.</summary>
+    Vector2 MouseDelta();
+
+    /// <summary>Hides and locks the cursor for mouse look (true), or frees it for menus (false).</summary>
+    void SetMouseCaptured(bool captured);
 }
 
 public sealed class KeyboardInputService : IInputService
@@ -60,4 +66,22 @@ public sealed class KeyboardInputService : IInputService
     public bool ConsumePressed(InputAction action) => _latched.Remove(action);
 
     public void Clear() => _latched.Clear();
+
+    private bool _captured;
+    private bool _skipNextDelta;
+
+    public Vector2 MouseDelta()
+    {
+        if (!_captured) return Vector2.Zero;
+        if (_skipNextDelta) { _skipNextDelta = false; return Vector2.Zero; } // the cursor jump when locking is not a turn
+        return Raylib.GetMouseDelta();
+    }
+
+    public void SetMouseCaptured(bool captured)
+    {
+        if (captured == _captured) return;
+        _captured = captured;
+        if (captured) { Raylib.DisableCursor(); _skipNextDelta = true; }
+        else Raylib.EnableCursor();
+    }
 }

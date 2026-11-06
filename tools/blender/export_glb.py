@@ -2,34 +2,116 @@
 Exports the open .blend file to a game-ready .glb and checks it against docs/blender-export.md.
 
 Run through Blender (export.ps1 does this for you):
-    blender --background model.blend --python export_glb.py -- out.glb
+    blender --background model.blend --python export_glb.py -- out.glb [data_dir]
+
+For room.blend, marker objects (see MARKER_PREFIXES) are left out of the .glb and written instead to
+<data_dir>/room_layout.json: the floor, obstacles, station positions and the player start.
 
 Prints one line starting with RESULT, then any WARNING lines. Exit code 1 if the export failed.
 """
+import json
+import math
 import os
 import sys
 
 import bpy
+from mathutils import Vector
 
 # Triangle budgets from docs/blender-export.md, picked by file name.
-BUDGETS = [("elf", 10_000), ("toy_", 2_000), ("", 5_000)]
+BUDGETS = [("elf", 10_000), ("toy_", 2_000), ("room", 30_000), ("", 5_000)]
 EXPECTED_ACTIONS = {"Idle", "Walk", "Work"}
+
+# Layout markers in room.blend. They are read for room_layout.json and never drawn in the game.
+#   floor_bounds   box mesh: the walkable area
+#   player_start   empty:    where the elf starts
+#   st_<id>        box mesh: a station's solid footprint (rotation = model turn)
+#   ip_<id>        empty:    where the elf stands to use station <id>
+#   col_<name>     box mesh: an invisible obstacle (put one around furniture)
+MARKER_PREFIXES = ("floor_bounds", "player_start", "st_", "ip_", "col_")
+
+
+def is_marker(ob) -> bool:
+    return ob.name.startswith(MARKER_PREFIXES)
+
+
+def world_bbox(ob):
+    """Axis-aligned bounds of an object in world space: (min Vector, max Vector)."""
+    corners = [ob.matrix_world @ Vector(c) for c in ob.bound_box]
+    lo = Vector((min(c.x for c in corners), min(c.y for c in corners), min(c.z for c in corners)))
+    hi = Vector((max(c.x for c in corners), max(c.y for c in corners), max(c.z for c in corners)))
+    return lo, hi
+
+
+def to_game(x, y):
+    """Blender (x, y) on the floor -> game (x, z). Blender +Y points away from the camera; game +Z points towards it."""
+    return round(x, 4), round(-y, 4)
+
+
+def box_entry(ob):
+    lo, hi = world_bbox(ob)
+    cx, cz = to_game((lo.x + hi.x) / 2, (lo.y + hi.y) / 2)
+    return {"x": cx, "z": cz, "w": round(hi.x - lo.x, 4), "d": round(hi.y - lo.y, 4)}
+
+
+def build_layout(source_name, warnings):
+    objects = bpy.context.scene.objects
+    layout = {"schemaVersion": 1, "source": source_name, "colliders": [], "stations": {}}
+
+    bounds = objects.get("floor_bounds")
+    if bounds:
+        lo, hi = world_bbox(bounds)
+        x0, z0 = to_game(lo.x, hi.y)
+        x1, z1 = to_game(hi.x, lo.y)
+        layout["floor"] = {"minX": x0, "minZ": z0, "maxX": x1, "maxZ": z1}
+    else:
+        warnings.append("no 'floor_bounds' box; the game keeps its default floor size")
+
+    start = objects.get("player_start")
+    if start:
+        x, z = to_game(start.matrix_world.translation.x, start.matrix_world.translation.y)
+        layout["playerStart"] = {"x": x, "z": z}
+
+    for ob in objects:
+        if ob.name.startswith("col_"):
+            entry = box_entry(ob)
+            entry["name"] = ob.name[4:]
+            layout["colliders"].append(entry)
+
+    for ob in objects:
+        if not ob.name.startswith("st_"):
+            continue
+        station_id = ob.name[3:]
+        entry = box_entry(ob)
+        entry["yaw"] = round(math.degrees(ob.matrix_world.to_euler().z), 2)
+        ip = objects.get("ip_" + station_id)
+        if ip is None:
+            warnings.append(f"station '{station_id}' has no 'ip_{station_id}' marker; it was skipped")
+            continue
+        entry["interactX"], entry["interactZ"] = to_game(ip.matrix_world.translation.x, ip.matrix_world.translation.y)
+        layout["stations"][station_id] = entry
+
+    for ob in objects:
+        if ob.name.startswith("ip_") and ("st_" + ob.name[3:]) not in objects:
+            warnings.append(f"'{ob.name}' has no matching 'st_{ob.name[3:]}' box")
+    return layout
 
 
 def main() -> int:
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     if not argv:
-        print("ERROR usage: blender --background file.blend --python export_glb.py -- out.glb")
+        print("ERROR usage: blender --background file.blend --python export_glb.py -- out.glb [data_dir]")
         return 1
     out_path = os.path.abspath(argv[0])
+    data_dir = os.path.abspath(argv[1]) if len(argv) > 1 else None
     name = os.path.splitext(os.path.basename(out_path))[0]
+    is_room = name == "room"
     warnings = []
 
     depsgraph = bpy.context.evaluated_depsgraph_get()
     triangles = 0
     lowest_z = None
     for ob in bpy.context.scene.objects:
-        if ob.type != "MESH":
+        if ob.type != "MESH" or (is_room and is_marker(ob)):
             continue
         if any(abs(s - 1) > 1e-4 for s in ob.scale) or any(abs(r) > 1e-4 for r in ob.rotation_euler):
             warnings.append(f"'{ob.name}' has unapplied scale/rotation (Ctrl+A > All Transforms)")
@@ -53,7 +135,7 @@ def main() -> int:
     budget = next(b for prefix, b in BUDGETS if name.startswith(prefix))
     if triangles > budget:
         warnings.append(f"{triangles} triangles is over the {budget} budget for '{name}'")
-    if lowest_z is not None and abs(lowest_z) > 0.01:
+    if not is_room and lowest_z is not None and abs(lowest_z) > 0.01:
         warnings.append(f"lowest point is at z={lowest_z:.3f} m; the origin should sit on the floor (z=0)")
 
     if name == "elf":
@@ -61,6 +143,13 @@ def main() -> int:
         missing = EXPECTED_ACTIONS - actions
         if missing:
             warnings.append(f"elf is missing actions: {', '.join(sorted(missing))}")
+
+    # For the room, export only the visible scenery, not the layout markers.
+    use_selection = False
+    if is_room:
+        for ob in bpy.context.scene.objects:
+            ob.select_set(not is_marker(ob))
+        use_selection = True
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     bpy.ops.export_scene.gltf(
@@ -70,10 +159,22 @@ def main() -> int:
         export_apply=True,       # apply modifiers
         export_animations=True,
         export_materials="EXPORT",
+        use_selection=use_selection,
     )
 
     size_kb = os.path.getsize(out_path) // 1024
     print(f"RESULT {name}: {triangles} triangles, {size_kb} KB -> {out_path}")
+
+    if is_room:
+        layout = build_layout(os.path.basename(bpy.data.filepath), warnings)
+        if data_dir:
+            layout_path = os.path.join(data_dir, "room_layout.json")
+            with open(layout_path, "w", encoding="utf-8") as f:
+                json.dump(layout, f, indent=2)
+            print(f"RESULT room layout: {len(layout['stations'])} stations, {len(layout['colliders'])} obstacles -> {layout_path}")
+        else:
+            warnings.append("no data folder given; room_layout.json was not written")
+
     for w in warnings:
         print(f"WARNING {name}: {w}")
     return 0

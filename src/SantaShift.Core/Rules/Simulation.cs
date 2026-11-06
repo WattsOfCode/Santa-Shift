@@ -19,10 +19,10 @@ public sealed class Simulation
     private readonly EventSystem _events;
     private readonly List<SimEvent> _pending = new();
 
-    public Simulation(GameContent content, GameMode mode)
+    public Simulation(GameContent content, GameMode mode, int round = 1)
     {
         Content = content;
-        State = new RunState { Mode = mode, PlayerPosition = content.Tuning.PlayerStart };
+        State = new RunState { Mode = mode, Round = Math.Max(1, round), PlayerPosition = content.PlayerStart };
         _motion = new PlayerMotion(content);
         _crafting = new CraftingSystem(content);
         _orders = new OrderSystem(content);
@@ -31,7 +31,7 @@ public sealed class Simulation
 
     public Tuning Tuning => Content.Tuning;
     public long RemainingShiftTicks => Math.Max(0, Tuning.ShiftTicks - State.Tick);
-    public int Quota => Tuning.QuotaFor(State.Mode);
+    public int Quota => Tuning.QuotaFor(State.Mode, State.Round);
 
     public void Step(PlayerCommand cmd)
     {

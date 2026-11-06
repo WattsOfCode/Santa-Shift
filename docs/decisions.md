@@ -41,3 +41,29 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - In standard mode, if nothing is delivered, every order expires before the shift ends (the last one, created at 252 s, has a 45 s deadline).
   "Unfinished" only happens when orders are still live at 300 s.
 - Relaxed mode gives the 252 s rush order 67.5 s, more than the 48 s left in the shift; it ends as unfinished.
+
+## 2026-11-06: Third-person camera with mouse look
+- **Reason:** User wants a closer view from behind the elf.
+- **Details:** The camera follows 3.8 m behind the elf; the mouse turns and tilts it; WASD moves relative to the camera.
+  The mouse is captured during play and released for pause and menus. Settings are in `render.json` under `chaseCamera`.
+  The game rules are unchanged: the camera only turns key input into a floor direction.
+- **Supersedes:** "Fixed top-down 2D camera" (and the earlier fixed angled camera) and "keyboard only" (GDD sections 2, 7, 21).
+  A mouse is now required. Note for the jam page: list mouse + keyboard in the controls.
+
+## 2026-11-06: Rounds with game over
+- **Reason:** User decision: a run continues as long as each round's quota is met.
+- **Details:** Meeting the quota starts the next round with quota +1 and deadlines 5% shorter (never below 70%).
+  Missing the quota is game over. Score carries across rounds; the best score and furthest round are saved per mode.
+  All values are in `tuning.json` under `rounds`.
+- **Supersedes:** GDD section 12, "There is no early firing or game over", and the single five-minute session (section 2).
+
+## 2026-11-06: Room designed in Blender
+- **Reason:** User wants the room built in Blender, with more for the player to move around and interact with.
+- **Details:** `room.blend` exports to `room.glb` (scenery) and `room_layout.json` (floor, obstacles, station positions,
+  player start), using marker objects described in `docs/blender-export.md`. The layout file overrides `stations.json`
+  positions and the tuning floor. A starter room matching the original layout was generated, with walls, windows, a rug
+  and a Christmas tree obstacle.
+
+## 2026-11-06: Simple lighting for Blender models
+- **Reason:** Unlit models looked flat once the camera came close.
+- **Details:** One directional light plus ambient, with no shadows. It applies to loaded models only; grey-box shapes stay unlit.

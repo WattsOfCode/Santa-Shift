@@ -12,6 +12,9 @@ public interface IScreen
     /// <summary>Runs exactly 60 times per second of game time.</summary>
     void FixedUpdate();
 
+    /// <summary>Runs once per rendered frame, after the fixed steps (smooth things like the camera).</summary>
+    void FrameUpdate() { }
+
     /// <summary>Draws the 3D scene into the internal render texture.</summary>
     void DrawWorld();
 

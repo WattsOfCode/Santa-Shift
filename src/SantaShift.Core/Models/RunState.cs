@@ -6,6 +6,10 @@ public enum RunPhase { Playing, Paused, Results }
 public sealed class RunState
 {
     public GameMode Mode { get; init; }
+
+    /// <summary>1 for the first shift of a run; later rounds have a higher quota and shorter deadlines.</summary>
+    public int Round { get; init; } = 1;
+
     public RunPhase Phase { get; set; } = RunPhase.Playing;
 
     /// <summary>Simulation steps completed. 60 ticks = 1 second.</summary>

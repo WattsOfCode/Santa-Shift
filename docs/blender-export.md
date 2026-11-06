@@ -61,6 +61,36 @@ Blender is expected at `D:\Blender\blender.cmd` (portable Blender 5.2.3 LTS; its
 
 ## How models look in the game
 
-The game draws models **unlit**: each surface shows its base colour exactly, with no shading from lights.
-Shape only reads through colour, so bake ambient occlusion and soft shading into the texture, or use darker
-and lighter material colours on different faces. Kit crates are tinted by the toy's colour, so model them in light, neutral tones.
+Models get **one soft directional light plus ambient light**, with no shadows. Baked ambient occlusion in the base
+colour still helps a lot. Kit crates are tinted by the toy's colour, so model them in light, neutral tones.
+(Grey-box placeholder shapes are drawn unlit; that's expected.)
+
+## Designing the room (room.blend)
+
+`source-assets/blender/room.blend` is the whole workshop. The export tool turns it into two files:
+- `Content/models/room.glb`: the scenery you see (floor, walls, windows, decorations).
+- `Content/data/room_layout.json`: where things are, read by the game's rules.
+
+The layout comes from **marker objects** in the "Layout markers" collection. They show as wireframes in Blender and are
+never drawn in the game:
+
+| Marker | Type | Meaning |
+|---|---|---|
+| `floor_bounds` | box | The walkable area. The elf can't leave it, and the camera stays inside it. |
+| `player_start` | empty | Where the elf starts each round. |
+| `st_<id>` | box | A station's solid footprint, e.g. `st_bench`. Rotate it to turn the station's model. |
+| `ip_<id>` | empty | Where the elf stands to use that station, e.g. `ip_bench`. Keep it just outside the box. |
+| `col_<name>` | box | An obstacle the elf can't walk through. Put one around any furniture you add. |
+
+`<id>` must match an id in `stations.json` (kits_train, kits_bear, kits_robot, bench, ribbon, recycle, shipping).
+
+**To change the layout:** move the `st_` boxes and their `ip_` empties together, add decorations and `col_` boxes,
+save, then run `.\tools\blender\export.ps1 room`. No code changes are needed. To start again from the default layout:
+
+```
+D:\Blender\blender.cmd --background --factory-startup --python tools\blender\make_starter_room.py -- src\SantaShift.Game\Content\data\stations.json src\SantaShift.Game\Content\data\tuning.json source-assets\blender\room.blend
+```
+
+To go back to the built-in grey-box room, delete `room.glb` and `room_layout.json`.
+
+Keep walls at least 3 m tall: the camera follows behind the elf inside the room.

@@ -5,7 +5,7 @@ namespace SantaShift.Game.Views.UI;
 /// <summary>Title screen and pause / READY overlays.</summary>
 public sealed class MenuView
 {
-    public void DrawTitle(UiCanvas ui, GameMode mode, int best)
+    public void DrawTitle(UiCanvas ui, GameMode mode, int best, int bestRound = 0)
     {
         ui.Fill(0, 0, UiCanvas.Width, UiCanvas.Height, Palette.WithAlpha(Palette.Ink, 190));
         ui.Text("SANTA SHIFT", 480, 70, 64, Palette.Berry, Align.Center);
@@ -13,16 +13,18 @@ public sealed class MenuView
         ui.Text("Finish your shift in Santa's workshop while your boss keeps shifting the rules.", 480, 184, 16, Palette.Snow, Align.Center);
 
         float y = 236;
-        Line(ui, "WASD / Arrows", "Move", y);
-        Line(ui, "E / Space", "Collect, assemble, ribbon, ship, recycle", y += 30);
-        Line(ui, "Esc", "Pause", y += 30);
+        Line(ui, "Mouse", "Look around", y);
+        Line(ui, "WASD / Arrows", "Move", y += 26);
+        Line(ui, "E / Space", "Collect, assemble, ribbon, ship, recycle", y += 26);
+        Line(ui, "Esc", "Pause", y += 26);
+        ui.Text("Meet the quota to reach the next round. Miss it and the run is over.", 480, y + 30, 16, Palette.Ice, Align.Center);
 
-        ui.FillRounded(330, 352, 300, 44, Palette.Gold, 0.4f);
-        ui.Text("ENTER  Start shift", 480, 363, 22, Palette.Ink, Align.Center);
+        ui.FillRounded(330, 362, 300, 44, Palette.Gold, 0.4f);
+        ui.Text("ENTER  Start shift", 480, 373, 22, Palette.Ink, Align.Center);
 
         string modeText = mode == GameMode.Relaxed ? "Relaxed (longer deadlines, quota 6)" : "Standard";
         ui.Text($"TAB  Mode: {modeText}", 480, 414, 18, Palette.Snow, Align.Center);
-        if (best > 0) ui.Text($"Best ({mode}): {best}", 480, 442, 16, Palette.Ice, Align.Center);
+        if (best > 0) ui.Text($"Best ({mode}): {best} points, round {bestRound}", 480, 442, 16, Palette.Ice, Align.Center);
         ui.Text("ESC  Quit", 480, 500, 16, Palette.Shade(Palette.Snow, 0.7f), Align.Center);
     }
 

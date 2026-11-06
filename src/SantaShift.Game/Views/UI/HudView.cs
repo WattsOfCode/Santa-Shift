@@ -14,7 +14,8 @@ public sealed class HudView(GameContent content)
     private readonly SantaPanelView _santa = new();
     private readonly PromptView _prompt = new();
 
-    public void Draw(UiCanvas ui, Simulation sim, Feedback feedback, WorldView world)
+    /// <param name="earlierRoundsScore">Score carried over from previous rounds of this run.</param>
+    public void Draw(UiCanvas ui, Simulation sim, Feedback feedback, WorldView world, int earlierRoundsScore = 0)
     {
         var state = sim.State;
         var t = sim.Tuning;
@@ -23,11 +24,11 @@ public sealed class HudView(GameContent content)
         DrawProgressBar(ui, sim, world);
 
         // Top band
-        ui.Fill(0, 0, UiCanvas.Width, 112, Palette.WithAlpha(Palette.Ink, 235));
+        // No full-width band: in third person the room shows between the panels.
         double secondsLeft = (double)sim.RemainingShiftTicks / t.TicksPerSecond;
         int whole = (int)Math.Ceiling(secondsLeft);
-        ui.FillRounded(10, 8, 150, 72, Palette.WithAlpha(Palette.Snow, 25), 0.2f);
-        ui.Text("SHIFT", 85, 14, 14, Palette.Ice, Align.Center);
+        ui.FillRounded(10, 8, 150, 72, Palette.WithAlpha(Palette.Ink, 215), 0.2f);
+        ui.Text($"ROUND {state.Round}", 85, 14, 14, Palette.Ice, Align.Center);
         ui.Text($"{whole / 60}:{whole % 60:00}", 85, 34, 36, secondsLeft <= 30 ? Palette.Berry : Palette.Snow, Align.Center);
 
         var orders = state.LiveOrders.OrderBy(o => o.DeadlineTick).ThenBy(o => o.CreatedTick).ThenBy(o => o.Id).ToList();
@@ -35,13 +36,13 @@ public sealed class HudView(GameContent content)
         {
             float x = 172 + i * (OrderCardView.Width + 10);
             if (i < orders.Count) _card.Draw(ui, orders[i], state.Tick, x, 8);
-            else ui.OutlineRounded(x, 8, OrderCardView.Width, OrderCardView.Height, Palette.WithAlpha(Palette.Snow, 40), 2, 0.18f);
+            else ui.OutlineRounded(x, 8, OrderCardView.Width, OrderCardView.Height, Palette.WithAlpha(Palette.Snow, 70), 2, 0.18f);
         }
 
         _santa.Draw(ui, sim, feedback, 10, 84, UiCanvas.Width - 20, 26);
 
         // Bottom band
-        ui.Fill(0, 486, UiCanvas.Width, 54, Palette.WithAlpha(Palette.Ink, 235));
+        ui.Fill(0, 486, UiCanvas.Width, 54, Palette.WithAlpha(Palette.Ink, 170));
 
         ui.Text("CARRYING", 16, 492, 12, Palette.Ice);
         var item = state.CarriedItem;
@@ -54,7 +55,7 @@ public sealed class HudView(GameContent content)
 
         _prompt.Draw(ui, sim.Prompt(), feedback, UiCanvas.Width / 2, 497);
 
-        ui.Text($"{state.Score}", UiCanvas.Width - 16, 490, 24, Palette.Gold, Align.Right);
+        ui.Text($"{earlierRoundsScore + state.Score}", UiCanvas.Width - 16, 490, 24, Palette.Gold, Align.Right);
         ui.Text($"{state.Delivered}/{sim.Quota} delivered", UiCanvas.Width - 16, 516, 16,
             state.Delivered >= sim.Quota ? Palette.Gold : Palette.Snow, Align.Right);
     }
@@ -63,7 +64,7 @@ public sealed class HudView(GameContent content)
     {
         var action = sim.State.CraftingAction;
         if (action == null) return;
-        var at = world.AbovePlayer(sim.State);
+        if (world.AbovePlayer(sim.State) is not { } at) return;
         const float w = 70, h = 10;
         float p = (float)action.Progress(sim.State.Tick);
         ui.FillRounded(at.X - w / 2 - 2, at.Y - 2, w + 4, h + 4, Palette.Ink, 0.5f);

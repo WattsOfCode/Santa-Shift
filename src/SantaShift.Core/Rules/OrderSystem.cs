@@ -28,7 +28,7 @@ public sealed class OrderSystem(GameContent content)
         state.Events.PendingRush = false;
 
         double seconds = rush ? _t.RushDeadlineSeconds : ribbon ? _t.RibbonDeadlineSeconds : _t.DeadlineSeconds;
-        if (state.Mode == GameMode.Relaxed) seconds *= _t.RelaxedDeadlineMultiplier;
+        seconds *= _t.DeadlineMultiplier(state.Mode, state.Round);
         long allowed = _t.Ticks(seconds);
 
         var order = new Order
@@ -85,7 +85,7 @@ public sealed class OrderSystem(GameContent content)
         output.Add(new SimEvent(SimEventType.Delivered, d.Message("delivered", toy.Name, points),
             ToyId: item.ToyId, OrderId: order.Id, Points: points));
 
-        if (!state.QuotaMetAnnounced && state.Delivered >= _t.QuotaFor(state.Mode))
+        if (!state.QuotaMetAnnounced && state.Delivered >= _t.QuotaFor(state.Mode, state.Round))
         {
             state.QuotaMetAnnounced = true;
             var cue = d.Cue("quota_met");

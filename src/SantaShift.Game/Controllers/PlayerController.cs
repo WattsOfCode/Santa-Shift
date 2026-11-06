@@ -3,21 +3,23 @@ using SantaShift.Game.Services;
 
 namespace SantaShift.Game.Controllers;
 
-/// <summary>Turns movement keys into a movement command, and tracks facing and bob for the elf's view.</summary>
+/// <summary>Passes the movement direction to the rules, and tracks facing and bob for the elf's view.</summary>
 public sealed class PlayerController(IInputService input, Settings settings)
 {
     private float _phase;
 
-    public float FacingDegrees { get; private set; }
+    public float FacingDegrees { get; private set; } = 180; // start facing away from the camera, towards the back wall
     public float Bob { get; private set; }
 
-    /// <summary>Reads movement for this step and updates the elf's facing and bob animation.</summary>
-    public (double X, double Y) ReadMove(bool working)
-    {
-        var move = input.Move();
-        bool walking = move.LengthSquared() > 0;
+    public IInputService Input => input;
 
-        if (walking) FacingDegrees = MathF.Atan2(move.X, move.Y) * 180f / MathF.PI; // 0 = towards camera
+    /// <param name="floorMove">Movement already turned into a floor direction (see CameraController).</param>
+    public (double X, double Y) ReadMove((double X, double Y) floorMove, bool working)
+    {
+        bool walking = floorMove.X != 0 || floorMove.Y != 0;
+
+        // Face the way we walk. 0 degrees = facing +Z; floor y matches world Z.
+        if (walking) FacingDegrees = MathF.Atan2((float)floorMove.X, (float)floorMove.Y) * 180f / MathF.PI;
 
         if (settings.ReducedMotion || (!walking && !working)) { _phase = 0; Bob = 0; }
         else
@@ -25,6 +27,6 @@ public sealed class PlayerController(IInputService input, Settings settings)
             _phase += working ? 0.5f : 0.3f;
             Bob = MathF.Abs(MathF.Sin(_phase)) * (working ? 0.04f : 0.06f);
         }
-        return (move.X, move.Y);
+        return floorMove;
     }
 }

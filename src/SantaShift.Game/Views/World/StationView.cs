@@ -26,7 +26,7 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
 
         if (assets.TryGetModel(s.Model, out var model))
         {
-            Raylib.DrawModel(model, centre, 1f, Color.White);
+            Raylib.DrawModelEx(model, centre, Vector3.UnitY, (float)s.Yaw, Vector3.One, Color.White);
         }
         else
         {

@@ -8,11 +8,24 @@
   "vsync": true,
   "targetFps": 60,
   "msaa": false,
-  "camera": {
-    "distance": 19,
-    "pitchDegrees": 70,
-    "fovDegrees": 40,
-    "targetZ": -0.7
+
+  // Third-person camera behind the elf. The mouse turns it; WASD moves relative to it.
+  "chaseCamera": {
+    "distance": 3.8,           // metres behind the elf
+    "targetHeight": 1.55,      // the point it looks at (above the head, so the elf sits low in the view)
+    "pitchDegrees": 12,        // starting downward tilt
+    "minPitchDegrees": 5,
+    "maxPitchDegrees": 60,
+    "fovDegrees": 60,
+    "mouseSensitivity": 0.15,  // degrees per pixel of mouse movement
+    "invertY": false,
+    "wallMargin": 0.25         // keeps the camera this far inside the walls
   },
-  "pixelsPerMetre": 40
+
+  // Fixed view behind the title and results screens, in metres.
+  "menuCamera": {
+    "position": { "x": 0, "y": 2.8, "z": 4.0 },
+    "target": { "x": 0, "y": 0.8, "z": -1.5 },
+    "fovDegrees": 60
+  }
 }

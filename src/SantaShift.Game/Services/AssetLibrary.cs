@@ -18,6 +18,7 @@ public sealed class AssetLibrary : IAssetLibrary
     public const string ElfModel = "elf.glb";
     public const string KitModel = "kit_crate.glb";
     public const string RibbonModel = "ribbon_bow.glb";
+    public const string RoomModel = "room.glb";
 
     private readonly string _modelDirectory;
     private readonly Dictionary<string, Model> _models = new();
@@ -25,9 +26,9 @@ public sealed class AssetLibrary : IAssetLibrary
     public AssetLibrary(string modelDirectory) => _modelDirectory = modelDirectory;
 
     /// <summary>Loads every model the content mentions, once, at startup (no loading during play).</summary>
-    public void Preload(GameContent content)
+    public void Preload(GameContent content, Action<Model>? prepare = null)
     {
-        var names = new HashSet<string> { ElfModel, KitModel, RibbonModel };
+        var names = new HashSet<string> { ElfModel, KitModel, RibbonModel, RoomModel };
         foreach (var toy in content.Toys) if (toy.Model != null) names.Add(toy.Model);
         foreach (var station in content.Stations) if (station.Model != null) names.Add(station.Model);
 
@@ -36,7 +37,7 @@ public sealed class AssetLibrary : IAssetLibrary
             string path = Path.Combine(_modelDirectory, name);
             if (!File.Exists(path)) continue;
             var model = Raylib.LoadModel(path);
-            if (model.MeshCount > 0) _models[name] = model;
+            if (model.MeshCount > 0) { prepare?.Invoke(model); _models[name] = model; }
             else Raylib.UnloadModel(model);
         }
     }

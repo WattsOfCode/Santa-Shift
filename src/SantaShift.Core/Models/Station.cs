@@ -20,4 +20,7 @@ public sealed class Station
     public Point2 Interact { get; init; }
 
     public string? Model { get; init; }
+
+    /// <summary>Turn of the model around the vertical axis, in degrees. Visual only; the body stays axis-aligned.</summary>
+    public double Yaw { get; init; }
 }

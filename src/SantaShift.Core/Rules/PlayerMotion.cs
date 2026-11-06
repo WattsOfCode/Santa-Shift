@@ -32,8 +32,10 @@ public sealed class PlayerMotion(GameContent content)
     private bool Blocked(Point2 p)
     {
         var box = ColliderAt(p);
-        var f = _t.Floor;
+        var f = content.Floor;
         if (box.Left < f.Left || box.Right > f.Right || box.Top < f.Top || box.Bottom > f.Bottom) return true;
+        foreach (var c in content.Colliders)
+            if (box.Overlaps(c)) return true;
         foreach (var s in content.Stations)
             if (box.Overlaps(s.Body)) return true;
         return false;

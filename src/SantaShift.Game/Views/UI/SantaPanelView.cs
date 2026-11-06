@@ -7,7 +7,7 @@ public sealed class SantaPanelView
 {
     public void Draw(UiCanvas ui, Simulation sim, Feedback feedback, float x, float y, float w, float h)
     {
-        ui.FillRounded(x, y, w, h, Palette.WithAlpha(Palette.Snow, 30), 0.3f);
+        ui.FillRounded(x, y, w, h, Palette.WithAlpha(Palette.Ink, 200), 0.3f);
         DrawPortrait(ui, x + 16, y + h / 2, h / 2 - 2, talking: feedback.SantaTicks > 0 && (feedback.SantaTicks / 8) % 2 == 0);
 
         float tx = x + 38;

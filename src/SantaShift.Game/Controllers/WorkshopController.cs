@@ -8,36 +8,52 @@ using SantaShift.Game.Views.World;
 
 namespace SantaShift.Game.Controllers;
 
-/// <summary>The gameplay screen: runs one shift and coordinates its views.</summary>
+/// <summary>The gameplay screen: runs one round (shift) of a run and coordinates its views.</summary>
 public sealed class WorkshopController : IScreen
 {
     private readonly GameServices _s;
-    private readonly GameMode _mode;
+    private readonly RunProgress _run;
     private readonly Simulation _sim;
     private readonly PlayerController _player;
     private readonly InteractionController _interaction;
     private readonly PauseController _pause;
+    private readonly CameraController _camera;
     private readonly WorldView _world;
     private readonly HudView _hud;
 
-    public WorkshopController(GameServices services, GameMode mode)
+    /// <summary>Starts the current round of <paramref name="run"/>.</summary>
+    public WorkshopController(GameServices services, RunProgress run)
     {
         _s = services;
-        _mode = mode;
-        _sim = new Simulation(services.Content, mode);
+        _run = run;
+        _sim = new Simulation(services.Content, run.Mode, run.Round);
         _player = new PlayerController(services.Input, services.Settings);
         _interaction = new InteractionController(services.Content, services.Input, services.Audio);
         _interaction.Attach(_sim);
         _pause = new PauseController(services.Input, _sim,
-            restart: () => services.Scenes.Switch(new WorkshopController(services, mode)),
+            restart: () => services.Scenes.Switch(new WorkshopController(services, new RunProgress(run.Mode))),
             quitToTitle: () => services.Scenes.Switch(new TitleController(services)));
+        _camera = new CameraController(services.Render.ChaseCamera, services.World, services.Content);
         _world = new WorldView(services.Content, services.Assets, services.World);
         _hud = new HudView(services.Content);
     }
 
+    /// <summary>Starts a brand-new run at round 1.</summary>
+    public static WorkshopController NewRun(GameServices services, GameMode mode) => new(services, new RunProgress(mode));
+
     public Simulation Simulation => _sim;
 
-    public void Enter() => _pause.BeginReady();
+    public void Enter()
+    {
+        _pause.BeginReady();
+        _camera.Update(System.Numerics.Vector2.Zero, _sim.State.PlayerPosition);
+    }
+
+    public void Exit()
+    {
+        _s.Input.SetMouseCaptured(false);
+        _s.World.UseMenuCamera();
+    }
 
     public void FixedUpdate()
     {
@@ -53,41 +69,56 @@ public sealed class WorkshopController : IScreen
             else { _pause.Pause(); return; }
         }
 
-        var (mx, my) = _player.ReadMove(working: _sim.State.CraftingAction != null);
+        var floorMove = _camera.ToFloorDirection(_s.Input.Move());
+        var (mx, my) = _player.ReadMove(floorMove, working: _sim.State.CraftingAction != null);
         bool interact = _interaction.ReadInteract();
         _sim.Step(new PlayerCommand(mx, my, interact, cancel));
 
         _interaction.Handle(_sim.DrainEvents());
         _interaction.Tick();
 
-        if (_sim.State.Phase == RunPhase.Results) FinishShift();
+        if (_sim.State.Phase == RunPhase.Results) FinishRound();
+    }
+
+    public void FrameUpdate()
+    {
+        // Mouse look only while actually playing; menus and READY get a normal cursor.
+        bool playing = !_pause.Blocking || _pause.State == PauseState.Ready;
+        _s.Input.SetMouseCaptured(playing && Raylib.IsWindowFocused());
+        _camera.Update(_pause.Blocking ? System.Numerics.Vector2.Zero : _s.Input.MouseDelta(), _sim.State.PlayerPosition);
     }
 
     public void DrawWorld() => _world.Draw(_sim, _player.FacingDegrees, _player.Bob);
 
     public void DrawUi(UiCanvas ui)
     {
-        _hud.Draw(ui, _sim, _interaction.Feedback, _world);
+        _hud.Draw(ui, _sim, _interaction.Feedback, _world, _run.TotalScore);
         _pause.Draw(ui);
     }
 
-    private void FinishShift()
+    private void FinishRound()
     {
         var st = _sim.State;
-        var t = _sim.Tuning;
         var d = _s.Content.Dialogue;
-        bool passed = st.Delivered >= _sim.Quota;
-        bool newBest = _s.Best.Submit(_mode, st.Score);
-        if (newBest) _s.Save.SaveBest(_s.Best);
+        int quota = _sim.Quota;
+        bool passed = _run.CompleteRound(st, quota);
+
+        bool newBest = false;
+        if (!passed)
+        {
+            newBest = _s.Best.Submit(_run.Mode, _run.TotalScore, _run.Round);
+            _s.Save.SaveBest(_s.Best);
+        }
 
         var cue = d.Cue(passed ? "review_pass" : "review_miss");
         var summary = new ResultsSummary(
-            _mode, passed,
-            Heading: cue?.Text ?? (passed ? "Shift complete." : "Quota missed."),
-            ReviewLabel: d.Message(Scoring.ReviewKey(st.Delivered, t)),
+            _run, passed,
+            Heading: passed ? d.Message("round_complete", _run.Round) : d.Message("game_over"),
+            ReviewLabel: d.Message(Scoring.ReviewKey(st.Delivered, _sim.Tuning)),
             SantaLine: cue?.Santa ?? "",
-            st.Delivered, _sim.Quota, st.Missed, st.Unfinished, st.Score, st.BestStreak,
-            _s.Best.For(_mode), newBest);
+            st.Delivered, quota, st.Missed, st.Unfinished, st.Score, st.BestStreak,
+            NextQuota: passed ? _sim.Tuning.QuotaFor(_run.Mode, _run.Round + 1) : 0,
+            BestScore: _s.Best.For(_run.Mode), BestRound: _s.Best.RoundFor(_run.Mode), NewBest: newBest);
 
         _s.Scenes.Switch(new ResultsController(_s, summary));
     }

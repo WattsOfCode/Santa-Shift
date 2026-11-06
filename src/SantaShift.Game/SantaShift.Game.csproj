@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>SantaShift.Game</RootNamespace>
     <AssemblyName>SantaShift</AssemblyName>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks> <!-- only for assigning the lighting shader to model materials -->
   </PropertyGroup>
 
   <ItemGroup>
