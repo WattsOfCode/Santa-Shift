@@ -40,6 +40,7 @@ public sealed class ChaseCameraSettings
     public float MouseSensitivity { get; init; } = 0.15f;
     public bool InvertY { get; init; }
     public float WallMargin { get; init; } = 0.25f;
+    public float MaxHeight { get; init; } = 3.0f;
 }
 
 public sealed class MenuCameraSettings

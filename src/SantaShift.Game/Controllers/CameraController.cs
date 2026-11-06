@@ -21,12 +21,16 @@ public sealed class CameraController
     public float YawDegrees { get; private set; }
     public float PitchDegrees { get; private set; }
 
+    /// <summary>Debug builds only (--yaw / --pitch): starting camera angle for automated screenshots.</summary>
+    public static float? DebugStartYaw, DebugStartPitch;
+
     public CameraController(ChaseCameraSettings cfg, WorldSpace world, GameContent content)
     {
         _cfg = cfg;
         _world = world;
         _floor = content.Floor;
-        PitchDegrees = cfg.PitchDegrees;
+        PitchDegrees = DebugStartPitch ?? cfg.PitchDegrees;
+        YawDegrees = DebugStartYaw ?? 0;
     }
 
     /// <summary>Applies mouse movement and repositions the camera behind the elf. Call once per frame.</summary>
@@ -47,7 +51,7 @@ public sealed class CameraController
         float m = _cfg.WallMargin;
         position.X = Math.Clamp(position.X, min.X + m, max.X - m);
         position.Z = Math.Clamp(position.Z, min.Z + m, max.Z - m);
-        position.Y = Math.Max(position.Y, 0.3f);
+        position.Y = Math.Clamp(position.Y, 0.3f, _cfg.MaxHeight); // stay under the ceiling beams
 
         _world.Camera = new Camera3D
         {

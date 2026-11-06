@@ -32,7 +32,7 @@ public static class Program
     private static LaunchOptions ParseOptions(string[] args)
     {
 #if DEBUG
-        // Debug-only automation: --screenshot <file.png> [--frame N] [--workshop]
+        // Debug-only automation: --screenshot <file.png> [--frame N] [--workshop] [--yaw deg] [--pitch deg]
         string? shot = null;
         int frame = 90;
         bool workshop = false;
@@ -41,6 +41,8 @@ public static class Program
             if (args[i] == "--screenshot" && i + 1 < args.Length) shot = Path.GetFullPath(args[++i]);
             else if (args[i] == "--frame" && i + 1 < args.Length && int.TryParse(args[++i], out int f)) frame = f;
             else if (args[i] == "--workshop") workshop = true;
+            else if (args[i] == "--yaw" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float yaw)) Controllers.CameraController.DebugStartYaw = yaw;
+            else if (args[i] == "--pitch" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float pitch)) Controllers.CameraController.DebugStartPitch = pitch;
         }
         return new LaunchOptions { ScreenshotPath = shot, ScreenshotFrame = frame, StartInWorkshop = workshop };
 #else

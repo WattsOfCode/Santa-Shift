@@ -42,6 +42,27 @@ def world_bbox(ob):
     return lo, hi
 
 
+def join_by_material(objects):
+    """Joins mesh objects that use the same materials. Returns the remaining objects."""
+    groups, others = {}, []
+    for ob in objects:
+        if ob.type != "MESH":
+            others.append(ob)
+            continue
+        key = tuple(m.name if m else "" for m in ob.data.materials)
+        groups.setdefault(key, []).append(ob)
+    result = list(others)
+    for group in groups.values():
+        if len(group) > 1:
+            bpy.ops.object.select_all(action="DESELECT")
+            for ob in group:
+                ob.select_set(True)
+            bpy.context.view_layer.objects.active = group[0]
+            bpy.ops.object.join()
+        result.append(group[0])
+    return result
+
+
 def to_game(x, y):
     """Blender (x, y) on the floor -> game (x, z). Blender +Y points away from the camera; game +Z points towards it."""
     return round(x, 4), round(-y, 4)
@@ -144,12 +165,18 @@ def main() -> int:
         if missing:
             warnings.append(f"elf is missing actions: {', '.join(sorted(missing))}")
 
-    # For the room, export only the visible scenery, not the layout markers.
+    # For the room, export only the visible scenery, not the layout markers, and merge pieces that share
+    # materials so the game draws a few dozen meshes instead of hundreds. (The .blend itself is not changed.)
     use_selection = False
     if is_room:
-        for ob in bpy.context.scene.objects:
-            ob.select_set(not is_marker(ob))
+        scenery = [ob for ob in bpy.context.scene.objects if not is_marker(ob)]
+        meshes_before = sum(1 for ob in scenery if ob.type == "MESH")
+        scenery = join_by_material(scenery)
+        bpy.ops.object.select_all(action="DESELECT")
+        for ob in scenery:
+            ob.select_set(True)
         use_selection = True
+        print(f"RESULT room: merged {meshes_before} pieces into {sum(1 for ob in scenery if ob.type == 'MESH')} meshes")
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     bpy.ops.export_scene.gltf(

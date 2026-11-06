@@ -19,7 +19,8 @@
     "fovDegrees": 60,
     "mouseSensitivity": 0.15,  // degrees per pixel of mouse movement
     "invertY": false,
-    "wallMargin": 0.25         // keeps the camera this far inside the walls
+    "wallMargin": 0.25,        // keeps the camera this far inside the walls
+    "maxHeight": 3.0           // keeps the camera below the cabin ceiling beams
   },
 
   // Fixed view behind the title and results screens, in metres.

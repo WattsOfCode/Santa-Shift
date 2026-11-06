@@ -67,3 +67,12 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 ## 2026-11-06: Simple lighting for Blender models
 - **Reason:** Unlit models looked flat once the camera came close.
 - **Details:** One directional light plus ambient, with no shadows. It applies to loaded models only; grey-box shapes stay unlit.
+
+## 2026-11-06: Rustic log cabin room
+- **Reason:** User wants the workshop to look like a rustic cabin.
+- **Details:** `make_starter_room.py` now builds a 3.6 m log cabin: notched log walls with filler between the logs, a staggered
+  plank floor, beams and a plank ceiling, a stone fireplace with fire, mantel and stockings, firewood, framed windows with
+  snowy sills, a wreath, shelves, a braided rug, a decorated tree with presents, barrels, a sled, a cuckoo clock and wall lanterns.
+  The fireplace, firewood, barrels, sled and tree are obstacles. Station positions are unchanged. Lighting is now warmer.
+- **Performance:** the export merges pieces that share a material (578 pieces into 31 meshes, about 9,400 triangles).
+- **Camera:** capped at 3.0 m (`maxHeight`) so it stays under the beams; lanterns are wall-mounted to keep them out of its path.

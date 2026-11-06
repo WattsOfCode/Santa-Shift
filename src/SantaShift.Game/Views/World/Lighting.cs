@@ -59,8 +59,8 @@ public sealed class Lighting : IDisposable
         if (!IsValid) return;
 
         Set("lightDir", Vector3.Normalize(new Vector3(-0.35f, -1f, -0.45f)));
-        Set("lightColor", new Vector3(0.55f, 0.52f, 0.48f));
-        Set("ambient", new Vector3(0.58f, 0.6f, 0.66f));
+        Set("lightColor", new Vector3(0.62f, 0.52f, 0.40f)); // warm, like firelight and lanterns
+        Set("ambient", new Vector3(0.60f, 0.56f, 0.54f));
     }
 
     /// <summary>Makes every material of a model use this light.</summary>

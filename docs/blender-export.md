@@ -93,4 +93,10 @@ D:\Blender\blender.cmd --background --factory-startup --python tools\blender\mak
 
 To go back to the built-in grey-box room, delete `room.glb` and `room_layout.json`.
 
-Keep walls at least 3 m tall: the camera follows behind the elf inside the room.
+Keep walls at least 3 m tall: the camera follows behind the elf inside the room. The camera also stays below
+`maxHeight` in `render.json` (3.0 m), so ceiling beams and hanging decorations above that never block the view.
+Keep hanging things out of the middle of the room, or above 3 m; wall-mounted decorations are safest.
+
+The current room is a rustic log cabin (made by `make_starter_room.py`): log walls, plank floor, beams, stone
+fireplace, tree, barrels, sled, windows and wall lanterns. When exporting, pieces that share a material are merged,
+so hundreds of logs and planks still draw as about 30 meshes.
