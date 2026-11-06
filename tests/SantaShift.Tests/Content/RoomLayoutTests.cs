@@ -94,6 +94,33 @@ public class RoomLayoutTests : IDisposable
     }
 
     [Fact]
+    public void Lights_load_and_invalid_ones_are_dropped()
+    {
+        WriteLayout("""
+            { "lights": [
+                { "name": "fire", "x": -10, "y": 0.6, "z": 0, "color": [1, 0.55, 0.25], "intensity": 3.2, "radius": 8, "flicker": 0.35 },
+                { "name": "no reach", "x": 0, "y": 2, "z": 0, "color": [1, 1, 1], "intensity": 1, "radius": 0 },
+                { "name": "bad colour", "x": 0, "y": 2, "z": 0, "color": [1], "intensity": 1, "radius": 4 }
+            ] }
+            """);
+
+        var light = Assert.Single(ContentLoader.LoadFromDirectory(_dir).Lights);
+        Assert.Equal("fire", light.Name);
+        Assert.Equal(0.35, light.Flicker);
+        Assert.Equal(8, light.Radius);
+    }
+
+    [Fact]
+    public void Shipped_room_has_its_fireplace_lantern_and_window_lights()
+    {
+        var lights = ContentLoader.LoadFromDirectory(Path.Combine(AppContext.BaseDirectory, "data")).Lights;
+        Assert.Contains(lights, l => l.Name.Contains("fireplace") && l.Flicker > 0);
+        Assert.Contains(lights, l => l.Name.Contains("lantern"));
+        Assert.Contains(lights, l => l.Name.Contains("window"));
+        Assert.True(lights.Count <= 16, "the high-quality shader handles at most 16 lights");
+    }
+
+    [Fact]
     public void Shipped_room_layout_places_every_prop_model_that_exists()
     {
         var content = ContentLoader.LoadFromDirectory(Path.Combine(AppContext.BaseDirectory, "data"));

@@ -85,9 +85,25 @@ D:\Blender\blender.cmd --background --factory-startup --python tools\blender\mak
 A collection custom property `solid = False` makes a prop walk-through (rugs, wall decorations). A scene custom property
 `wall_mounted = True` tells the export that the model floats above the floor on purpose.
 
-## How models look in the game
+## Lighting
 
-Models get **one soft directional light plus ambient light**, with no shadows. Baked ambient occlusion still helps.
+The room is lit by its own light sources, in the style of ELFX-type interior lighting: the fireplace, lanterns, windows
+and tree each carry a **point light**, and the rest of the room falls into soft, darker ambient light.
+
+- **Lights live in Blender.** Each prop file can contain point lights (the fireplace, lantern, window and tree already
+  do). Moving or duplicating a prop in room.blend moves or duplicates its light. You can also add point lights directly
+  to room.blend. The room export writes all of them to `room_layout.json`.
+- **Light settings** are custom properties on the light object: `intensity` (about 1 = lantern, 3 = fireplace),
+  `radius` (metres it reaches, fading smoothly to zero), `flicker` (0 = steady, 0.35 = fire). Colour comes from the
+  light's colour. Without the custom properties, Blender's Power / 50 is used as the intensity.
+- **Glowing materials:** a material with **Emission Color** set glows in the game (flames, lantern glass, window panes).
+  `make_models.py` sets this for the `flame`, `flame_core`, `lamp_glow` and `glass` materials.
+- **Limits:** up to 16 lights are used at once (high quality); the game picks the most important ones near the camera.
+  There are no shadow maps, to keep it light on weak devices. Baked ambient occlusion in textures still helps a lot.
+- **Tuning** is in `render.json` under `lighting`: quality (high 16 lights / medium 8 / low 4 with no haze or
+  vignette), exposure, glow strength, ambient colours, haze, vignette, saturation, and the soft fill light that follows
+  the elf so it stays readable. Flicker stops when Reduced Motion is on.
+
 Grey-box placeholder shapes are drawn unlit; that's expected. Carried items are drawn at 75% size above the elf.
 
 ## Designing the room (room.blend)

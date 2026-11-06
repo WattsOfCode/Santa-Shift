@@ -142,7 +142,39 @@ def build_layout(source_name, warnings):
         cx, cz = to_game((lo.x + hi.x) / 2, (lo.y + hi.y) / 2)
         layout["colliders"].append({"name": ob.name, "x": cx, "z": cz,
                                     "w": round(hi.x - lo.x, 4), "d": round(hi.y - lo.y, 4)})
+    layout["lights"] = collect_lights(objects)
     return layout
+
+
+def light_entry(ob, matrix):
+    """One game light: position in game metres (y = height), colour, intensity, radius, flicker."""
+    p = matrix.translation
+    x, z = to_game(p.x, p.y)
+    energy_intensity = ob.data.energy / 50 if ob.data else 1.0
+    return {
+        "name": ob.name, "x": x, "y": round(p.z, 4), "z": z,
+        "color": [round(c, 4) for c in ob.data.color],
+        "intensity": round(float(ob.get("intensity", energy_intensity)), 4),
+        "radius": round(float(ob.get("radius", 5.0)), 4),
+        "flicker": round(float(ob.get("flicker", 0.0)), 4),
+    }
+
+
+def collect_lights(objects):
+    """Point lights placed directly in room.blend plus the lights that come with each linked prop."""
+    lights = []
+    for ob in objects:
+        if ob.type == "LIGHT" and ob.data.type == "POINT":
+            lights.append(light_entry(ob, ob.matrix_world))
+        if ob.name.startswith("pr_") and ob.instance_type == "COLLECTION" and ob.instance_collection:
+            coll = ob.instance_collection
+            base = ob.matrix_world @ Matrix.Translation(-coll.instance_offset)
+            for inner in coll.all_objects:
+                if inner.type == "LIGHT" and inner.data.type == "POINT":
+                    entry = light_entry(inner, base @ inner.matrix_world)
+                    entry["name"] = f"{ob.name}/{inner.name}"
+                    lights.append(entry)
+    return lights
 
 
 def instance_bbox(empty, coll):
@@ -236,7 +268,8 @@ def main() -> int:
             layout_path = os.path.join(data_dir, "room_layout.json")
             with open(layout_path, "w", encoding="utf-8") as f:
                 json.dump(layout, f, indent=2)
-            print(f"RESULT room layout: {len(layout['stations'])} stations, {len(layout['colliders'])} obstacles -> {layout_path}")
+            print(f"RESULT room layout: {len(layout['stations'])} stations, {len(layout['colliders'])} obstacles, "
+                  f"{len(layout['props'])} props, {len(layout['lights'])} lights -> {layout_path}")
         else:
             warnings.append("no data folder given; room_layout.json was not written")
 

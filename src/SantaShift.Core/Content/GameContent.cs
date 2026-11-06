@@ -24,6 +24,9 @@ public sealed class GameContent
     /// <summary>Furniture and decorations from the Blender room, each drawn from its own model.</summary>
     public IReadOnlyList<Prop> Props { get; init; } = [];
 
+    /// <summary>Point lights from the Blender room (drawing only).</summary>
+    public IReadOnlyList<RoomLight> Lights { get; init; } = [];
+
     /// <summary>True when the layout came from a Blender room export.</summary>
     public bool HasRoomLayout { get; init; }
 

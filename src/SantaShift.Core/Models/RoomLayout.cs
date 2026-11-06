@@ -19,6 +19,25 @@ public sealed class RoomLayout
 
     /// <summary>Furniture and decorations, each drawn from its own model file.</summary>
     public List<PropPlacement> Props { get; init; } = [];
+
+    /// <summary>Point lights: placed in room.blend or carried by props (fireplace, lanterns, windows).</summary>
+    public List<RoomLight> Lights { get; init; } = [];
+}
+
+/// <summary>
+/// A point light in game-world metres (Y is height). Drawing only: it never affects the rules.
+/// Intensity ~1 is a lantern, ~3 a fireplace; Radius is how far it reaches; Flicker 0..1 makes it waver like fire.
+/// </summary>
+public sealed class RoomLight
+{
+    public string Name { get; init; } = "";
+    public double X { get; init; }
+    public double Y { get; init; }
+    public double Z { get; init; }
+    public double[] Color { get; init; } = [1, 1, 1];
+    public double Intensity { get; init; } = 1;
+    public double Radius { get; init; } = 5;
+    public double Flicker { get; init; }
 }
 
 public sealed class PropPlacement

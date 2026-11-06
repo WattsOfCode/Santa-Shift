@@ -87,3 +87,16 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - **Changed rule:** models face -Y in Blender (Blender's Front view), not +Y as first written; wall props have their
   origin on the wall. Every export now merges pieces by material.
 - **Not done:** the elf is a static model; Idle/Walk/Work animations still need rigging. Carried items are drawn at 75% size.
+
+## 2026-11-06: Source-based lighting overhaul (ELFX-style)
+- **Reason:** User asked for an ELFX-style lighting overhaul. Built as our own system in that style; nothing is copied
+  from the Skyrim mods. "TXS" was unclear, so it was not interpreted as a specific feature.
+- **Details:** Point lights come from Blender: the fireplace (warm, flickering), six lanterns, six windows (cool
+  moonlight spill) and the tree, 14 in all, exported to `room_layout.json` and moving with their props. One forward
+  shader pass does per-pixel point lights with smooth falloff, warm/cool ambient, glTF emission (flames, lantern glass,
+  windows), filmic tone mapping and warm haze; a post pass adds a vignette and slight saturation. A soft fill light
+  follows the elf for readability. Flicker stops under Reduced Motion.
+- **Performance:** no shadow maps or extra geometry passes. Quality presets: high 16 lights, medium 8, low 4 with no
+  haze or post effects. Lights are ranked by importance (reach and brightness against distance), so low quality keeps
+  the fireplace. Not yet measured on low-end hardware.
+- **Settings:** `render.json` > `lighting`.

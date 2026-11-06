@@ -45,7 +45,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
 
         var input = new KeyboardInputService();
         var assets = new AssetLibrary(Path.Combine(contentDir, "models"));
-        var lighting = new Lighting();
+        var lighting = new Lighting(render.Lighting, content.Lights);
         assets.Preload(content, lighting.Apply);
         var audio = RaylibAudioService.Create(Path.Combine(contentDir, "audio"));
 
@@ -94,6 +94,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
             }
             screen.FrameUpdate();
 
+            lighting.Update(Raylib.GetTime(), services.World.Camera.Position, services.World.Camera.Target, services.Settings.ReducedMotion);
             Raylib.BeginTextureMode(target);
             screen.DrawWorld();
             Raylib.EndTextureMode();
@@ -102,7 +103,9 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
             Raylib.ClearBackground(Color.Black);
             var ui = new UiCanvas(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), font);
             var source = new Rectangle(0, 0, target.Texture.Width, -target.Texture.Height); // render textures are upside down
+            if (lighting.UsePost) Raylib.BeginShaderMode(lighting.Post); // vignette and colour grade
             Raylib.DrawTexturePro(target.Texture, source, ui.ScreenArea, Vector2.Zero, 0, Color.White);
+            if (lighting.UsePost) Raylib.EndShaderMode();
             screen.DrawUi(ui);
             Raylib.EndDrawing();
 

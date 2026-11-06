@@ -19,7 +19,7 @@ import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from helpers import box, cone, cyl, disc, new_file, save, sphere, torus  # noqa: E402
+from helpers import box, cone, cyl, disc, light, new_file, save, sphere, torus  # noqa: E402
 
 import bpy  # noqa: E402
 
@@ -250,6 +250,7 @@ def prop_tree(c):
     for n, (r, z, h) in enumerate(tiers):
         cone(f"Tier.{n}", 0, 0, z + h / 2, r, 0.0, h, "pine" if n % 2 else "pine_dark", c, verts=10)
     box("Star", 0, 0, 2.48, 0.2, 0.06, 0.2, "gold", c, rot=(0, math.radians(45), 0))
+    light("Tree lights", 0, -0.2, 1.3, (1.0, 0.82, 0.55), 0.6, 3.0, 0.15, c)  # warm twinkle from the decorations
     for n in range(16):
         a = n * 2.4
         z = 0.45 + (n % 8) * 0.24
@@ -291,6 +292,7 @@ def prop_fireplace(c):
         box(f"Stocking.{n}", sx, face - 0.1, 0.9, 0.18, 0.06, 0.38, "berry" if n != 1 else "pine", c)
         box(f"Stocking cuff.{n}", sx, face - 0.1, 1.22, 0.2, 0.07, 0.08, "snow", c)
     sphere("Mantel clock", 0, face - 0.1, 1.5, 0.1, "gold", c)
+    light("Fire light", 0, face - 0.6, 0.6, (1.0, 0.55, 0.25), 3.2, 8.0, 0.35, c)
     for n, sx in enumerate((-1.0, 1.0)):
         cyl(f"Candle.{n}", sx, face - 0.1, 1.5, 0.03, 0.14, "Z", "snow", c, verts=8)
         cone(f"Candle flame.{n}", sx, face - 0.1, 1.6, 0.015, 0.0, 0.05, "flame_core", c, verts=5)
@@ -348,6 +350,7 @@ def prop_window(c):
     box("Snow", 0, y + 0.02, z + t, w - 0.05, 0.03, 0.06, "snow", c)
     for side in (-1, 1):
         box(f"Shutter.{side}", side * (w / 2 + 0.3), y, z, 0.45, 0.04, h, "pine_dark", c)
+    light("Moonlight", 0, -0.7, 1.9, (0.55, 0.66, 0.95), 0.55, 4.0, 0.0, c)  # cool light spilling in
 
 
 def prop_lantern(c):
@@ -358,6 +361,7 @@ def prop_lantern(c):
     box("Cap", 0, -0.28, 2.4, 0.18, 0.18, 0.06, "iron", c)
     box("Glass", 0, -0.28, 2.16, 0.14, 0.14, 0.24, "lamp_glow", c)
     box("Base", 0, -0.28, 2.11, 0.18, 0.18, 0.05, "iron", c)
+    light("Lantern light", 0, -0.4, 2.2, (1.0, 0.74, 0.42), 1.1, 5.5, 0.06, c)
 
 
 def prop_wreath(c):

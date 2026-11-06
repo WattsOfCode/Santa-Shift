@@ -43,6 +43,10 @@ PALETTE = {
 }
 
 
+# Materials that glow (exported as glTF emission, so the game lights them from inside). Value = glow strength 0..1.
+EMISSIVE = {"flame": 1.0, "flame_core": 1.0, "lamp_glow": 0.9, "glass": 0.35}
+
+
 def read_json(path):
     with open(path, encoding="utf-8") as f:
         text = re.sub(r"^\s*//.*$", "", f.read(), flags=re.MULTILINE)  # the game's JSON allows // comments
@@ -71,7 +75,28 @@ def material(name):
     if bsdf:
         bsdf.inputs["Base Color"].default_value = color
         bsdf.inputs["Roughness"].default_value = 0.9
+        glow = EMISSIVE.get(name)
+        if glow:
+            bsdf.inputs["Emission Color"].default_value = tuple(c * glow for c in color[:3]) + (1,)
+            bsdf.inputs["Emission Strength"].default_value = 1.0
     return mat
+
+
+def light(name, x, y, z, color, intensity, radius, flicker, col):
+    """
+    A point light the game uses (room_layout.json). intensity ~1 is a lantern, ~3 a fireplace; radius is how far it
+    reaches in metres; flicker 0..1 makes it waver (fire). Stored as custom properties, so Blender's own render
+    settings don't matter; energy is also set so it looks similar in Blender's viewport.
+    """
+    data = bpy.data.lights.new(name, "POINT")
+    data.color = color
+    data.energy = intensity * 50
+    data.shadow_soft_size = 0.2
+    ob = bpy.data.objects.new(name, data)
+    ob.location = (x, y, z)
+    ob["intensity"], ob["radius"], ob["flicker"] = intensity, radius, flicker
+    col.objects.link(ob)
+    return ob
 
 
 def finish(ob, name, mat, col):
