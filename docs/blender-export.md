@@ -42,3 +42,25 @@ its file is dropped into `src/SantaShift.Game/Content/models/`, with no code cha
 | `station_bin.glb`, `station_bench.glb`, `station_ribbon.glb`, `station_shipping.glb`, `station_recycle.glb` | Fixtures (names set in `stations.json`) |
 
 Keep `.blend` sources in `source-assets/blender/`. Only exported `.glb` files go in `Content/models/`.
+
+## Export tool (recommended)
+
+Name each `.blend` after its model (`toy_train.blend`, `elf.blend`...) and save it in `source-assets/blender/`. Then run:
+
+```
+.\tools\blender\export.ps1              # every .blend
+.\tools\blender\export.ps1 toy_train    # just one
+```
+
+This runs Blender in the background, exports with the settings above, and checks the rules: unapplied transforms,
+triangle budget, origin not on the floor, normal maps, oversized textures, and missing elf actions. Problems print as
+yellow `WARNING` lines; the model is still exported so you can look at it in the game.
+
+Blender is expected at `D:\Blender\blender.cmd` (portable Blender 5.2.3 LTS; its settings live in
+`D:\Blender\blender-5.2.3-windows-x64\portable`). To use another copy, set `SANTASHIFT_BLENDER` to its `blender.exe`.
+
+## How models look in the game
+
+The game draws models **unlit**: each surface shows its base colour exactly, with no shading from lights.
+Shape only reads through colour, so bake ambient occlusion and soft shading into the texture, or use darker
+and lighter material colours on different faces. Kit crates are tinted by the toy's colour, so model them in light, neutral tones.
