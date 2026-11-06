@@ -37,51 +37,122 @@ public class CraftingTests
     }
 
     [Fact]
-    public void Assembly_takes_the_toys_assembly_time_and_transforms_the_same_item()
+    public void Round_one_builds_parts_in_their_natural_order_on_keys_one_two_three()
     {
         var sim = NewSim();
         sim.Use("kits_train");
-        var item = sim.State.CarriedItem;
+        var item = sim.State.CarriedItem!;
         sim.Use("bench");
 
-        sim.Wait(sim.Tuning.Ticks(2.2) - 1);
-        Assert.Equal(ItemStage.Kit, item!.Stage);
+        var game = sim.State.Assembly!;
+        Assert.Equal(["wheels", "boiler", "cab"], game.Order);
+        Assert.Equal(["wheels", "boiler", "cab"], game.Keys);
 
-        sim.Wait(1);
+        Assert.Contains(sim.PressPart(1), e => e.Type == SimEventType.PartAdded && e.Text == "wheels");
+        Assert.Equal(1, item.PartsPlaced);
+        sim.PressPart(2);
+        Assert.Equal(ItemStage.Kit, item.Stage);
+
+        var events = sim.PressPart(3);
+        Assert.Contains(events, e => e.Type == SimEventType.AssemblyComplete);
         Assert.Equal(ItemStage.Assembled, item.Stage);
         Assert.Same(item, sim.State.CarriedItem);
-        Assert.Null(sim.State.CraftingAction);
+        Assert.Null(sim.State.Assembly);
     }
 
     [Fact]
-    public void Moving_cancels_assembly_and_keeps_the_kit()
+    public void A_part_out_of_order_botches_the_toy()
+    {
+        var sim = NewSim();
+        sim.Use("kits_bear");
+        sim.Use("bench");
+        sim.PressPart(1);
+
+        var events = sim.PressPart(3); // head before arms
+
+        Assert.Equal(ItemStage.Botched, sim.State.CarriedItem!.Stage);
+        Assert.Null(sim.State.Assembly);
+        Assert.Contains(events, e => e.Type == SimEventType.AssemblyBotched && e.Text == "botched_wrong_part");
+    }
+
+    [Fact]
+    public void Running_out_of_time_botches_the_toy()
+    {
+        var sim = NewSim();
+        sim.Use("kits_robot");
+        sim.Use("bench");
+        sim.PressPart(1);
+
+        sim.Wait(sim.Tuning.Ticks(sim.Tuning.Assembly.TimeLimitSeconds) - 2);
+        Assert.NotNull(sim.State.Assembly);
+        sim.Wait(1);
+
+        Assert.Null(sim.State.Assembly);
+        Assert.Equal(ItemStage.Botched, sim.State.CarriedItem!.Stage);
+    }
+
+    [Fact]
+    public void Botched_toys_cannot_be_ribboned_shipped_or_rebuilt_but_go_straight_into_the_scrap_barrel()
+    {
+        var sim = NewSim();
+        sim.Wait(1); // first order: train
+        sim.Use("kits_train");
+        sim.Use("bench");
+        sim.PressPart(3);
+        Assert.Equal(ItemStage.Botched, sim.State.CarriedItem!.Stage);
+
+        Assert.Contains(sim.Use("bench"), e => e.Text == "botched_scrap_it");
+        Assert.Contains(sim.Use("ribbon"), e => e.Text == "botched_scrap_it");
+        Assert.Contains(sim.Use("shipping"), e => e.Text == "botched_scrap_it");
+        Assert.Equal(0, sim.State.Delivered);
+
+        var events = sim.Use("recycle"); // no confirmation needed
+        Assert.Null(sim.State.CarriedItem);
+        Assert.Contains(events, e => e.Type == SimEventType.Recycled);
+    }
+
+    [Fact]
+    public void Moving_cancels_assembly_and_keeps_a_plain_kit()
     {
         var sim = NewSim();
         sim.Use("kits_train");
         sim.Use("bench");
-        sim.Wait(60);
+        sim.PressPart(1);
 
         sim.Step(new PlayerCommand(1, 0, false));
         var events = sim.DrainEvents();
 
-        Assert.Null(sim.State.CraftingAction);
+        Assert.Null(sim.State.Assembly);
         Assert.Equal(ItemStage.Kit, sim.State.CarriedItem!.Stage);
+        Assert.Equal(0, sim.State.CarriedItem.PartsPlaced);
         Assert.Contains(events, e => e.Type == SimEventType.ActionCancelled && e.Text == "assembly_cancelled");
     }
 
     [Fact]
-    public void Pausing_cancels_assembly_silently_and_keeps_the_kit()
+    public void Pausing_freezes_the_minigame_clock()
     {
         var sim = NewSim();
         sim.Use("kits_train");
         sim.Use("bench");
-        sim.Wait(60);
+        var game = sim.State.Assembly!;
 
         sim.Pause();
+        sim.Wait(10_000); // nothing happens while paused
+        sim.Resume();
 
-        Assert.Null(sim.State.CraftingAction);
+        Assert.Same(game, sim.State.Assembly);
         Assert.Equal(ItemStage.Kit, sim.State.CarriedItem!.Stage);
         Assert.DoesNotContain(sim.DrainEvents(), e => e.Type == SimEventType.ActionCancelled);
+    }
+
+    [Fact]
+    public void Number_keys_do_nothing_away_from_the_bench()
+    {
+        var sim = NewSim();
+        sim.Use("kits_train");
+        var events = sim.PressPart(1);
+        Assert.Empty(events);
+        Assert.Equal(0, sim.State.CarriedItem!.PartsPlaced);
     }
 
     [Fact]
@@ -119,11 +190,11 @@ public class CraftingTests
         var sim = NewSim();
         sim.Use("kits_train");
         sim.Use("bench");
-        var action = sim.State.CraftingAction;
+        var game = sim.State.Assembly;
 
         var events = sim.Use("bench");
 
-        Assert.Same(action, sim.State.CraftingAction);
+        Assert.Same(game, sim.State.Assembly);
         Assert.DoesNotContain(events, e => e.Type == SimEventType.Rejected);
     }
 

@@ -22,18 +22,23 @@ public sealed class WorldView
     private readonly WorldSpace _world;
     private readonly StationView _stations;
     private readonly PlayerView _player;
+    private readonly ItemView _items;
 
     public WorldView(GameContent content, IAssetLibrary assets, WorldSpace world)
     {
         _content = content;
         _assets = assets;
         _world = world;
-        var items = new ItemView(content, assets);
-        _stations = new StationView(content, assets, world, items);
-        _player = new PlayerView(assets, world, items);
+        _items = new ItemView(content, assets);
+        _stations = new StationView(content, assets, world, _items);
+        _player = new PlayerView(assets, world, _items);
     }
 
     public WorldSpace Space => _world;
+
+    /// <summary>Where toys are built on a station's top (3D world), and the direction from the elf towards it.</summary>
+    public Vector3 WorkSpot(Station s) => _stations.WorkSpot(s);
+    public Vector3 WorkDirection(Station s) => _stations.WorkDirection(s);
 
     /// <summary>Draws the room and stations without the elf (behind menus).</summary>
     public void DrawRoom()
@@ -41,21 +46,51 @@ public sealed class WorldView
         Raylib.ClearBackground(Palette.Ink);
         Raylib.BeginMode3D(_world.Camera);
         DrawRoomShell();
-        foreach (var s in _content.Stations) _stations.Draw(s, selected: false);
+        foreach (var s in _content.Stations)
+        {
+            _stations.Draw(s, selected: false);
+            if (s.Type == StationType.Bench) DrawBenchTop(s, null, null);
+        }
         Raylib.EndMode3D();
     }
 
-    public void Draw(Simulation sim, float facingDegrees, float bob)
+    public void Draw(Simulation sim, float facingDegrees, float bob, ElfPose pose)
     {
         Raylib.ClearBackground(Palette.Ink);
         Raylib.BeginMode3D(_world.Camera);
         DrawRoomShell();
 
-        var selected = sim.SelectedStation();
-        foreach (var s in _content.Stations) _stations.Draw(s, s == selected);
+        var state = sim.State;
+        var selected = state.IsWorking ? null : sim.SelectedStation(); // no outline in the way of the work
+        foreach (var s in _content.Stations)
+        {
+            _stations.Draw(s, s == selected);
+            if (s.Type == StationType.Bench)
+                DrawBenchTop(s, state.Assembly?.StationId == s.Id ? state.Assembly : null, state.CarriedItem);
+        }
 
-        _player.Draw(sim.State, facingDegrees, bob);
+        _player.Draw(state, facingDegrees, bob, pose);
         Raylib.EndMode3D();
+    }
+
+    /// <summary>
+    /// While a toy is built here: its kit crate and the parts hammered on so far. Otherwise the hammer lies on the bench
+    /// (the elf picks it up while building).
+    /// </summary>
+    private void DrawBenchTop(Station bench, AssemblyState? game, Item? item)
+    {
+        var spot = _stations.WorkSpot(bench);
+        var dir = _stations.WorkDirection(bench);
+        var along = new Vector3(-dir.Z, 0, dir.X); // along the bench, to the elf's right
+        if (game != null && item != null)
+        {
+            var toy = _content.FindToy(game.ToyId);
+            _items.DrawKit(spot - along * 0.42f + dir * 0.1f, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
+            _items.DrawBuild(game.ToyId, game.Order.Take(game.Placed), spot);
+            return;
+        }
+        float yaw = MathF.Atan2(along.X, along.Z) * 180f / MathF.PI;
+        _items.DrawHammerLying(spot + along * 0.55f + dir * 0.05f, yaw + 90);
     }
 
     /// <summary>Station names for nearby stations in view, drawn in the UI pass so they stay sharp.</summary>

@@ -1,9 +1,35 @@
 // Toys the workshop can build. Add a toy here, add it to toySequence in tuning.json,
 // and give it a dispenser in stations.json. Missing model files fall back to grey-box shapes.
+//
+// parts: what the elf hammers together at the bench, in the toy's natural order (used in the early rounds;
+// later rounds shuffle it, see "assembly" in tuning.json). Each part model holds just that piece, placed
+// where it sits on the finished toy, so the pieces stack up into the toy on the bench.
+// botchedModel: the jumbled toy you get from the wrong order or running out of time. It can only be scrapped.
 {
   "toys": [
-    { "id": "train", "name": "Train", "assembleSeconds": 2.2, "model": "toy_train.glb", "color": "#B94146" },
-    { "id": "bear",  "name": "Bear",  "assembleSeconds": 2.2, "model": "toy_bear.glb",  "color": "#8C6043" },
-    { "id": "robot", "name": "Robot", "assembleSeconds": 2.2, "model": "toy_robot.glb", "color": "#8EC9CF" }
+    {
+      "id": "train", "name": "Train", "model": "toy_train.glb", "botchedModel": "toy_train_botched.glb", "color": "#B94146",
+      "parts": [
+        { "id": "wheels", "name": "Wheels", "model": "toy_train_wheels.glb" },
+        { "id": "boiler", "name": "Boiler", "model": "toy_train_boiler.glb" },
+        { "id": "cab",    "name": "Cab",    "model": "toy_train_cab.glb" }
+      ]
+    },
+    {
+      "id": "bear", "name": "Bear", "model": "toy_bear.glb", "botchedModel": "toy_bear_botched.glb", "color": "#8C6043",
+      "parts": [
+        { "id": "body", "name": "Body", "model": "toy_bear_body.glb" },
+        { "id": "arms", "name": "Arms", "model": "toy_bear_arms.glb" },
+        { "id": "head", "name": "Head", "model": "toy_bear_head.glb" }
+      ]
+    },
+    {
+      "id": "robot", "name": "Robot", "model": "toy_robot.glb", "botchedModel": "toy_robot_botched.glb", "color": "#8EC9CF",
+      "parts": [
+        { "id": "legs",  "name": "Legs",  "model": "toy_robot_legs.glb" },
+        { "id": "torso", "name": "Torso", "model": "toy_robot_torso.glb" },
+        { "id": "head",  "name": "Head",  "model": "toy_robot_head.glb" }
+      ]
+    }
   ]
 }

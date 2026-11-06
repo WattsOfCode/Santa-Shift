@@ -2,7 +2,8 @@ namespace SantaShift.Core.Rules;
 
 public enum SimEventType
 {
-    Collected, AssemblyStarted, AssemblyComplete, RibbonStarted, RibbonComplete, ActionCancelled,
+    Collected, AssemblyStarted, PartAdded, AssemblyComplete, AssemblyBotched,
+    RibbonStarted, RibbonComplete, ActionCancelled,
     Delivered, Rejected, RecyclePrompt, Recycled,
     OrderCreated, OrderExpired, PolicyWarning, PolicyStarted, QuotaMet, ShiftEnded,
 }
@@ -25,7 +26,8 @@ public sealed record SimEvent(
 /// <param name="MoveX">-1..1, already normalized with MoveY.</param>
 /// <param name="Interact">True only on the step the key was pressed (never while held).</param>
 /// <param name="Cancel">Closes an open recycle prompt.</param>
-public readonly record struct PlayerCommand(double MoveX, double MoveY, bool Interact, bool Cancel = false)
+/// <param name="PartKey">A number key pressed this step for the bench minigame (1-based), or 0.</param>
+public readonly record struct PlayerCommand(double MoveX, double MoveY, bool Interact, bool Cancel = false, int PartKey = 0)
 {
     public bool IsMoving => MoveX != 0 || MoveY != 0;
     public static readonly PlayerCommand None = new(0, 0, false);

@@ -1,8 +1,9 @@
 namespace SantaShift.Core.Models;
 
-public enum CraftingType { Assemble, Ribbon }
+/// <summary>Timed actions (the ribbon). Assembly is a minigame instead: see <see cref="AssemblyState"/>.</summary>
+public enum CraftingType { Ribbon }
 
-/// <summary>A timed action in progress at a bench or ribbon station.</summary>
+/// <summary>A timed action in progress at the ribbon station.</summary>
 public sealed class CraftingAction
 {
     public required string StationId { get; init; }

@@ -29,12 +29,61 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
 
         if (item.Stage == ItemStage.Kit) { DrawKit(Vector3.Zero, color); return; }
 
+        if (item.Stage == ItemStage.Botched)
+        {
+            if (assets.TryGetModel(toy?.BotchedModel, out var botched)) { Raylib.DrawModel(botched, Vector3.Zero, 1f, Color.White); return; }
+            // Grey-box: the toy shape knocked over and dulled.
+            Rlgl.PushMatrix();
+            Rlgl.Translatef(0, 0.15f, 0);
+            Rlgl.Rotatef(70, 0, 0, 1);
+            DrawToyShape(item.ToyId, Vector3.Zero, Palette.Shade(color, 0.55f));
+            Rlgl.PopMatrix();
+            return;
+        }
+
         if (toy?.Model != null && assets.TryGetModel(toy.Model, out var model))
             Raylib.DrawModel(model, Vector3.Zero, 1f, Color.White);
         else
             DrawToyShape(item.ToyId, Vector3.Zero, color);
 
         if (item.HasRibbon) DrawRibbon(new Vector3(0, ToyHeight(item.ToyId), 0));
+    }
+
+    /// <summary>
+    /// A toy being built on the bench: the parts hammered on so far, each from its own model (they stack up into
+    /// the finished toy). Grey-box fallback: the toy shape growing taller part by part.
+    /// </summary>
+    public void DrawBuild(string toyId, IEnumerable<string> placedParts, Vector3 basePos)
+    {
+        var toy = content.FindToy(toyId);
+        if (toy == null) return;
+        var placed = placedParts.ToList();
+        bool allModels = toy.Parts.All(p => assets.TryGetModel(p.Model, out _));
+        if (allModels)
+        {
+            foreach (var id in placed)
+                if (assets.TryGetModel(toy.Parts.First(p => p.Id == id).Model, out var model))
+                    Raylib.DrawModel(model, basePos, 1f, Color.White);
+            return;
+        }
+        if (placed.Count == 0) return;
+        float fraction = (float)placed.Count / Math.Max(1, toy.Parts.Count);
+        Rlgl.PushMatrix();
+        Rlgl.Translatef(basePos.X, basePos.Y, basePos.Z);
+        Rlgl.Scalef(1, fraction, 1);
+        DrawToyShape(toyId, Vector3.Zero, Palette.Hex(toy.Color));
+        Rlgl.PopMatrix();
+    }
+
+    /// <summary>The hammer lying on its side, e.g. on the bench while nobody is using it.</summary>
+    public void DrawHammerLying(Vector3 p, float yawDegrees)
+    {
+        if (!assets.TryGetModel(AssetLibrary.HammerModel, out var hammer)) return;
+        // Tip the standing hammer over onto its side (handle along the bench), resting on the head's flat side.
+        hammer.Transform = Raymath.MatrixMultiply(
+            Raymath.MatrixMultiply(Raymath.MatrixRotateZ(MathF.PI / 2), Raymath.MatrixRotateY(yawDegrees * MathF.PI / 180f)),
+            Raymath.MatrixTranslate(p.X, p.Y + 0.023f, p.Z));
+        Raylib.DrawModel(hammer, Vector3.Zero, 1f, Color.White);
     }
 
     public void DrawKit(Vector3 p, Color toyColor)

@@ -200,6 +200,11 @@ def main() -> int:
     is_room = name == "room"
     warnings = []
 
+    # Measure rigged models in their rest pose, not in whatever pose the animations leave them in.
+    rigs = [ob.data for ob in bpy.context.scene.objects if ob.type == "ARMATURE"]
+    for rig in rigs:
+        rig.pose_position = "REST"
+    bpy.context.view_layer.update()
     depsgraph = bpy.context.evaluated_depsgraph_get()
     triangles = 0
     lowest_z = None
@@ -228,7 +233,8 @@ def main() -> int:
     budget = next(b for prefix, b in BUDGETS if name.startswith(prefix))
     if triangles > budget:
         warnings.append(f"{triangles} triangles is over the {budget} budget for '{name}'")
-    wall_mounted = bool(bpy.context.scene.get("wall_mounted", False))
+    # Wall props hang on the wall; toy parts sit on the part below them. Both float above the floor on purpose.
+    wall_mounted = bool(bpy.context.scene.get("wall_mounted", False)) or bool(bpy.context.scene.get("toy_part", False))
     if not is_room and lowest_z is not None and (lowest_z < -0.01 or (lowest_z > 0.01 and not wall_mounted)):
         warnings.append(f"lowest point is at z={lowest_z:.3f} m; the origin should sit on the floor (z=0)")
 
@@ -237,6 +243,9 @@ def main() -> int:
         missing = EXPECTED_ACTIONS - actions
         if missing:
             warnings.append(f"elf is missing actions: {', '.join(sorted(missing))}")
+
+    for rig in rigs:
+        rig.pose_position = "POSE"
 
     # Export only visible scenery (never the room's layout markers), and merge pieces that share materials
     # so the game draws a few meshes per model instead of dozens. (The .blend file itself is not changed.)

@@ -33,6 +33,7 @@ public static class Program
     {
 #if DEBUG
         // Debug-only automation: --screenshot <file.png> [--frame N] [--workshop] [--yaw deg] [--pitch deg]
+        //   [--carry toy[:assembled|:botched][:ribbon]] [--assemble partsPlaced] [--swing-every frames]
         string? shot = null;
         int frame = 90;
         bool workshop = false;
@@ -47,10 +48,13 @@ public static class Program
                 Controllers.WorkshopController.DebugCarry = new Core.Models.Item
                 {
                     ToyId = parts[0],
-                    Stage = parts.Contains("assembled") ? Core.Models.ItemStage.Assembled : Core.Models.ItemStage.Kit,
+                    Stage = parts.Contains("botched") ? Core.Models.ItemStage.Botched
+                        : parts.Contains("assembled") ? Core.Models.ItemStage.Assembled : Core.Models.ItemStage.Kit,
                     HasRibbon = parts.Contains("ribbon"),
                 };
             }
+            else if (args[i] == "--assemble" && i + 1 < args.Length && int.TryParse(args[++i], out int placed)) Controllers.WorkshopController.DebugAssembleParts = placed;
+            else if (args[i] == "--swing-every" && i + 1 < args.Length && int.TryParse(args[++i], out int every)) Controllers.WorkshopController.DebugSwingEvery = every;
             else if (args[i] == "--yaw" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float yaw)) Controllers.CameraController.DebugStartYaw = yaw;
             else if (args[i] == "--pitch" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float pitch)) Controllers.CameraController.DebugStartPitch = pitch;
         }

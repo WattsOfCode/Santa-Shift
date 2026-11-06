@@ -13,6 +13,7 @@ public sealed class HudView(GameContent content)
     private readonly OrderCardView _card = new(content);
     private readonly SantaPanelView _santa = new();
     private readonly PromptView _prompt = new();
+    private readonly AssemblyPanelView _assembly = new();
 
     /// <param name="earlierRoundsScore">Score carried over from previous rounds of this run.</param>
     public void Draw(UiCanvas ui, Simulation sim, Feedback feedback, WorldView world, int earlierRoundsScore = 0)
@@ -20,8 +21,9 @@ public sealed class HudView(GameContent content)
         var state = sim.State;
         var t = sim.Tuning;
 
-        world.DrawLabels(ui, sim.SelectedStation());
+        if (!state.IsWorking) world.DrawLabels(ui, sim.SelectedStation()); // labels would cover the close-up work
         DrawProgressBar(ui, sim, world);
+        _assembly.Draw(ui, sim, (UiCanvas.Width - AssemblyPanelView.Width) / 2, 486 - AssemblyPanelView.Height - 8);
 
         // Top band
         // No full-width band: in third person the room shows between the panels.

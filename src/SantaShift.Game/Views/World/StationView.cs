@@ -12,7 +12,7 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
     public static float HeightOf(StationType type) => type switch
     {
         StationType.Dispenser => 0.8f,
-        StationType.Bench => 0.85f,
+        StationType.Bench => 0.55f, // low elf-height bench, so the short elf can swing a hammer over it
         StationType.Ribbon => 0.85f,
         StationType.Shipping => 1.1f,
         StationType.Recycle => 0.75f,
@@ -45,6 +45,30 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
             Raylib.DrawCubeWires(c, w + 0.12f, h + 0.12f, d + 0.12f, Palette.Gold);
             Raylib.DrawCubeWires(c, w + 0.16f, h + 0.16f, d + 0.16f, Palette.Gold);
         }
+    }
+
+    /// <summary>
+    /// The spot on the station's top in front of the elf: from where the elf stands, 25 cm short of the station's
+    /// centre (at least 30 cm in). Toys are built here on the bench.
+    /// </summary>
+    public Vector3 WorkSpot(Station s)
+    {
+        var centre = world.ToWorld(new Point2(s.Body.X, s.Body.Y));
+        var stand = world.ToWorld(s.Interact);
+        var flat = new Vector3(centre.X - stand.X, 0, centre.Z - stand.Z);
+        float distance = flat.Length();
+        if (distance < 0.001f) return centre + new Vector3(0, HeightOf(s.Type), 0);
+        var spot = stand + flat / distance * Math.Max(distance - 0.25f, 0.3f);
+        return new Vector3(spot.X, HeightOf(s.Type), spot.Z);
+    }
+
+    /// <summary>Unit vector along the floor from where the elf stands towards the work spot.</summary>
+    public Vector3 WorkDirection(Station s)
+    {
+        var spot = WorkSpot(s);
+        var stand = world.ToWorld(s.Interact);
+        var flat = new Vector3(spot.X - stand.X, 0, spot.Z - stand.Z);
+        return flat.LengthSquared() < 1e-6f ? -Vector3.UnitZ : Vector3.Normalize(flat);
     }
 
     /// <summary>Where the station's label sits, in the 3D world.</summary>

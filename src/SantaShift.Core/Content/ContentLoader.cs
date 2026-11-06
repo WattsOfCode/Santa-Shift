@@ -49,6 +49,12 @@ public static class ContentLoader
         if (toys.Count == 0) throw new ContentException("toys.json must define at least one toy.");
         RequireUniqueIds(toys.Select(t => t.Id), "toy");
         var toyIds = toys.Select(t => t.Id).ToHashSet();
+        foreach (var toy in toys)
+        {
+            if (toy.Parts.Count == 0) throw new ContentException($"Toy '{toy.Id}' needs at least one part to build at the bench.");
+            if (toy.Parts.Count > 9) throw new ContentException($"Toy '{toy.Id}' has {toy.Parts.Count} parts; the bench has keys 1-9.");
+            RequireUniqueIds(toy.Parts.Select(p => p.Id), $"part of toy '{toy.Id}'");
+        }
         foreach (var id in tuning.ToySequence)
             if (!toyIds.Contains(id)) throw new ContentException($"tuning.json toySequence names unknown toy '{id}'.");
         if (tuning.ToySequence.Length == 0) throw new ContentException("tuning.json toySequence is empty.");

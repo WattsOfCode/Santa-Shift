@@ -11,6 +11,9 @@ namespace SantaShift.Game.Services;
 public interface IAssetLibrary : IDisposable
 {
     bool TryGetModel(string? fileName, out Model model);
+
+    /// <summary>The animations stored in a model file (for the elf: Idle, Walk, Work). Empty if it has none.</summary>
+    IReadOnlyList<ModelAnimation> Animations(string fileName);
 }
 
 public sealed class AssetLibrary : IAssetLibrary
@@ -19,17 +22,24 @@ public sealed class AssetLibrary : IAssetLibrary
     public const string KitModel = "kit_crate.glb";
     public const string RibbonModel = "ribbon_bow.glb";
     public const string RoomModel = "room.glb";
+    public const string HammerModel = "hammer.glb";
 
     private readonly string _modelDirectory;
     private readonly Dictionary<string, Model> _models = new();
+    private readonly Dictionary<string, (nint Pointer, ModelAnimation[] List)> _animations = new();
 
     public AssetLibrary(string modelDirectory) => _modelDirectory = modelDirectory;
 
     /// <summary>Loads every model the content mentions, once, at startup (no loading during play).</summary>
-    public void Preload(GameContent content, Action<Model>? prepare = null)
+    public unsafe void Preload(GameContent content, Action<Model>? prepare = null)
     {
-        var names = new HashSet<string> { ElfModel, KitModel, RibbonModel, RoomModel };
-        foreach (var toy in content.Toys) if (toy.Model != null) names.Add(toy.Model);
+        var names = new HashSet<string> { ElfModel, KitModel, RibbonModel, RoomModel, HammerModel };
+        foreach (var toy in content.Toys)
+        {
+            if (toy.Model != null) names.Add(toy.Model);
+            if (toy.BotchedModel != null) names.Add(toy.BotchedModel);
+            foreach (var part in toy.Parts) if (part.Model != null) names.Add(part.Model);
+        }
         foreach (var station in content.Stations) if (station.Model != null) names.Add(station.Model);
         foreach (var prop in content.Props) names.Add(PropFile(prop.Model));
 
@@ -39,9 +49,26 @@ public sealed class AssetLibrary : IAssetLibrary
             if (!File.Exists(path)) continue;
             var model = Raylib.LoadModel(path);
             if (model.MeshCount > 0) { prepare?.Invoke(model); _models[name] = model; }
-            else Raylib.UnloadModel(model);
+            else { Raylib.UnloadModel(model); continue; }
+
+            if (model.Skeleton.BoneCount == 0) continue;
+            int count = 0;
+            var anims = Raylib.LoadModelAnimations(path, ref count);
+            if (anims == null || count == 0) continue;
+            var list = new ModelAnimation[count];
+            for (int i = 0; i < count; i++)
+            {
+                list[i] = anims[i];
+#if DEBUG
+                Console.WriteLine($"[anim] {name}: {list[i].NameToString()}, {list[i].KeyFrameCount} key frames, {list[i].BoneCount} bones");
+#endif
+            }
+            _animations[name] = ((nint)anims, list);
         }
     }
+
+    public IReadOnlyList<ModelAnimation> Animations(string fileName) =>
+        _animations.TryGetValue(fileName, out var a) ? a.List : [];
 
     public IReadOnlyCollection<string> LoadedModels => _models.Keys;
 
@@ -55,8 +82,10 @@ public sealed class AssetLibrary : IAssetLibrary
         return false;
     }
 
-    public void Dispose()
+    public unsafe void Dispose()
     {
+        foreach (var (pointer, list) in _animations.Values) Raylib.UnloadModelAnimations((ModelAnimation*)pointer, list.Length);
+        _animations.Clear();
         foreach (var model in _models.Values) Raylib.UnloadModel(model);
         _models.Clear();
     }

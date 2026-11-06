@@ -24,8 +24,15 @@ public sealed class InteractionController(GameContent content, IInputService inp
                 case SimEventType.Collected:
                     audio.Play(SoundIds.KitPickup);
                     break;
+                case SimEventType.PartAdded:
+                    audio.Play(SoundIds.HammerHit);
+                    break;
                 case SimEventType.AssemblyComplete:
                     audio.Play(SoundIds.AssemblyComplete);
+                    break;
+                case SimEventType.AssemblyBotched:
+                    audio.Play(SoundIds.AssemblyBotched);
+                    if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Rejected, 120);
                     break;
                 case SimEventType.RibbonComplete:
                     audio.Play(SoundIds.RibbonComplete);

@@ -19,6 +19,12 @@ public sealed class RunState
     public Point2 PlayerPosition { get; set; }
     public Item? CarriedItem { get; set; }
     public CraftingAction? CraftingAction { get; set; }
+
+    /// <summary>The bench minigame, while the elf is building a toy.</summary>
+    public AssemblyState? Assembly { get; set; }
+
+    /// <summary>True while the elf is busy at a station (building or tying a ribbon).</summary>
+    public bool IsWorking => CraftingAction != null || Assembly != null;
     public bool RecyclePromptOpen { get; set; }
 
     // Orders

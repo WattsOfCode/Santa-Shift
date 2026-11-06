@@ -15,12 +15,13 @@
   },
   "messages": {
     "prompt_collect": "E  Collect {0} kit",
-    "prompt_assemble": "E  Assemble {0}",
+    "prompt_assemble": "E  Build {0}",
     "prompt_ribbon": "E  Add ribbon to {0}",
     "prompt_ship": "E  Ship {0}",
     "prompt_recycle": "E  Recycle {0}",
     "prompt_recycle_confirm": "Recycle {0}?  E Confirm  /  move to cancel",
-    "working_assemble": "Assembling {0}...",
+    "working_assemble": "Hammer the parts on in order  /  move to stop",
+    "prompt_scrap_botched": "E  Scrap {0}",
     "working_ribbon": "Adding ribbon to {0}...",
 
     "hands_full": "Hands full",
@@ -34,6 +35,9 @@
     "nothing_to_ship": "Bring a finished toy",
     "nothing_to_recycle": "Nothing to recycle",
     "assembly_cancelled": "Assembly cancelled",
+    "botched_wrong_part": "Wrong part ({0})! It's botched: scrap it",
+    "botched_too_slow": "Too slow! It's botched: scrap it",
+    "botched_scrap_it": "Botched: take it to the scrap barrel",
     "ribbon_cancelled": "Ribbon cancelled",
     "order_expired": "Order expired",
     "delivered": "{0} delivered!  +{1}",
@@ -42,6 +46,7 @@
     "empty_hands": "Empty hands",
     "item_kit": "{0} kit",
     "item_ribboned": "{0} with ribbon",
+    "item_botched": "Botched {0}",
 
     "review_low": "Needs more cocoa",
     "review_survivor": "Shift survivor",

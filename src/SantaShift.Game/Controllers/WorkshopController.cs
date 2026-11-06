@@ -26,14 +26,14 @@ public sealed class WorkshopController : IScreen
     {
         _s = services;
         _run = run;
-        _sim = new Simulation(services.Content, run.Mode, run.Round);
+        _sim = new Simulation(services.Content, run.Mode, run.Round, seed: Random.Shared.Next());
         _player = new PlayerController(services.Input, services.Settings);
         _interaction = new InteractionController(services.Content, services.Input, services.Audio);
         _interaction.Attach(_sim);
         _pause = new PauseController(services.Input, _sim,
             restart: () => services.Scenes.Switch(new WorkshopController(services, new RunProgress(run.Mode))),
             quitToTitle: () => services.Scenes.Switch(new TitleController(services)));
-        _camera = new CameraController(services.Render.ChaseCamera, services.World, services.Content);
+        _camera = new CameraController(services.Render.ChaseCamera, services.Render.ShoulderCamera, services.World, services.Content);
         _world = new WorldView(services.Content, services.Assets, services.World);
         _hud = new HudView(services.Content);
     }
@@ -46,11 +46,44 @@ public sealed class WorkshopController : IScreen
     /// <summary>Debug builds only (--carry toy[:assembled][:ribbon]): start holding an item, for screenshots.</summary>
     public static Item? DebugCarry;
 
+    /// <summary>Debug builds only (--assemble N): start at the bench building a train with N parts on.</summary>
+    public static int? DebugAssembleParts;
+
+    /// <summary>Debug builds only (--swing-every N): swing the hammer every N frames, for screenshots of the swing.</summary>
+    public static int? DebugSwingEvery;
+
+    /// <summary>Counts hammer swings (one per number key pressed while building); drives the swing animation.</summary>
+    private int _swings;
+    private int _frames;
+
     public void Enter()
     {
         if (DebugCarry != null) _sim.State.CarriedItem = DebugCarry;
+        if (DebugAssembleParts is { } parts) DebugStartAssembly(parts);
         _pause.BeginReady();
-        _camera.Update(System.Numerics.Vector2.Zero, _sim.State.PlayerPosition);
+        _camera.Update(System.Numerics.Vector2.Zero, _sim.State.PlayerPosition, CurrentWork(), dt: 10);
+    }
+
+    private void DebugStartAssembly(int parts)
+    {
+        var toy = _s.Content.Toys[0];
+        var bench = _s.Content.Stations.First(st => st.Type == StationType.Bench);
+        _sim.State.CarriedItem = new Item { ToyId = toy.Id };
+        _sim.PlacePlayer(bench.Interact);
+        _sim.Step(new PlayerCommand(0, 0, Interact: true));
+        for (int i = 0; i < parts && _sim.State.Assembly is { } game && i < game.Order.Count - 1; i++)
+            _sim.Step(new PlayerCommand(0, 0, false, PartKey: game.NextKey));
+        _sim.DrainEvents();
+        var dir = _world.WorkDirection(bench);
+        _player.ReadMove((0, 0), working: true, faceWork: (dir.X, dir.Z));
+    }
+
+    /// <summary>The bench spot while the elf is building there, for the camera and the elf's facing.</summary>
+    private WorkFocus? CurrentWork()
+    {
+        if (_sim.State.Assembly is not { } game) return null;
+        var bench = _s.Content.Stations.FirstOrDefault(st => st.Id == game.StationId);
+        return bench == null ? null : new WorkFocus(_world.WorkSpot(bench), _world.WorkDirection(bench));
     }
 
     public void Exit()
@@ -74,9 +107,17 @@ public sealed class WorkshopController : IScreen
         }
 
         var floorMove = _camera.ToFloorDirection(_s.Input.Move());
-        var (mx, my) = _player.ReadMove(floorMove, working: _sim.State.CraftingAction != null);
+        var work = CurrentWork();
+        var (mx, my) = _player.ReadMove(floorMove, working: _sim.State.IsWorking,
+            faceWork: work is { } w ? (w.Direction.X, w.Direction.Z) : null);
         bool interact = _interaction.ReadInteract();
-        _sim.Step(new PlayerCommand(mx, my, interact, cancel));
+
+        // Number keys only mean something during the bench minigame; otherwise they are dropped.
+        int partKey = _s.Input.ConsumePartKey();
+        if (_sim.State.Assembly == null) { while (_s.Input.ConsumePartKey() != 0) { } partKey = 0; }
+        else if (partKey != 0) _swings++;
+
+        _sim.Step(new PlayerCommand(mx, my, interact, cancel, partKey));
 
         _interaction.Handle(_sim.DrainEvents());
         _interaction.Tick();
@@ -89,10 +130,15 @@ public sealed class WorkshopController : IScreen
         // Mouse look only while actually playing; menus and READY get a normal cursor.
         bool playing = !_pause.Blocking || _pause.State == PauseState.Ready;
         _s.Input.SetMouseCaptured(playing && Raylib.IsWindowFocused());
-        _camera.Update(_pause.Blocking ? System.Numerics.Vector2.Zero : _s.Input.MouseDelta(), _sim.State.PlayerPosition);
+        _camera.Update(_pause.Blocking ? System.Numerics.Vector2.Zero : _s.Input.MouseDelta(), _sim.State.PlayerPosition,
+            CurrentWork(), Raylib.GetFrameTime());
+
+        _frames++;
+        if (DebugSwingEvery is { } every && every > 0 && _frames % every == 0) _swings++;
     }
 
-    public void DrawWorld() => _world.Draw(_sim, _player.FacingDegrees, _player.Bob);
+    public void DrawWorld() =>
+        _world.Draw(_sim, _player.FacingDegrees, _player.Bob, new ElfPose(_player.Walking, _sim.State.Assembly != null, _swings));
 
     public void DrawUi(UiCanvas ui)
     {

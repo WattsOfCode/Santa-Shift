@@ -12,8 +12,11 @@ Built in C# with .NET 10 and [Raylib-cs](https://github.com/ChrisDill/Raylib-cs)
 |---|---|
 | Mouse | Look around (the camera follows behind the elf) |
 | WASD / Arrows | Move (relative to the camera) |
-| E / Space | Collect, assemble, add ribbon, ship, recycle |
+| E / Space | Collect, start building, add ribbon, ship, recycle |
+| 1 / 2 / 3 | At the bench: hammer on the part on that key. Follow the order shown; a wrong part or running out of time botches the toy (scrap it in the barrel) |
 | Esc | Pause (or cancel the recycle prompt) |
+
+Building gets harder each round: less time, then the parts go on in a random order, then they move to different keys.
 | Tab (title screen) | Switch Standard / Relaxed mode |
 
 ## Build and run

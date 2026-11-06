@@ -100,3 +100,25 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
   haze or post effects. Lights are ranked by importance (reach and brightness against distance), so low quality keeps
   the fireplace. Not yet measured on low-end hardware.
 - **Settings:** `render.json` > `lighting`.
+
+## 2026-11-06: Assembly minigame, toy parts, botched toys, animated elf with a hammer
+- **Reason:** User asked for a more engaging build step: 3 parts per toy, a quick minigame, a separate model for a toy
+  built in the wrong order, hammer-swing animations, a closer over-the-shoulder camera while building, and difficulty
+  that randomises the stages over time.
+- **User's choices:** key-sequence minigame (parts on number keys, pressed in the order shown before a timer runs out);
+  a botched toy can only be scrapped (no points lost, only time).
+- **Replaces the GDD's timed hold** (`assembleSeconds` is gone). Each toy in `toys.json` lists 3 parts in its natural
+  order, each with its own model, plus a `botchedModel`. A wrong part or running out of time botches the toy. Botched
+  toys can't get a ribbon or be shipped; the scrap barrel takes them without the usual confirmation. Moving cancels the
+  build and gives back a plain kit. Pausing freezes the minigame clock instead of cancelling it.
+- **Difficulty** (`tuning.json` > `assembly`): 6 s in round 1, 0.5 s less each round, at least 2.5 s. From round 2 the
+  order is shuffled every build; from round 4 the keys are shuffled too (never back to plain 1-2-3). Relaxed mode plays
+  one round behind with 1.5x the time. Shuffles use a seeded random number generator: tests are repeatable, the game
+  seeds each shift fresh.
+- **Art:** 9 part models and 3 botched models (generated from the same pieces as the toys), a `hammer` model, and the elf
+  is now rigged (15 bones, each part follows one bone) with Idle, Walk and Work actions. The game plays them with Raylib
+  6's skeletal animation, crossfading between them, and attaches the hammer to the right hand bone. The bench is now
+  0.55 m tall (was 0.85) so the 1.15 m elf can swing over it.
+- **Camera:** while building, the camera eases in over the elf's right shoulder (`render.json` > `shoulderCamera`) and
+  mouse look pauses; afterwards the chase camera carries on from behind the elf.
+- **Not done:** no sound files yet for `hammer_hit` / `assembly_botched` (the game plays nothing if they're missing).

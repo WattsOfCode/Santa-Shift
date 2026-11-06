@@ -11,3 +11,7 @@ santashift-error.log
 # Blender autosaves and backups (keep the .blend files themselves)
 *.blend1
 *.blend2
+
+# Python bytecode from the Blender tool scripts
+__pycache__/
+*.pyc

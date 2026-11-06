@@ -64,6 +64,7 @@ public sealed class OrderSystem(GameContent content)
         var item = state.CarriedItem;
         if (item == null) { output.Add(Reject(d.Message("nothing_to_ship"))); return; }
         if (item.Stage == ItemStage.Kit) { output.Add(Reject(d.Message("assemble_first"), item.ToyId)); return; }
+        if (item.Stage == ItemStage.Botched) { output.Add(Reject(d.Message("botched_scrap_it"), item.ToyId)); return; }
 
         var order = FindMatch(state, item);
         if (order == null)

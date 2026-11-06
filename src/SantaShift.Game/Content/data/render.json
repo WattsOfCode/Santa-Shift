@@ -11,8 +11,8 @@
 
   // Third-person camera behind the elf. The mouse turns it; WASD moves relative to it.
   "chaseCamera": {
-    "distance": 3.8,           // metres behind the elf
-    "targetHeight": 1.55,      // the point it looks at (above the head, so the elf sits low in the view)
+    "distance": 3.4,           // metres behind the elf
+    "targetHeight": 1.05,      // the point it looks at (above the head, so the elf sits low in the view)
     "pitchDegrees": 12,        // starting downward tilt
     "minPitchDegrees": 5,
     "maxPitchDegrees": 60,
@@ -21,6 +21,16 @@
     "invertY": false,
     "wallMargin": 0.25,        // keeps the camera this far inside the walls
     "maxHeight": 3.0           // keeps the camera below the cabin ceiling beams
+  },
+
+  // While building a toy at the bench, the camera moves in over the elf's right shoulder (metres).
+  "shoulderCamera": {
+    "back": 0.85,          // behind the elf, along its line of sight to the toy
+    "side": 0.75,          // to the elf's right
+    "height": 1.7,         // above the elf's hat, looking down at the bench
+    "lookAbove": 0.12,     // looks this far above the bench top
+    "fovDegrees": 55,
+    "blendSeconds": 0.35   // time to swing in and out
   },
 
   // Source-based lighting (fireplace, lanterns, windows and tree light the cabin; see Views/World/Lighting.cs).

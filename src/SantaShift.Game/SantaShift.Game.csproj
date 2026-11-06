@@ -4,7 +4,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>SantaShift.Game</RootNamespace>
     <AssemblyName>SantaShift</AssemblyName>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks> <!-- only for assigning the lighting shader to model materials -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks> <!-- Raylib pointers: model materials (lighting shader), animations and bone matrices -->
   </PropertyGroup>
 
   <ItemGroup>

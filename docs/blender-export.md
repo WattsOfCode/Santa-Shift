@@ -14,7 +14,7 @@ to a grey-box shape (or skips a decoration), so nothing ever breaks.
 ## Before exporting
 
 4. **Apply all transforms** (select all, Ctrl+A > All Transforms). Scale must be 1, rotation 0.
-5. **1 Blender unit = 1 metre.** The elf is about 1.5 m tall with its hat; a bench top is 0.85 m.
+5. **1 Blender unit = 1 metre.** The elf is about 1.15 m tall with its hat; the workbench top is 0.55 m.
 6. **Origin at the floor contact point**, centred under the object. The game places models by their origin.
    Wall-mounted props (windows, lanterns, shelves...) have their origin **on the wall surface** instead.
 7. **Front faces -Y** (Blender's Front view, numpad 1). That is the side players see first: the elf's face, a station's
@@ -33,19 +33,30 @@ to a grey-box shape (or skips a decoration), so nothing ever breaks.
 
 ## Elf animation
 
-11. One armature. Actions named exactly **`Idle`**, **`Walk`**, **`Work`**. Push each to an NLA track so it is exported.
-    Not done yet: the current elf is a static model (the export warns about this). The game bobs it while walking.
+11. One armature. Actions named exactly **`Idle`** (loops), **`Walk`** (loops), **`Work`** (one hammer swing; its
+    first and last frame are the "ready" pose held between swings). Push each to an NLA track so it is exported
+    (`make_models.py` does this). The export warns if one is missing.
+12. The right hand bone must be named **`hand.R`**, with its head at the wrist: the game puts the hammer in that hand,
+    4 cm below the wrist, pointing forward when the arm hangs down. Keep the elf facing -Y.
+
+The generated elf has 15 bones; each part follows one bone fully (rigid skinning), which is cheap and suits the
+low-poly look. The game crossfades between the actions, plays one Work swing per number key pressed at the bench, and
+plays them at their Blender length (it samples them at 60 frames per second). Without an armature the elf still
+works: it is drawn in its rest pose and bobs while walking.
 
 ## The models
 
 | File | What it is | Notes |
 |---|---|---|
-| `elf` | Player character | Static for now |
+| `elf` | Player character | Rigged, with Idle / Walk / Work actions |
+| `hammer` | The elf's hammer | Stands on its handle; grip 6 cm up the handle, striking face towards -Y. Lies on the bench when not in use |
 | `toy_train`, `toy_bear`, `toy_robot` | Finished toys | Names set in `toys.json` |
+| `toy_<toy>_<part>` | One part of a toy (9 files) | Placed where it sits on the finished toy, so parts stack up on the bench. May float (scene property `toy_part`) |
+| `toy_<toy>_botched` | A toy built wrong | The same parts jumbled; it can only be scrapped |
 | `kit_crate` | Every toy kit | Light neutral wood: the game tints it with the toy's colour |
 | `ribbon_bow` | Bow on a ribboned toy | Origin is where it sits on the toy |
 | `station_bin` | Kit bins (all three) | 2.25 x 1.0 m, rim at 0.8 m (a kit crate sits on top) |
-| `station_bench` | Assembly bench | 3.0 x 1.0 m, top at 0.85 m |
+| `station_bench` | Assembly bench | 3.0 x 1.0 m, top at 0.55 m (elf height, for hammering) |
 | `station_ribbon` | Ribbon station | 2.5 x 1.0 m |
 | `station_shipping` | Shipping chute | 1.75 x 1.5 m, chute opening on the -X side |
 | `station_recycle` | Scrap barrel | 1.25 x 1.25 m |
@@ -83,7 +94,12 @@ D:\Blender\blender.cmd --background --factory-startup --python tools\blender\mak
 ```
 
 A collection custom property `solid = False` makes a prop walk-through (rugs, wall decorations). A scene custom property
-`wall_mounted = True` tells the export that the model floats above the floor on purpose.
+`wall_mounted = True` (or `toy_part = True` for a toy part) tells the export that the model floats above the floor on purpose.
+
+The toys are built from their parts in `make_models.py` (`TOY_PARTS`), so the finished toy, its part models and its
+botched version always match. To change a toy, edit its part functions and rebuild all of its files, e.g.
+`... make_models.py -- source-assets\blender toy_train toy_train_wheels toy_train_boiler toy_train_cab toy_train_botched`.
+How each part is knocked out of place on the botched toy is in `BOTCHED`.
 
 ## Lighting
 

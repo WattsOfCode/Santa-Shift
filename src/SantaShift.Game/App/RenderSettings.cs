@@ -14,6 +14,7 @@ public sealed class RenderSettings
     public int TargetFps { get; init; } = 60;
     public bool Msaa { get; init; }
     public ChaseCameraSettings ChaseCamera { get; init; } = new();
+    public ShoulderCameraSettings ShoulderCamera { get; init; } = new();
     public MenuCameraSettings MenuCamera { get; init; } = new();
     public LightingSettings Lighting { get; init; } = new();
 
@@ -42,6 +43,26 @@ public sealed class ChaseCameraSettings
     public bool InvertY { get; init; }
     public float WallMargin { get; init; } = 0.25f;
     public float MaxHeight { get; init; } = 3.0f;
+}
+
+/// <summary>Close view over the elf's right shoulder while it builds a toy at the bench.</summary>
+public sealed class ShoulderCameraSettings
+{
+    /// <summary>How far behind the elf, along its line of sight to the work.</summary>
+    public float Back { get; init; } = 0.85f;
+
+    /// <summary>To the elf's right.</summary>
+    public float Side { get; init; } = 0.75f;
+
+    public float Height { get; init; } = 1.7f;
+
+    /// <summary>Looks this far above the bench top, at the toy.</summary>
+    public float LookAbove { get; init; } = 0.12f;
+
+    public float FovDegrees { get; init; } = 55;
+
+    /// <summary>Time to swing in and out of the close view.</summary>
+    public float BlendSeconds { get; init; } = 0.35f;
 }
 
 public sealed class MenuCameraSettings

@@ -15,9 +15,12 @@ public static class SoundIds
     public const string PolicyChime = "policy_chime";
     public const string OrderExpired = "order_expired";
     public const string ShiftEnd = "shift_end";
+    public const string HammerHit = "hammer_hit";
+    public const string AssemblyBotched = "assembly_botched";
 
     public static readonly string[] All =
-        [UiConfirm, KitPickup, AssemblyComplete, RibbonComplete, DeliverySuccess, ActionRejected, PolicyChime, OrderExpired, ShiftEnd];
+        [UiConfirm, KitPickup, AssemblyComplete, RibbonComplete, DeliverySuccess, ActionRejected, PolicyChime, OrderExpired, ShiftEnd,
+         HammerHit, AssemblyBotched];
 }
 
 /// <summary>Plays sound effects. Swappable; the game never depends on sound working (GDD section 14).</summary>

@@ -5,7 +5,7 @@ using SantaShift.Game.Services;
 
 namespace SantaShift.Game.Views.World;
 
-/// <summary>Draws the elf, its shadow and the carried item overhead.</summary>
+/// <summary>Draws the elf (animated when elf.glb has actions), its hammer while building, its shadow, and the carried item.</summary>
 public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView items)
 {
     public const float CarryHeight = 1.4f;
@@ -13,9 +13,12 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
     /// <summary>Carried items are drawn smaller so they do not block the view ahead.</summary>
     public const float CarriedScale = 0.75f;
 
-    /// <param name="facingDegrees">0 = facing the camera.</param>
-    /// <param name="bob">Small vertical offset for walking/working; 0 under reduced motion.</param>
-    public void Draw(RunState state, float facingDegrees, float bob)
+    private ElfAnimator? _animator;
+    private float? _modelTop;
+
+    /// <param name="facingDegrees">0 = facing +Z.</param>
+    /// <param name="bob">Small vertical offset for walking/working; 0 under reduced motion. Not used when the elf is animated.</param>
+    public void Draw(RunState state, float facingDegrees, float bob, ElfPose pose)
     {
         var p = world.ToWorld(state.PlayerPosition);
 
@@ -24,8 +27,19 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
         float carryHeight = CarryHeight;
         if (assets.TryGetModel(AssetLibrary.ElfModel, out var model))
         {
-            Raylib.DrawModelEx(model, p + new Vector3(0, bob, 0), Vector3.UnitY, facingDegrees, Vector3.One, Color.White);
-            carryHeight = ModelTop(model) + 0.08f; // carry above the hat, whatever height the elf model is
+            _modelTop ??= Raylib.GetModelBoundingBox(model).Max.Y; // measured in the rest pose, before any animation
+            _animator ??= new ElfAnimator(model, assets.Animations(AssetLibrary.ElfModel));
+            if (_animator.IsAnimated)
+            {
+                _animator.Update(model, Raylib.GetFrameTime(), pose);
+                bob = 0; // the animation has its own bounce
+            }
+
+            var at = p + new Vector3(0, bob, 0);
+            Raylib.DrawModelEx(model, at, Vector3.UnitY, facingDegrees, Vector3.One, Color.White);
+            carryHeight = _modelTop.Value + 0.08f; // carry above the hat, whatever height the elf model is
+
+            if (pose.Hammering) DrawHammerInHand(model, at, facingDegrees);
         }
         else
         {
@@ -36,13 +50,19 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
             Rlgl.PopMatrix();
         }
 
-        if (state.CarriedItem != null)
+        // While building, the toy sits on the bench instead (see WorldView).
+        if (state.CarriedItem != null && state.Assembly == null)
             items.Draw(state.CarriedItem, p + new Vector3(0, carryHeight + bob, 0), CarriedScale);
     }
 
-    private float? _modelTop;
-
-    private float ModelTop(Model model) => _modelTop ??= Raylib.GetModelBoundingBox(model).Max.Y;
+    private void DrawHammerInHand(Model elf, Vector3 at, float facingDegrees)
+    {
+        if (_animator == null || !assets.TryGetModel(AssetLibrary.HammerModel, out var hammer)) return;
+        if (!_animator.HammerTransform(elf, out var local)) return;
+        var elfWorld = Raymath.MatrixMultiply(Raymath.MatrixRotateY(facingDegrees * MathF.PI / 180f), Raymath.MatrixTranslate(at.X, at.Y, at.Z));
+        hammer.Transform = Raymath.MatrixMultiply(local, elfWorld);
+        Raylib.DrawModel(hammer, Vector3.Zero, 1f, Color.White);
+    }
 
     /// <summary>A tired little elf made of primitives, facing +Z.</summary>
     private static void DrawGreyBoxElf()

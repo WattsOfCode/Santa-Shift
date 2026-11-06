@@ -28,49 +28,249 @@ TAU = math.pi * 2
 
 # ================================================================ character
 
+def limb(name, p0, p1, r0, r1, mat, col, verts=8):
+    """A tapered cone running from point p0 (radius r0) to point p1 (radius r1)."""
+    from mathutils import Vector
+    a, b = Vector(p0), Vector(p1)
+    rot = Vector((0, 0, 1)).rotation_difference(b - a).to_euler()
+    mid = (a + b) / 2
+    return cone(name, mid.x, mid.y, mid.z, r0, r1, (b - a).length, mat, col, verts=verts, rot=tuple(rot))
+
+
+class Rig:
+    """Remembers which bone each new part of the elf follows (rigid skinning: every part moves with one bone)."""
+
+    def __init__(self, c):
+        self.c = c
+        self.bone_of = {}
+
+    def claim(self, bone):
+        for ob in self.c.objects:
+            if ob.type == "MESH" and ob not in self.bone_of:
+                self.bone_of[ob] = bone
+
+
+def side_name(side):
+    """Blender rig naming: the elf faces -Y, so its left is +X (.L) and its right is -X (.R)."""
+    return "L" if side > 0 else "R"
+
+
 def elf(c):
-    """About 1.5 m with the hat. Faces -Y."""
+    """A short, scowling, pot-bellied workshop elf: about 1.15 m with the floppy hat. Faces -Y.
+    Rigged with a simple skeleton and three actions (Idle, Walk, Work); Work is a hammer swing with the right hand."""
+    rig = Rig(c)
+    bones = []  # (name, head, tail, parent)
+
+    def add_bone(name, head, tail, parent):
+        bones.append((name, head, tail, parent))
+
+    add_bone("root", (0, 0, 0), (0, 0, 0.12), None)
+    add_bone("hips", (0, 0, 0.27), (0, 0, 0.42), "root")
+
+    # Long curly-toed shoes with a bell on each tip; skinny striped legs.
     for side in (-1, 1):
-        x = side * 0.09
-        box(f"Boot.{side}", x, -0.03, 0, 0.12, 0.2, 0.09, "boot", c)
-        cone(f"Boot tip.{side}", x, -0.14, 0.06, 0.05, 0.0, 0.1, "boot", c, rot=(math.radians(-70), 0, 0))
-        cyl(f"Leg.{side}", x, 0, 0.19, 0.055, 0.2, "Z", "berry", c)
-        for k, z in enumerate((0.14, 0.22)):
-            cyl(f"Stripe.{side}.{k}", x, 0, z, 0.058, 0.03, "Z", "snow", c)
-    cone("Tunic", 0, 0, 0.53, 0.26, 0.17, 0.5, "elf_green", c, verts=12)
-    for n in range(8):  # zigzag hem
-        a = n * TAU / 8
-        cone(f"Hem.{n}", math.cos(a) * 0.24, math.sin(a) * 0.24, 0.27, 0.05, 0.0, 0.08, "elf_green", c,
-             verts=4, rot=(math.pi, 0, 0))
-    cyl("Belt", 0, 0, 0.5, 0.215, 0.06, "Z", "ink", c, verts=12)
-    box("Buckle", 0, -0.215, 0.47, 0.08, 0.02, 0.06, "gold", c)
-    cyl("Collar", 0, 0, 0.79, 0.15, 0.05, "Z", "gold", c, verts=12)
+        s = side_name(side)
+        x = side * 0.08
+        hip, ankle = (x * 0.85, 0, 0.28), (x, -0.01, 0.05)
+        limb(f"Leg.{side}", hip, ankle, 0.032, 0.026, "berry", c)
+        for k, z in enumerate((0.1, 0.17)):
+            torus(f"Stripe.{side}.{k}", x * (0.95 - k * 0.04), -0.005, z, 0.029, 0.009, "snow", c, segments=(8, 4))
+        rig.claim(f"leg.{s}")
+        sphere(f"Shoe.{side}", x, -0.05, 0.03, 0.05, "boot", c, scale=(0.85, 2.0, 0.6))
+        limb(f"Toe.{side}", (x, -0.13, 0.035), (x, -0.21, 0.1), 0.035, 0.012, "boot", c)
+        limb(f"Toe curl.{side}", (x, -0.21, 0.1), (x, -0.175, 0.15), 0.013, 0.005, "boot", c, verts=6)
+        sphere(f"Bell.{side}", x, -0.175, 0.155, 0.018, "gold", c, segments=8, rings=5)
+        rig.claim(f"foot.{s}")
+        add_bone(f"leg.{s}", hip, ankle, "hips")
+        add_bone(f"foot.{s}", ankle, (x, -0.15, 0.03), f"leg.{s}")
+
+    # Pot belly in a scruffy patched tunic, rope belt sagging under it.
+    sphere("Belly", 0, -0.03, 0.4, 0.17, "tunic", c, segments=14, rings=9)
+    for n in range(9):  # ragged hem
+        a = n * TAU / 9 + 0.2
+        cone(f"Hem.{n}", math.cos(a) * 0.15, math.sin(a) * 0.15 - 0.02, 0.27, 0.045, 0.0, 0.07 + 0.02 * (n % 2),
+             "tunic", c, verts=4, rot=(math.pi, 0, 0))
+    torus("Belt", 0, -0.03, 0.33, 0.155, 0.015, "straw", c, rot=(math.radians(-8), 0, 0), segments=(14, 4))
+    box("Patch belly", 0.07, -0.19, 0.4, 0.07, 0.02, 0.07, "patch", c, rot=(math.radians(15), 0, math.radians(20)))
+    rig.claim("hips")
+    cone("Chest", 0, 0, 0.53, 0.15, 0.095, 0.2, "tunic", c, verts=12)
+    box("Patch side", -0.13, -0.08, 0.47, 0.02, 0.05, 0.05, "patch", c)
+    torus("Collar", 0, 0, 0.62, 0.09, 0.022, "patch", c, segments=(10, 4))
+    cyl("Neck", 0, -0.01, 0.635, 0.045, 0.06, "Z", "goblin_skin", c)
+    rig.claim("chest")
+    add_bone("chest", (0, 0, 0.42), (0, 0, 0.63), "hips")
+
+    # Slouched shoulders and long skinny arms with long fingers.
     for side in (-1, 1):
-        cone(f"Arm.{side}", side * 0.22, 0, 0.6, 0.05, 0.06, 0.32, "elf_green", c, rot=(0, side * 0.25, 0))
-        sphere(f"Hand.{side}", side * 0.26, 0, 0.43, 0.055, "skin", c)
-    sphere("Head", 0, 0, 0.98, 0.19, "skin", c, segments=14, rings=9)
+        s = side_name(side)
+        sh = (side * 0.13, 0.0, 0.58)
+        el = (side * 0.2, -0.04, 0.42)
+        wr = (side * 0.22, -0.08, 0.28)
+        sphere(f"Shoulder.{side}", *sh, 0.05, "tunic", c, segments=8, rings=5)
+        limb(f"Sleeve.{side}", sh, el, 0.045, 0.035, "tunic", c)
+        rig.claim(f"upper_arm.{s}")
+        limb(f"Forearm.{side}", el, wr, 0.024, 0.02, "goblin_skin", c)
+        rig.claim(f"forearm.{s}")
+        sphere(f"Hand.{side}", *wr, 0.03, "goblin_skin", c, segments=8, rings=5)
+        for f, (dx, dy) in enumerate(((-0.02, -0.015), (0.0, -0.025), (0.02, -0.015))):
+            limb(f"Finger.{side}.{f}", wr, (wr[0] + dx * side + side * 0.01, wr[1] + dy, wr[2] - 0.085),
+                 0.009, 0.003, "goblin_skin", c, verts=5)
+        rig.claim(f"hand.{s}")
+        add_bone(f"upper_arm.{s}", sh, el, "chest")
+        add_bone(f"forearm.{s}", el, wr, f"upper_arm.{s}")
+        # The game holds the hammer in the right hand, 4 cm below the wrist (the fist), handle pointing forward.
+        add_bone(f"hand.{s}", wr, (wr[0], wr[1] - 0.01, wr[2] - 0.08), f"forearm.{s}")
+
+    # Big head pushed forward.
+    hz, hy = 0.74, -0.03
+    sphere("Head", 0, hy, hz, 0.17, "goblin_skin", c, segments=16, rings=10, scale=(1.12, 1.0, 0.95))
+    sphere("Chin", 0, hy - 0.08, hz - 0.12, 0.07, "goblin_skin", c, segments=10, rings=6, scale=(1.0, 1.0, 1.3))
     for side in (-1, 1):
-        cone(f"Ear.{side}", side * 0.22, 0, 1.02, 0.05, 0.0, 0.16, "skin", c, rot=(0, side * math.radians(65), 0))
-        sphere(f"Eye.{side}", side * 0.07, -0.165, 1.0, 0.028, "ink", c, segments=8, rings=5)
-        sphere(f"Cheek.{side}", side * 0.11, -0.15, 0.93, 0.03, "cheek", c, segments=8, rings=5)
-    sphere("Nose", 0, -0.19, 0.95, 0.035, "cheek", c, segments=8, rings=5)
-    torus("Hat brim", 0, 0, 1.1, 0.18, 0.045, "snow", c)
-    cone("Hat", 0, 0.05, 1.31, 0.19, 0.0, 0.44, "berry", c, verts=12, rot=(0.22, 0, 0))
-    sphere("Pom-pom", 0, 0.1, 1.52, 0.06, "snow", c)
+        # Long droopy pointed ears.
+        limb(f"Ear.{side}", (side * 0.17, hy + 0.01, hz + 0.01), (side * 0.37, hy + 0.04, hz - 0.03), 0.055, 0.0,
+             "goblin_skin", c)
+        limb(f"Inner ear.{side}", (side * 0.18, hy - 0.005, hz + 0.0), (side * 0.32, hy + 0.02, hz - 0.025), 0.03, 0.0,
+             "goblin_dark", c, verts=6)
+        # Half-lidded eyes glancing sideways, heavy scowling brows.
+        ex = side * 0.065
+        sphere(f"Eye.{side}", ex, hy - 0.14, hz + 0.02, 0.042, "eye_white", c, segments=10, rings=6)
+        sphere(f"Pupil.{side}", ex + 0.016, hy - 0.178, hz + 0.012, 0.016, "ink", c, segments=8, rings=5)
+        sphere(f"Lid.{side}", ex, hy - 0.142, hz + 0.038, 0.046, "goblin_dark", c, segments=10, rings=6,
+               scale=(1.0, 1.0, 0.55))
+        box(f"Brow.{side}", side * 0.07, hy - 0.165, hz + 0.065, 0.1, 0.035, 0.025, "goblin_dark", c,
+            rot=(0, -side * 0.38, 0))
+        sphere(f"Hair tuft.{side}", side * 0.15, hy + 0.04, hz + 0.08, 0.035, "goblin_dark", c, segments=6, rings=4,
+               scale=(0.7, 0.7, 1.5))
+    # Long pointy nose and a crooked smirk with one snaggle tooth.
+    limb("Nose", (0, hy - 0.15, hz - 0.0), (0, hy - 0.29, hz - 0.05), 0.034, 0.006, "goblin_skin", c)
+    sphere("Smirk", 0.01, hy - 0.155, hz - 0.085, 0.075, "ink", c, segments=10, rings=5, scale=(1.3, 0.4, 0.22))
+    sphere("Smirk corner", 0.1, hy - 0.13, hz - 0.06, 0.035, "ink", c, segments=8, rings=4, scale=(1.0, 0.55, 0.45))
+    box("Tooth", -0.03, hy - 0.178, hz - 0.1, 0.024, 0.012, 0.026, "snow", c)
+    torus("Hat brim", 0, hy + 0.01, hz + 0.11, 0.155, 0.032, "snow", c, segments=(14, 6))
+    rig.claim("head")
+    add_bone("head", (0, -0.01, 0.64), (0, hy, hz + 0.12), "chest")
+
+    # Floppy hat that rises, bends back and droops down behind the head. Its own bone, so it sways.
+    path = [(0, hy + 0.01, hz + 0.1), (0, hy + 0.05, hz + 0.23), (0, hy + 0.14, hz + 0.31),
+            (0, hy + 0.25, hz + 0.3), (0, hy + 0.33, hz + 0.2), (0, hy + 0.35, hz + 0.1)]
+    radii = [0.155, 0.11, 0.075, 0.05, 0.032, 0.018]
+    for i in range(len(path) - 1):
+        limb(f"Hat.{i}", path[i], path[i + 1], radii[i], radii[i + 1], "berry", c, verts=12)
+        if 0 < i:
+            sphere(f"Hat joint.{i}", *path[i], radii[i], "berry", c, segments=10, rings=6)
+    sphere("Pom-pom", path[-1][0], path[-1][1] + 0.01, path[-1][2] - 0.04, 0.05, "snow", c)
+    box("Hat patch", 0.085, hy + 0.03, hz + 0.16, 0.05, 0.05, 0.05, "patch", c, rot=(0.3, 0, 0.4))
+    rig.claim("hat")
+    add_bone("hat", (0, hy + 0.01, hz + 0.12), (0, hy + 0.2, hz + 0.32), "head")
+
+    arm = build_armature(c, bones, rig.bone_of)
+    animate_elf(arm)
+
+
+def build_armature(c, bones, bone_of):
+    """Makes the skeleton and binds each part fully to its bone (vertex group weight 1 + Armature modifier).
+    Every bone's roll is set so its local Z axis points forward (-Y): a positive X rotation then swings any
+    bone forward (arms reach forward, legs step forward, the spine leans forward)."""
+    from mathutils import Vector
+    data = bpy.data.armatures.new("Elf rig")
+    arm = bpy.data.objects.new("Elf rig", data)
+    c.objects.link(arm)
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="EDIT")
+    for name, head, tail, parent in bones:
+        b = data.edit_bones.new(name)
+        b.head, b.tail = head, tail
+        along = (Vector(tail) - Vector(head)).normalized()
+        b.align_roll(Vector((0, 0, 1)) if abs(along.y) > 0.7 else Vector((0, -1, 0)))
+        if parent:
+            b.parent = data.edit_bones[parent]
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    for ob, bone in bone_of.items():
+        group = ob.vertex_groups.new(name=bone)
+        group.add(list(range(len(ob.data.vertices))), 1.0, "REPLACE")
+        ob.parent = arm
+        ob.modifiers.new("Armature", "ARMATURE").object = arm
+    return arm
+
+
+# Elf actions: {frame: {bone: (x, y, z) degrees}}. Bones left out of a key are at rest (0, 0, 0).
+# "root.z" is a height offset in metres (the walk bounce). 30 frames per second.
+ELF_ACTIONS = {
+    # Breathing, a grumpy head tilt and a lazy hat sway. Loops over 2 s.
+    "Idle": {
+        0: {},
+        30: {"chest": (3, 0, 0), "head": (-4, 0, 5), "hat": (-8, 0, -4), "upper_arm.L": (4, 0, 0), "upper_arm.R": (4, 0, 0)},
+        60: {},
+    },
+    # Stomping walk: legs and arms swing, the body bounces and the hat flops. Loops every 0.67 s.
+    "Walk": {
+        0: {"leg.L": (28, 0, 0), "leg.R": (-28, 0, 0), "foot.L": (-10, 0, 0), "upper_arm.L": (-25, 0, 0),
+            "upper_arm.R": (25, 0, 0), "forearm.L": (20, 0, 0), "forearm.R": (20, 0, 0), "chest": (4, 0, 6), "hat": (-6, 0, 0)},
+        5: {"forearm.L": (20, 0, 0), "forearm.R": (20, 0, 0), "chest": (4, 0, 0), "hat": (-14, 0, 0), "root.z": 0.025},
+        10: {"leg.L": (-28, 0, 0), "leg.R": (28, 0, 0), "foot.R": (-10, 0, 0), "upper_arm.L": (25, 0, 0),
+             "upper_arm.R": (-25, 0, 0), "forearm.L": (20, 0, 0), "forearm.R": (20, 0, 0), "chest": (4, 0, -6), "hat": (-6, 0, 0)},
+        15: {"forearm.L": (20, 0, 0), "forearm.R": (20, 0, 0), "chest": (4, 0, 0), "hat": (-14, 0, 0), "root.z": 0.025},
+        20: {"leg.L": (28, 0, 0), "leg.R": (-28, 0, 0), "foot.L": (-10, 0, 0), "upper_arm.L": (-25, 0, 0),
+             "upper_arm.R": (25, 0, 0), "forearm.L": (20, 0, 0), "forearm.R": (20, 0, 0), "chest": (4, 0, 6), "hat": (-6, 0, 0)},
+    },
+    # One hammer swing with the right hand, 0.6 s. Frame 0 is the "ready" pose held between swings (hammer raised);
+    # the left hand steadies the toy. The hammer points forward from the fist when the arm hangs down, so the sum of
+    # the arm's three X angles is the hammer's tilt: 90 = straight up, 180+ = back over the shoulder, 0 = level.
+    # The strike levels it out at shoulder height, which is the low bench's top plus a toy, half a metre ahead.
+    "Work": {
+        0: {"upper_arm.R": (100, 0, 0), "forearm.R": (40, 0, 0), "hand.R": (-60, 0, 0),
+            "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (6, 0, 0), "head": (6, 0, 0)},
+        6: {"upper_arm.R": (160, 0, 0), "forearm.R": (30, 0, 0), "hand.R": (0, 0, 0),
+            "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (-6, 0, 0), "head": (-8, 0, 0), "hat": (12, 0, 0)},
+        10: {"upper_arm.R": (95, 0, 0), "forearm.R": (0, 0, 0), "hand.R": (-95, 0, 0),
+             "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (14, 0, 0), "head": (10, 0, 0), "hat": (-16, 0, 0)},
+        13: {"upper_arm.R": (95, 0, 0), "forearm.R": (0, 0, 0), "hand.R": (-95, 0, 0),
+             "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (12, 0, 0), "head": (8, 0, 0), "hat": (-8, 0, 0)},
+        18: {"upper_arm.R": (100, 0, 0), "forearm.R": (40, 0, 0), "hand.R": (-60, 0, 0),
+             "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (6, 0, 0), "head": (6, 0, 0)},
+    },
+}
+
+
+def animate_elf(arm):
+    """Keys every action and pushes each onto its own NLA track, so the glTF export includes all of them."""
+    bpy.context.scene.render.fps = 30
+    arm.animation_data_create()
+    for name, keys in ELF_ACTIONS.items():
+        action = bpy.data.actions.new(name)
+        action.use_fake_user = True
+        arm.animation_data.action = action
+        used = {b for pose in keys.values() for b in pose if b != "root.z"}
+        for frame, pose in keys.items():
+            for bone in used:
+                pb = arm.pose.bones[bone]
+                pb.rotation_mode = "XYZ"
+                pb.rotation_euler = [math.radians(a) for a in pose.get(bone, (0, 0, 0))]
+                pb.keyframe_insert("rotation_euler", frame=frame)
+            root = arm.pose.bones["root"]
+            root.location = (0, 0, 0)
+            # Bone-local axes: the root bone points up, so its local Y is world up.
+            root.location.y = pose.get("root.z", 0.0)
+            root.keyframe_insert("location", frame=frame)
+        track = arm.animation_data.nla_tracks.new()
+        track.name = name
+        track.strips.new(name, 0, action)
+        arm.animation_data.action = None
+    for pb in arm.pose.bones:  # leave the file in the rest pose
+        pb.rotation_euler = (0, 0, 0)
+        pb.location = (0, 0, 0)
 
 
 # ================================================================ toys and items
 
-def toy_train(c):
+# Each toy is built from three parts (the same ids as in toys.json). A part model holds just that piece, placed
+# where it sits on the finished toy, so the game can stack the pieces up on the bench as they are hammered on.
+# The finished toy is all of its parts; the botched toy is the same parts put together wrong.
+
+def train_wheels(c):
     box("Chassis", 0, 0, 0.05, 0.46, 0.2, 0.05, "ink", c)
-    cyl("Boiler", -0.06, 0, 0.2, 0.1, 0.3, "X", "train_red", c, verts=12)
-    cyl("Boiler front", -0.215, 0, 0.2, 0.09, 0.02, "X", "gold", c, verts=12)
-    box("Cab", 0.15, 0, 0.1, 0.16, 0.22, 0.22, "train_red", c)
-    box("Cab roof", 0.15, 0, 0.32, 0.2, 0.26, 0.03, "ink", c)
-    box("Cab window", 0.15, -0.112, 0.2, 0.08, 0.01, 0.06, "glass", c)
-    cyl("Chimney", -0.17, 0, 0.33, 0.04, 0.1, "Z", "ink", c)
-    cyl("Chimney top", -0.17, 0, 0.39, 0.055, 0.03, "Z", "gold", c)
-    sphere("Dome", -0.04, 0, 0.3, 0.045, "gold", c)
     cone("Cowcatcher", -0.25, 0, 0.08, 0.08, 0.0, 0.06, "ink", c, verts=4, rot=(0, math.radians(-90), 0))
     for x in (-0.15, -0.02, 0.13):
         for side in (-1, 1):
@@ -78,26 +278,52 @@ def toy_train(c):
             cyl(f"Hub.{x}.{side}", x, side * 0.127, 0.065, 0.025, 0.01, "Y", "gold", c)
 
 
-def toy_bear(c):
+def train_boiler(c):
+    cyl("Boiler", -0.06, 0, 0.2, 0.1, 0.3, "X", "train_red", c, verts=12)
+    cyl("Boiler front", -0.215, 0, 0.2, 0.09, 0.02, "X", "gold", c, verts=12)
+    cyl("Chimney", -0.17, 0, 0.33, 0.04, 0.1, "Z", "ink", c)
+    cyl("Chimney top", -0.17, 0, 0.39, 0.055, 0.03, "Z", "gold", c)
+    sphere("Dome", -0.04, 0, 0.3, 0.045, "gold", c)
+
+
+def train_cab(c):
+    box("Cab", 0.15, 0, 0.1, 0.16, 0.22, 0.22, "train_red", c)
+    box("Cab roof", 0.15, 0, 0.32, 0.2, 0.26, 0.03, "ink", c)
+    box("Cab window", 0.15, -0.112, 0.2, 0.08, 0.01, 0.06, "glass", c)
+
+
+def bear_body(c):
     sphere("Body", 0, 0, 0.19, 0.16, "bear_fur", c, scale=(1.0, 0.9, 1.15))
     sphere("Belly", 0, -0.09, 0.18, 0.1, "bear_light", c, scale=(1.0, 0.6, 1.1))
+    for side in (-1, 1):
+        sphere(f"Leg.{side}", side * 0.09, -0.09, 0.06, 0.065, "bear_fur", c, scale=(1, 1.3, 0.9))
+        sphere(f"Paw.{side}", side * 0.09, -0.16, 0.06, 0.035, "bear_light", c, segments=8, rings=5)
+
+
+def bear_arms(c):
+    for side in (-1, 1):
+        sphere(f"Arm.{side}", side * 0.15, -0.03, 0.24, 0.055, "bear_fur", c, scale=(1, 1, 1.5))
+    torus("Scarf", 0, 0, 0.32, 0.1, 0.03, "berry", c)
+
+
+def bear_head(c):
     sphere("Head", 0, 0, 0.43, 0.13, "bear_fur", c)
     for side in (-1, 1):
         sphere(f"Ear.{side}", side * 0.09, 0, 0.54, 0.05, "bear_fur", c)
         sphere(f"Inner ear.{side}", side * 0.09, -0.03, 0.54, 0.028, "bear_light", c, segments=8, rings=5)
         sphere(f"Eye.{side}", side * 0.045, -0.115, 0.46, 0.018, "ink", c, segments=8, rings=5)
-        sphere(f"Arm.{side}", side * 0.15, -0.03, 0.24, 0.055, "bear_fur", c, scale=(1, 1, 1.5))
-        sphere(f"Leg.{side}", side * 0.09, -0.09, 0.06, 0.065, "bear_fur", c, scale=(1, 1.3, 0.9))
-        sphere(f"Paw.{side}", side * 0.09, -0.16, 0.06, 0.035, "bear_light", c, segments=8, rings=5)
     sphere("Muzzle", 0, -0.11, 0.41, 0.055, "bear_light", c)
     sphere("Nose", 0, -0.16, 0.42, 0.02, "ink", c, segments=8, rings=5)
-    torus("Scarf", 0, 0, 0.32, 0.1, 0.03, "berry", c)
 
 
-def toy_robot(c):
+def robot_legs(c):
     for side in (-1, 1):
         box(f"Leg.{side}", side * 0.07, 0, 0, 0.08, 0.1, 0.12, "robot_dark", c)
         box(f"Foot.{side}", side * 0.07, -0.02, 0, 0.1, 0.14, 0.03, "ink", c)
+
+
+def robot_torso(c):
+    for side in (-1, 1):
         cyl(f"Arm.{side}", side * 0.18, 0, 0.24, 0.03, 0.18, "Z", "steel", c)
         sphere(f"Hand.{side}", side * 0.18, 0, 0.14, 0.04, "robot_dark", c)
     box("Body", 0, 0, 0.12, 0.3, 0.2, 0.26, "robot_body", c)
@@ -105,6 +331,9 @@ def toy_robot(c):
     for n, m in enumerate(("berry", "gold", "pine")):
         sphere(f"Button.{n}", -0.04 + n * 0.04, -0.11, 0.24, 0.015, m, c, segments=6, rings=4)
     box("Neck", 0, 0, 0.38, 0.06, 0.06, 0.03, "steel", c)
+
+
+def robot_head(c):
     box("Head", 0, 0, 0.41, 0.22, 0.18, 0.15, "robot_body", c)
     for side in (-1, 1):
         box(f"Eye.{side}", side * 0.05, -0.091, 0.47, 0.045, 0.01, 0.04, "lamp_glow", c)
@@ -112,6 +341,97 @@ def toy_robot(c):
     box("Mouth", 0, -0.091, 0.43, 0.09, 0.01, 0.015, "ink", c)
     cyl("Antenna", 0, 0, 0.6, 0.008, 0.08, "Z", "steel", c, verts=6)
     sphere("Antenna tip", 0, 0, 0.65, 0.025, "berry", c)
+
+
+TOY_PARTS = {
+    "toy_train": [("wheels", train_wheels), ("boiler", train_boiler), ("cab", train_cab)],
+    "toy_bear": [("body", bear_body), ("arms", bear_arms), ("head", bear_head)],
+    "toy_robot": [("legs", robot_legs), ("torso", robot_torso), ("head", robot_head)],
+}
+
+# How each part ends up on a botched toy: (move in metres, turn in degrees), around the part's own centre.
+BOTCHED = {
+    "toy_train": {"wheels": ((0.02, 0.0, 0.3), (180, 0, 14)),       # wheels upside down on top
+                  "boiler": ((0.0, 0.0, -0.08), (0, 0, 75)),         # boiler crosswise
+                  "cab": ((0.12, 0.08, 0.0), (0, -60, 20))},        # cab knocked over
+    "toy_bear": {"body": ((0.0, 0.0, 0.0), (0, 0, 0)),
+                 "arms": ((0.0, 0.0, 0.1), (0, 0, 90)),             # arms on back to front, scarf slipped up
+                 "head": ((0.2, -0.02, -0.28), (0, 110, 0))},       # head on sideways at the hip
+    "toy_robot": {"legs": ((0.0, 0.0, 0.5), (180, 0, 0)),           # legs on top
+                  "torso": ((0.0, 0.0, 0.0), (0, 18, 0)),
+                  "head": ((0.18, 0.0, -0.36), (0, 0, 35))},        # head at the bottom
+}
+
+
+def built(c, fn):
+    """Runs a builder and returns the objects it added."""
+    before = set(c.objects)
+    fn(c)
+    return [o for o in c.objects if o not in before]
+
+
+def move_around_centre(objects, offset, turn_degrees):
+    from mathutils import Euler, Matrix, Vector
+    corners = [o.matrix_world @ Vector(v) for o in objects for v in o.bound_box]
+    centre = sum(corners, Vector()) / len(corners)
+    turn = Euler([math.radians(a) for a in turn_degrees]).to_matrix().to_4x4()
+    m = Matrix.Translation(centre + Vector(offset)) @ turn @ Matrix.Translation(-centre)
+    for o in objects:
+        o.matrix_world = m @ o.matrix_world
+    apply_transforms(objects)
+
+
+def apply_transforms(objects):
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in objects:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objects[0]
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+
+
+def drop_to_floor(c):
+    meshes = [o for o in c.objects if o.type == "MESH"]
+    lowest = min((o.matrix_world @ v.co).z for o in meshes for v in o.data.vertices)
+    for o in meshes:
+        o.location.z -= lowest
+
+
+def whole_toy(name):
+    def build(c):
+        for _, part in TOY_PARTS[name]:
+            part(c)
+    return build
+
+
+def toy_part(fn):
+    def build(c):
+        fn(c)
+        bpy.context.scene["toy_part"] = True  # sits on the part below it, so it may float above the floor
+    return build
+
+
+def botched_toy(name):
+    def build(c):
+        for part_id, part in TOY_PARTS[name]:
+            offset, turn = BOTCHED[name][part_id]
+            move_around_centre(built(c, part), offset, turn)
+        drop_to_floor(c)
+        for n in range(4):  # bent nails sticking out of the mess
+            from mathutils import Vector
+            limb(f"Bent nail.{n}", (0.1 * (n - 1.5), -0.1 + 0.05 * n, 0.15 + 0.06 * n),
+                 (0.1 * (n - 1.5) + 0.04, -0.14 + 0.05 * n, 0.2 + 0.07 * n), 0.008, 0.004, "steel", c, verts=4)
+    return build
+
+
+def hammer(c):
+    """Claw hammer, 0.34 m, standing on the end of its handle. The elf holds it by the grip (6 cm up the handle);
+    the striking face points -Y and the claw +Y."""
+    cyl("Handle", 0, 0, 0.15, 0.016, 0.3, "Z", "log_end", c, verts=8)
+    cyl("Grip", 0, 0, 0.06, 0.021, 0.11, "Z", "berry", c, verts=8)
+    box("Head", 0, 0, 0.29, 0.045, 0.15, 0.05, "iron", c)
+    cyl("Face", 0, -0.085, 0.315, 0.027, 0.03, "Y", "steel", c, verts=10)
+    for side in (-1, 1):
+        limb(f"Claw.{side}", (side * 0.012, 0.07, 0.325), (side * 0.014, 0.135, 0.285), 0.013, 0.003, "iron", c, verts=6)
 
 
 def kit_crate(c):
@@ -162,22 +482,20 @@ def station_bin(c):
 
 
 def station_bench(c):
-    """Workbench, 3.0 x 1.0, top at 0.85 m, worked from the -Y side."""
-    w, d, h = 3.0, 1.0, 0.85
+    """Low elf-height workbench, 3.0 x 1.0, top at 0.55 m (so the short elf can swing a hammer over it),
+    worked from the -Y side. The hammer is its own model (hammer.blend); the game puts it on the bench."""
+    w, d, h = 3.0, 1.0, 0.55
     box("Top", 0, 0, h - 0.1, w, d, 0.1, "bench_top", c)
     for x in (-1, 1):
         for y in (-1, 1):
             box(f"Leg.{x}.{y}", x * (w / 2 - 0.1), y * (d / 2 - 0.1), 0, 0.12, 0.12, h - 0.1, "log", c)
-    box("Stretcher", 0, 0, 0.15, w - 0.2, 0.08, 0.08, "log_dark", c)
-    box("Lower shelf", 0, 0.05, 0.25, w - 0.3, d - 0.3, 0.04, "plank_b", c)
+    box("Lower shelf", 0, 0.05, 0.1, w - 0.3, d - 0.3, 0.04, "plank_b", c)
     for n, x in enumerate((-0.9, -0.3, 0.5)):  # boxes of parts on the shelf
-        box(f"Parts box.{n}", x, 0.05, 0.29, 0.4, 0.35, 0.18, "crate_edge", c)
+        box(f"Parts box.{n}", x, 0.05, 0.14, 0.4, 0.35, 0.16, "crate_edge", c)
     # Vice on the front right.
     box("Vice body", 1.15, -0.45, h, 0.22, 0.18, 0.12, "iron", c)
     cyl("Vice screw", 1.15, -0.6, h + 0.06, 0.015, 0.2, "Y", "steel", c, verts=6)
     # Tools on top.
-    cyl("Hammer handle", -0.8, -0.1, h + 0.025, 0.018, 0.32, "X", "log_end", c, verts=6)
-    box("Hammer head", -0.62, -0.1, h, 0.06, 0.12, 0.05, "iron", c)
     box("Saw blade", 0.1, 0.15, h, 0.5, 0.12, 0.01, "steel", c)
     box("Saw handle", 0.4, 0.15, h, 0.12, 0.1, 0.03, "berry", c)
     for n in range(5):
@@ -400,9 +718,10 @@ def prop_clock(c):
 MODELS = {
     # name: (builder, solid, wall_mounted)
     "elf": (elf, True, False),
-    "toy_train": (toy_train, True, False),
-    "toy_bear": (toy_bear, True, False),
-    "toy_robot": (toy_robot, True, False),
+    **{toy: (whole_toy(toy), True, False) for toy in TOY_PARTS},
+    **{f"{toy}_{pid}": (toy_part(fn), True, False) for toy, parts in TOY_PARTS.items() for pid, fn in parts},
+    **{f"{toy}_botched": (botched_toy(toy), True, False) for toy in TOY_PARTS},
+    "hammer": (hammer, True, False),
     "kit_crate": (kit_crate, True, False),
     "ribbon_bow": (ribbon_bow, True, False),
     "station_bin": (station_bin, True, False),

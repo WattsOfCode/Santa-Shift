@@ -13,6 +13,20 @@
 
   "ribbonSeconds": 1.0,
 
+  // The bench minigame: hammer the toy's parts on in the order shown before time runs out.
+  // Round 1 uses each toy's natural order on keys 1, 2, 3. From shuffleOrderFromRound the order is random
+  // every build; from shuffleKeysFromRound the parts also move to different keys. The time limit shrinks each round.
+  // Relaxed mode plays relaxedRoundOffset rounds behind, with relaxedTimeMultiplier times as long.
+  "assembly": {
+    "timeLimitSeconds": 6.0,
+    "timeLimitDecreasePerRound": 0.5,
+    "minTimeLimitSeconds": 2.5,
+    "shuffleOrderFromRound": 2,
+    "shuffleKeysFromRound": 4,
+    "relaxedRoundOffset": 1,
+    "relaxedTimeMultiplier": 1.5
+  },
+
   "spawnTimes": [0, 18, 36, 54, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 252],
   "maxLiveOrders": 3,
   "toySequence": ["train", "bear", "robot"],

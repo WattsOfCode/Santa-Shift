@@ -3,7 +3,13 @@ using Raylib_cs;
 
 namespace SantaShift.Game.Services;
 
-public enum InputAction { Interact, Confirm, Back, ToggleMode, Restart, Quit }
+public enum InputAction
+{
+    Interact, Confirm, Back, ToggleMode, Restart, Quit,
+
+    /// <summary>Number keys 1-9: pick a part in the bench minigame. Part1 + (n - 1) is key n.</summary>
+    Part1, Part2, Part3, Part4, Part5, Part6, Part7, Part8, Part9,
+}
 
 /// <summary>
 /// Reads player input. Swappable: a gamepad or remappable version only needs to implement this.
@@ -20,6 +26,14 @@ public interface IInputService
 
     /// <summary>True once per press.</summary>
     bool ConsumePressed(InputAction action);
+
+    /// <summary>The number key (1-9) pressed since the last call, or 0. Earlier presses come out first.</summary>
+    int ConsumePartKey()
+    {
+        for (int n = 1; n <= 9; n++)
+            if (ConsumePressed(InputAction.Part1 + (n - 1))) return n;
+        return 0;
+    }
 
     /// <summary>Forgets pending presses. Called on every screen change so one press can't act twice.</summary>
     void Clear();
@@ -41,6 +55,15 @@ public sealed class KeyboardInputService : IInputService
         [InputAction.ToggleMode] = [KeyboardKey.Tab, KeyboardKey.M],
         [InputAction.Restart] = [KeyboardKey.R],
         [InputAction.Quit] = [KeyboardKey.Q],
+        [InputAction.Part1] = [KeyboardKey.One, KeyboardKey.Kp1],
+        [InputAction.Part2] = [KeyboardKey.Two, KeyboardKey.Kp2],
+        [InputAction.Part3] = [KeyboardKey.Three, KeyboardKey.Kp3],
+        [InputAction.Part4] = [KeyboardKey.Four, KeyboardKey.Kp4],
+        [InputAction.Part5] = [KeyboardKey.Five, KeyboardKey.Kp5],
+        [InputAction.Part6] = [KeyboardKey.Six, KeyboardKey.Kp6],
+        [InputAction.Part7] = [KeyboardKey.Seven, KeyboardKey.Kp7],
+        [InputAction.Part8] = [KeyboardKey.Eight, KeyboardKey.Kp8],
+        [InputAction.Part9] = [KeyboardKey.Nine, KeyboardKey.Kp9],
     };
 
     private readonly HashSet<InputAction> _latched = new();

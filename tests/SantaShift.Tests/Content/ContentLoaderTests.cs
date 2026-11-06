@@ -44,6 +44,7 @@ public class ContentLoaderTests : IDisposable
             "already_ribboned", "assemble_first", "ribbon_needed", "no_matching_order", "nothing_to_ship", "nothing_to_recycle",
             "assembly_cancelled", "ribbon_cancelled", "order_expired", "delivered", "recycled", "empty_hands", "item_kit",
             "item_ribboned", "review_low", "review_survivor", "review_legend",
+            "botched_wrong_part", "botched_too_slow", "botched_scrap_it", "item_botched", "prompt_scrap_botched",
         ];
         Assert.All(keys, k => Assert.True(d.Messages.ContainsKey(k), $"dialogue.json is missing message '{k}'"));
         Assert.All(new[] { "quota_met", "review_pass", "review_miss" }, c => Assert.NotNull(d.Cue(c)));

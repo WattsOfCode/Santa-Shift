@@ -23,6 +23,9 @@ public sealed class Tuning
     // Crafting (GDD section 8)
     public double RibbonSeconds { get; init; } = 1.0;
 
+    /// <summary>The bench minigame: time limit and how the part order gets mixed up as rounds go on.</summary>
+    public AssemblyTuning Assembly { get; init; } = new();
+
     // Orders (GDD section 9)
     public double[] SpawnTimes { get; init; } =
         [0, 18, 36, 54, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 252];
@@ -74,6 +77,43 @@ public sealed class RoundTuning
 
     /// <summary>Deadlines never shrink below this fraction of their round 1 length.</summary>
     public double MinDeadlineMultiplier { get; init; } = 0.7;
+}
+
+/// <summary>
+/// Difficulty of the bench minigame by round. Relaxed mode plays as if it were <see cref="RelaxedRoundOffset"/>
+/// rounds earlier and gets <see cref="RelaxedTimeMultiplier"/> times as long.
+/// </summary>
+public sealed class AssemblyTuning
+{
+    /// <summary>Time to add every part in round 1.</summary>
+    public double TimeLimitSeconds { get; init; } = 6.0;
+
+    /// <summary>Taken off the time limit for each round after the first.</summary>
+    public double TimeLimitDecreasePerRound { get; init; } = 0.5;
+
+    public double MinTimeLimitSeconds { get; init; } = 2.5;
+
+    /// <summary>From this round the parts must go on in a random order each build (before it: their natural order).</summary>
+    public int ShuffleOrderFromRound { get; init; } = 2;
+
+    /// <summary>From this round the parts also move to different number keys each build.</summary>
+    public int ShuffleKeysFromRound { get; init; } = 4;
+
+    public int RelaxedRoundOffset { get; init; } = 1;
+    public double RelaxedTimeMultiplier { get; init; } = 1.5;
+
+    /// <summary>The round the difficulty is based on (relaxed mode lags behind).</summary>
+    public int DifficultyRound(GameMode mode, int round) =>
+        Math.Max(1, round - (mode == GameMode.Relaxed ? RelaxedRoundOffset : 0));
+
+    public double TimeLimitFor(GameMode mode, int round)
+    {
+        double seconds = Math.Max(MinTimeLimitSeconds, TimeLimitSeconds - TimeLimitDecreasePerRound * (DifficultyRound(mode, round) - 1));
+        return mode == GameMode.Relaxed ? seconds * RelaxedTimeMultiplier : seconds;
+    }
+
+    public bool ShuffleOrder(GameMode mode, int round) => DifficultyRound(mode, round) >= ShuffleOrderFromRound;
+    public bool ShuffleKeys(GameMode mode, int round) => DifficultyRound(mode, round) >= ShuffleKeysFromRound;
 }
 
 public sealed class FloorBounds

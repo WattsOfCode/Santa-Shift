@@ -14,9 +14,9 @@ public static class TestContent
         ContentLoader.Build(
             tuning ?? new Tuning(),
             [
-                new Toy { Id = "train", Name = "Train" },
-                new Toy { Id = "bear", Name = "Bear" },
-                new Toy { Id = "robot", Name = "Robot" },
+                new Toy { Id = "train", Name = "Train", Parts = Parts("wheels", "boiler", "cab") },
+                new Toy { Id = "bear", Name = "Bear", Parts = Parts("body", "arms", "head") },
+                new Toy { Id = "robot", Name = "Robot", Parts = Parts("legs", "torso", "head") },
             ],
             [
                 Station("kits_train", StationType.Dispenser, 180, 145, 90, 40, 180, 180, "train"),
@@ -35,6 +35,8 @@ public static class TestContent
             ],
             new DialogueBook(),
             letters ?? []);
+
+    public static List<ToyPart> Parts(params string[] ids) => ids.Select(id => new ToyPart { Id = id, Name = id }).ToList();
 
     private static Station Station(string id, StationType type, double x, double y, double w, double h, double ix, double iy, string? toy = null) =>
         new() { Id = id, Type = type, ToyId = toy, Label = id, Body = new Box2(x, y, w, h), Interact = new Point2(ix, iy) };
@@ -62,13 +64,22 @@ public static class SimExtensions
 
     public static void WaitSeconds(this Simulation sim, double seconds) => sim.Wait(sim.Tuning.Ticks(seconds));
 
-    /// <summary>Waits until a timed action finishes.</summary>
+    /// <summary>Finishes whatever the elf is doing: presses the right keys in the bench minigame, waits out a ribbon.</summary>
     public static void FinishCrafting(this Simulation sim)
     {
+        while (sim.State.Assembly is { } game) sim.PressPart(game.NextKey);
         while (sim.State.CraftingAction != null) sim.Step(PlayerCommand.None);
     }
 
-    /// <summary>Collects a kit and assembles it at the bench.</summary>
+    /// <summary>Presses a number key in the bench minigame. Returns the events from that step.</summary>
+    public static IReadOnlyList<SimEvent> PressPart(this Simulation sim, int key)
+    {
+        sim.DrainEvents();
+        sim.Step(new PlayerCommand(0, 0, false, PartKey: key));
+        return sim.DrainEvents();
+    }
+
+    /// <summary>Collects a kit and builds it at the bench (pressing the right parts in order).</summary>
     public static void MakeToy(this Simulation sim, string toyId, bool ribbon = false)
     {
         sim.Use("kits_" + toyId);
