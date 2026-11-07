@@ -69,6 +69,12 @@ public sealed class RunState
     public int SkippedSpawns { get; set; }
     public Dictionary<string, int> LetterCursor { get; } = new();
 
+    /// <summary>
+    /// Who writes in this shift, decided when it starts: the toy, letter and naughty flag of the n-th order created. Santa
+    /// stocks the kit bins from it once, at the start; nothing tops them up during the shift except supply crates.
+    /// </summary>
+    public List<PlannedOrder> OrderPlan { get; } = new();
+
     // Results
     public int Delivered { get; set; }
     public int Missed { get; set; }
@@ -85,3 +91,6 @@ public sealed class RunState
     /// <summary>IDs increase within a run and restart with each new RunState.</summary>
     public int NextId() => _nextId++;
 }
+
+/// <summary>One entry of a shift's <see cref="RunState.OrderPlan"/>: what the n-th order will ask for.</summary>
+public sealed record PlannedOrder(string ToyId, ChildLetter? Letter, bool Naughty);

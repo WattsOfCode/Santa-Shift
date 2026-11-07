@@ -39,6 +39,7 @@ public sealed class Simulation
         _crafting = new CraftingSystem(content, new Random(seed ?? State.Round * 7919 + (int)mode));
         _orders = new OrderSystem(content);
         _events = new EventSystem(content);
+        _orders.PlanShift(State); // Santa's sack for the shift: decides the letters and fills the kit bins once
     }
 
     public Tuning Tuning => Content.Tuning;

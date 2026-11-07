@@ -10,7 +10,7 @@ namespace SantaShift.Tests;
 /// </summary>
 public static class TestContent
 {
-    /// <param name="supply">Adds the supply sled, which makes kit bins limited (one kit per toy asked for).</param>
+    /// <param name="supply">Adds the supply sled, which makes kit bins limited (stocked once per shift from the order plan).</param>
     public static GameContent Create(List<ChildLetter>? letters = null, Tuning? tuning = null, bool supply = false) =>
         ContentLoader.Build(
             tuning ?? new Tuning(),

@@ -39,9 +39,14 @@
   // Their orders want a lump of coal from the fireplace instead of their toy.
   "naughtyPerRun": 3,
 
-  // With a supply sled in the room, each kit bin only holds the kits Santa sent for the letters so far (one per toy
-  // asked for). A botched or scrapped kit leaves a bin short: fetch a supply crate from the sled to restock it.
+  // With a supply sled in the room, Santa fills each kit bin once when a shift starts: one kit per toy the shift's letters
+  // will ask for, never topped up. A botched or scrapped kit leaves a bin short: fetch a supply crate from the sled.
   "resupplyKits": 2,
+
+  // The guided first round (until a round is cleared): its first `orders` orders show every job, with coal as order
+  // `coalOrder` and a ribbon as `ribbonOrder`. With shortKit, Santa's sack is one kit short for the last lesson order's
+  // toy (asked for nowhere else that round), so the lesson ends with a trip to the supply sled.
+  "tutorial": { "orders": 6, "coalOrder": 3, "ribbonOrder": 5, "shortKit": true },
 
   // Ribbon colours at the ribbon station (up to 9; spool n is on part key n). Ribbon orders ask for one of them.
   // Remove them all for plain ribbons that any order accepts.

@@ -4,8 +4,8 @@ using SantaShift.Core.Rules;
 namespace SantaShift.Tests.Rules;
 
 /// <summary>
-/// The supply sled: with it in the room, each kit bin only holds the kits Santa sent for the letters so far (one per toy
-/// asked for). A wasted kit leaves a bin short, and the elf must fetch a supply crate from the sled to restock it.
+/// The supply sled: with it in the room, each kit bin is filled once when the shift starts (one kit per toy the shift
+/// will ask for). A wasted kit leaves a bin short, and the elf must fetch a supply crate from the sled to restock it.
 /// </summary>
 public class SupplyTests
 {
@@ -33,21 +33,48 @@ public class SupplyTests
     }
 
     [Fact]
-    public void Bins_start_empty_and_each_letter_sends_one_kit_for_its_toy()
+    public void Bins_start_with_one_kit_for_every_toy_the_shift_will_ask_for()
     {
         var sim = NewSim();
         Assert.True(sim.State.LimitedKits);
-        Assert.Equal(0, sim.State.KitsLeft("train"));
+        // 15 scheduled orders cycling train, bear, robot: five of each.
+        Assert.Equal(5, sim.State.KitsLeft("train"));
+        Assert.Equal(5, sim.State.KitsLeft("bear"));
+        Assert.Equal(5, sim.State.KitsLeft("robot"));
+        Assert.Equal(sim.Tuning.SpawnTimes.Length, sim.State.OrderPlan.Count);
+    }
 
-        sim.Wait(1); // the first order: a train
-        Assert.Equal(1, sim.State.KitsLeft("train"));
-        Assert.Equal(0, sim.State.KitsLeft("bear"));
+    [Fact]
+    public void Bins_are_not_topped_up_during_the_shift()
+    {
+        var sim = NewSim();
+        int trains = sim.State.KitsLeft("train")!.Value;
+        sim.WaitSeconds(100); // six orders arrive (three trains among them), nothing collected
+        Assert.Equal(trains, sim.State.KitsLeft("train"));
+        Assert.Equal(5, sim.State.KitsLeft("bear"));
+    }
+
+    [Fact]
+    public void Orders_follow_the_plan_made_at_the_start()
+    {
+        var sim = NewSim();
+        var plan = sim.State.OrderPlan.ToList();
+        sim.WaitSeconds(40); // orders at 0, 18 and 36 s
+        var made = sim.State.LiveOrders.OrderBy(o => o.Id).ToList();
+        Assert.Equal(3, made.Count);
+        for (int i = 0; i < made.Count; i++)
+        {
+            Assert.Equal(plan[i].ToyId, made[i].ToyId);
+            Assert.Equal(plan[i].Naughty, made[i].Naughty);
+            Assert.Same(plan[i].Letter, made[i].Letter);
+        }
     }
 
     [Fact]
     public void Collecting_takes_a_kit_and_an_empty_bin_refuses()
     {
         var sim = NewSim();
+        sim.State.KitStock["train"] = 1;
         sim.Wait(1);
         Assert.Contains(sim.Use("kits_train"), e => e.Type == SimEventType.Collected);
         Assert.Equal(0, sim.State.KitsLeft("train"));
@@ -62,7 +89,8 @@ public class SupplyTests
     [Fact]
     public void A_naughty_childs_letter_sends_no_kit()
     {
-        var sim = NewSim(naughty: "Ann");
+        var sim = NewSim(naughty: "Ann"); // Ann wrote every train letter here
+        Assert.Equal(0, sim.State.KitsLeft("train"));
         sim.Wait(1);
         Assert.True(sim.State.LiveOrders.Single().Naughty);
         Assert.Equal(0, sim.State.KitsLeft("train"));
@@ -72,6 +100,7 @@ public class SupplyTests
     public void A_supply_crate_from_the_sled_restocks_a_bin()
     {
         var sim = NewSim();
+        sim.State.KitStock["bear"] = 0;
         Assert.Equal("prompt_supply", PromptAt(sim, "supply"));
         Assert.Contains(sim.Use("supply"), e => e.Type == SimEventType.SupplyTaken);
         Assert.True(sim.State.CarriedItem!.IsSupply);
@@ -125,11 +154,23 @@ public class SupplyTests
     public void A_full_round_of_toys_needs_no_resupply_when_nothing_is_wasted()
     {
         var sim = NewSim();
-        sim.Wait(1);
-        sim.MakeToy("train");
-        sim.Use("shipping");
-        Assert.Equal(1, sim.State.Delivered);
-        Assert.Equal(0, sim.State.KitsLeft("train"));
+        int kits = 0;
+        // Deliver every order the shift creates, straight away: no bin should ever come up short.
+        while (sim.State.Phase == RunPhase.Playing)
+        {
+            sim.Wait(1);
+            foreach (var order in sim.State.LiveOrders.Where(o => !o.Naughty).ToList())
+            {
+                Assert.True(sim.State.KitsLeft(order.ToyId) > 0, $"{order.ToyId} bin ran out at tick {sim.State.Tick}");
+                sim.MakeToy(order.ToyId, order.RequiresRibbon);
+                if (order.RequiresRibbon && order.RibbonColor != null) sim.State.CarriedItem!.RibbonColor = order.RibbonColor;
+                sim.Use("shipping");
+                kits++;
+            }
+            sim.State.LiveOrders.RemoveAll(o => o.Naughty); // coal is tested elsewhere
+        }
+        Assert.Equal(sim.Tuning.SpawnTimes.Length, kits);
+        Assert.All(sim.State.KitStock.Values, v => Assert.Equal(0, v));
     }
 
     private static string? PromptAt(Simulation sim, string stationId)

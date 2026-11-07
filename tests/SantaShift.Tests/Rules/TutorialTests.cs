@@ -108,6 +108,51 @@ public class TutorialTests
         Assert.False(TutorialGuide.Active(NewSim(tutorial: false)));
     }
 
+    private static Simulation LessonWithSled(bool tutorial = true) =>
+        new(TestContent.Create(Letters, new Tuning { MaxLiveOrders = 9 }, supply: true), GameMode.Standard,
+            naughty: ["Cat"], tutorial: tutorial);
+
+    [Fact]
+    public void The_lesson_round_is_one_kit_short_for_the_last_lesson_order()
+    {
+        var sim = LessonWithSled();
+        var plan = sim.State.OrderPlan;
+        string last = plan[sim.Tuning.Tutorial.Orders - 1].ToyId;
+        Assert.Equal("robot", last);
+        Assert.False(plan[sim.Tuning.Tutorial.Orders - 1].Naughty);
+        Assert.Equal(0, sim.State.KitsLeft(last)); // its bin starts empty
+        Assert.DoesNotContain(plan.Skip(sim.Tuning.Tutorial.Orders), p => p.ToyId == last); // and nobody else asks for one
+        // Every other toy has a kit for every nice child who will ask for it.
+        foreach (var toy in new[] { "train", "bear" })
+            Assert.Equal(plan.Count(p => p.ToyId == toy && !p.Naughty), sim.State.KitsLeft(toy));
+    }
+
+    [Fact]
+    public void The_guide_teaches_the_supply_sled_on_the_last_lesson_order()
+    {
+        var sim = LessonWithSled();
+        sim.WaitSeconds(91); // all six lesson orders are in
+        var sixth = sim.State.LiveOrders.Single(o => o.Id == sim.State.TutorialOrderIds.Max());
+        Assert.Equal("robot", sixth.ToyId);
+        sim.State.LiveOrders.RemoveAll(o => o != sixth); // say the first five are done
+
+        Assert.Equal("supply", TutorialGuide.Next(sim)!.Station.Id);
+        sim.Use("supply");
+        Assert.Equal("kits_robot", TutorialGuide.Next(sim)!.Station.Id); // restock that bin
+        sim.Use("kits_robot");
+        Assert.Equal(sim.Tuning.ResupplyKits, sim.State.KitsLeft("robot"));
+        Assert.Equal("kits_robot", TutorialGuide.Next(sim)!.Station.Id); // now collect from it
+    }
+
+    [Fact]
+    public void Without_the_lesson_no_bin_starts_short()
+    {
+        var sim = LessonWithSled(tutorial: false);
+        foreach (var toy in new[] { "train", "bear", "robot" })
+            Assert.Equal(sim.State.OrderPlan.Count(p => p.ToyId == toy && !p.Naughty), sim.State.KitsLeft(toy));
+        Assert.Contains(sim.State.OrderPlan, p => p.ToyId == "robot"); // robots stay in the rotation
+    }
+
     [Fact]
     public void The_floor_route_goes_around_stations()
     {

@@ -250,3 +250,25 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
   lights (16 room lights in all). New glow markers (`glow()` in helpers.py, `room_layout.json > glows`) draw soft
   additive halos on each bulb and the star, each breathing on its own rhythm. Snow flurries drift past the windows
   in gusts. All of it holds still under Reduced Motion.
+
+## 2026-11-07: GDD brought up to date (version 0.2)
+- **Reason:** `docs/GDD.md` was a placeholder. The owner supplied the original 0.1 text; it is now version 0.2, rewritten
+  to state the current rules (every earlier entry in this log is folded in), so the document no longer contradicts the build.
+- **Adds:** a sound-effect inventory with descriptors and wiring status (section 17), a proposed pool of Santa rule
+  changes drawn per round from round 2 (section 10.3), backlog status (section 23), a revised plan to the December 1 deadline
+  (section 22), and open decisions (section 28: licenses, music terms, event pool, AI-assistance disclosure).
+- **Gaps recorded:** no sound-effect files, no Credits screen, release packaging not set up, no external playtests yet.
+
+## 2026-11-07: Kit bins stocked once per shift; the lesson teaches the sled
+- **Reason:** Bins gained a kit each time an order arrived, so they refilled all through the shift and the supply sled
+  rarely mattered. Owner decision: no restocking in the middle of play, and the guided first round should run one kit
+  short so its last lesson order teaches resupplying.
+- **Details:** When a shift starts, `OrderSystem.PlanShift` fixes the order plan (toy, letter and naughty flag for every
+  scheduled order) and fills the bins once with one kit per nice child's toy. Orders are created from the plan; nothing
+  else adds kits except supply crates. Each shift gets a fresh sack. In the lesson round, the sack is one kit short for the
+  6th lesson order's toy, and that toy is left out of the rest of the round. Its bin runs dry exactly at the 6th order, so
+  the guide sends the elf to the sled. `tuning.json > tutorial.shortKit` turns this off.
+- **Affects:** GDD sections 8, 9 and 19; `RunState.OrderPlan`, `OrderSystem`, `TutorialTuning.ShortKit`.
+- **Validation:** `SupplyTests` (stock fixed at the start, not topped up, a full no-waste shift ends at zero), `TutorialTests`
+  and `ShippedLessonTests` (the shortfall with the real data and every naughty list); 179 tests pass.
+- **Supersedes:** "Santa sends one kit per toy asked for, as the letters arrive."

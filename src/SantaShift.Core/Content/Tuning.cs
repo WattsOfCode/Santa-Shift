@@ -43,8 +43,8 @@ public sealed class Tuning
     public int NaughtyPerRun { get; init; } = 3;
 
     /// <summary>
-    /// Kits in one supply crate. With a supply sled in the room, each kit bin only holds the kits Santa sent for the
-    /// letters so far (one per toy asked for); a wasted kit means fetching a crate from the sled.
+    /// Kits in one supply crate. With a supply sled in the room, each kit bin is filled once when a shift starts (one kit
+    /// per toy the shift's letters will ask for) and never topped up; a wasted kit means fetching a crate from the sled.
     /// </summary>
     public int ResupplyKits { get; init; } = 2;
 
@@ -199,4 +199,10 @@ public sealed class TutorialTuning
     /// <summary>Which of them (1-based) is coal for a naughty child, and which needs a ribbon.</summary>
     public int CoalOrder { get; init; } = 3;
     public int RibbonOrder { get; init; } = 5;
+
+    /// <summary>
+    /// With a supply sled: Santa's sack for the lesson round is one kit short, for the last lesson order's toy. That toy
+    /// is asked for nowhere else that round, so its bin is empty just when the guide can teach the sled.
+    /// </summary>
+    public bool ShortKit { get; init; } = true;
 }

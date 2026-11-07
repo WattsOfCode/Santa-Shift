@@ -95,9 +95,10 @@ public class PerkTests
     public void Bigger_crates_restock_more_kits()
     {
         var sim = SimWith("crates");
+        int before = sim.State.KitsLeft("bear")!.Value;
         sim.Use("supply");
         sim.Use("kits_bear");
-        Assert.Equal(sim.Tuning.ResupplyKits + 1, sim.State.KitsLeft("bear"));
+        Assert.Equal(before + sim.Tuning.ResupplyKits + 1, sim.State.KitsLeft("bear"));
     }
 
     [Fact]

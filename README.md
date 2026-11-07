@@ -42,7 +42,7 @@ bigger supply crates, longer deadlines, more points. Each can stack a few times.
 
 **Guided first round.** Until you clear a round, round 1 is a lesson: glowing arrows on the floor lead from the
 elf to the next station (around the furniture), with a hint under Santa's strip. The first six orders show every job:
-plain toys, one lump of coal for a naughty child and one ribbon. Settings > Game > Tutorial guide turns it on for
+plain toys, one lump of coal for a naughty child, one ribbon and one trip to the supply sled. Settings > Game > Tutorial guide turns it on for
 every run or off.
 
 **Christmas Spirit.** The star bar under the clock lasts the whole run. Deliveries raise it; missed orders and botched
@@ -53,10 +53,12 @@ the shift ends there and so does the run. Tuned in tuning.json > spirit.
 offer, hat colours for your elf (pick one in **Unlocks** on the title screen), and a Head Start perk before round 1.
 They are listed in `unlocks.json` and saved in progress.json next to your settings.
 
-**Kit bins run out.** Santa sends one kit per toy asked for, so each bin only holds what the letters so far need
-(the label says how many are left). Botch or scrap a kit and that bin comes up short: its label turns red, and you have
-to fetch a supply crate from the **supply sled** against the right wall and carry it to the bin (E) to restock it
-(2 kits per crate, `resupplyKits` in tuning.json). Without a supply station in `stations.json`, bins never run out.
+**Kit bins run out.** When a shift starts, Santa fills the bins once with one kit for every toy the shift's letters
+will ask for (the label says how many are left). Nothing tops them up during the shift. Botch or scrap a kit and that
+bin comes up short: its label turns red, and you have to fetch a supply crate from the **supply sled** against the right
+wall and carry it to the bin (E) to restock it (2 kits per crate, `resupplyKits` in tuning.json). The guided first round
+is one kit short on purpose, so its last lesson order teaches the sled. Without a supply station in `stations.json`, bins
+never run out.
 
 ## Build and run
 

@@ -20,37 +20,88 @@ public sealed class OrderSystem(GameContent content)
         }
     }
 
-    public Order Create(RunState state)
+    /// <summary>
+    /// Decides who writes in this shift (one entry per scheduled order) and, with a supply sled, fills the kit bins from
+    /// it in one go: one kit per toy a nice child will ask for. Bins are never topped up during the shift after this;
+    /// a wasted kit has to be replaced with a supply crate from the sled. Called once when the shift starts.
+    /// Every scheduled attempt is counted, so a slow shift (with skipped attempts) leaves kits over, never short.
+    /// </summary>
+    public void PlanShift(RunState state)
     {
-        string toyId = _t.ToySequence[state.OrdersCreated % _t.ToySequence.Length];
-        bool ribbon = state.Events.RibbonActive(state.Tick);
-        bool rush = state.Events.PendingRush;
-        state.Events.PendingRush = false;
+        state.OrderPlan.Clear();
+        state.LetterCursor.Clear();
+        var tut = _t.Tutorial;
+        string[] sequence = _t.ToySequence;
+        for (int i = 0; i < _t.SpawnTimes.Length; i++)
+        {
+            // Lesson round with a short kit: after the lesson, the last lesson order's toy isn't asked for again, so its
+            // bin really is empty when that order comes in (see TutorialTuning.ShortKit).
+            if (state.Tutorial && LessonShortKit(state) && i == tut.Orders)
+            {
+                string shortToy = state.OrderPlan[tut.Orders - 1].ToyId;
+                if (sequence.Length > 1) sequence = sequence.Where(t => t != shortToy).ToArray();
+            }
+            int index = state.Tutorial && i >= tut.Orders && sequence != _t.ToySequence ? i - tut.Orders : i;
+            state.OrderPlan.Add(PlanOrder(state, i + 1, sequence[index % sequence.Length]));
+        }
 
+        if (!state.LimitedKits) return;
+        state.KitStock.Clear();
+        foreach (var p in state.OrderPlan.Where(p => !p.Naughty))
+            state.KitStock[p.ToyId] = state.KitStock.GetValueOrDefault(p.ToyId) + 1;
+        if (state.Tutorial && LessonShortKit(state))
+        {
+            string shortToy = state.OrderPlan[tut.Orders - 1].ToyId;
+            state.KitStock[shortToy] = Math.Max(0, state.KitStock.GetValueOrDefault(shortToy) - 1);
+        }
+    }
+
+    /// <summary>The lesson ends on a plain toy whose bin can start one kit short (needs a sled and a full lesson).</summary>
+    private bool LessonShortKit(RunState state) =>
+        _t.Tutorial.ShortKit && content.HasSupply && _t.Tutorial.Orders >= 1 && _t.Tutorial.Orders <= _t.SpawnTimes.Length
+        && state.OrderPlan.Count >= _t.Tutorial.Orders && !state.OrderPlan[_t.Tutorial.Orders - 1].Naughty;
+
+    /// <summary>The <paramref name="n"/>-th order of the shift (1-based): its toy, letter and whether the child is naughty.</summary>
+    private PlannedOrder PlanOrder(RunState state, int n, string toyId)
+    {
         var letter = NextLetter(state, toyId);
-        // A child on the naughty list gets coal instead (only if there is a coal station to get it from). Coal never
-        // needs a ribbon.
+        // A child on the naughty list gets coal instead (only if there is a coal station to get it from).
         bool naughty = letter != null && content.HasCoal && state.NaughtyChildren.Contains(letter.Child);
 
-        // The guided first orders show every job once: one is coal, one needs a ribbon, the rest are plain toys.
-        bool guided = state.Tutorial && state.TutorialOrderIds.Count < _t.Tutorial.Orders;
-        if (guided)
+        // The guided first orders show every job once: one is coal, the rest are plain toys (one needs a ribbon).
+        if (state.Tutorial && n <= _t.Tutorial.Orders)
         {
-            int n = state.TutorialOrderIds.Count + 1;
             var naughtyLetter = content.Letters.FirstOrDefault(l => state.NaughtyChildren.Contains(l.Child));
             if (n == _t.Tutorial.CoalOrder && content.HasCoal && naughtyLetter != null)
-            {
                 (letter, toyId, naughty) = (naughtyLetter, naughtyLetter.ToyId, true);
-            }
             else if (naughty) // a naughty child would turn this lesson into coal: write it from a nice child instead
             {
                 letter = content.Letters.FirstOrDefault(l => l.ToyId == toyId && !state.NaughtyChildren.Contains(l.Child));
                 naughty = false;
             }
+        }
+        return new PlannedOrder(toyId, letter, naughty);
+    }
+
+    public Order Create(RunState state)
+    {
+        // Past the end of the plan (only when orders are created by hand, as in tests), keep the usual sequence going.
+        var plan = state.OrdersCreated < state.OrderPlan.Count
+            ? state.OrderPlan[state.OrdersCreated]
+            : PlanOrder(state, state.OrdersCreated + 1, _t.ToySequence[state.OrdersCreated % _t.ToySequence.Length]);
+        var (toyId, letter, naughty) = (plan.ToyId, plan.Letter, plan.Naughty);
+        bool ribbon = state.Events.RibbonActive(state.Tick);
+        bool rush = state.Events.PendingRush;
+        state.Events.PendingRush = false;
+
+        bool guided = state.Tutorial && state.TutorialOrderIds.Count < _t.Tutorial.Orders;
+        if (guided)
+        {
+            int n = state.TutorialOrderIds.Count + 1;
             ribbon = !naughty && n == _t.Tutorial.RibbonOrder;
             rush = false;
         }
-        if (naughty) ribbon = false;
+        if (naughty) ribbon = false; // coal never needs a ribbon
 
         double seconds = rush ? _t.RushDeadlineSeconds : ribbon ? _t.RibbonDeadlineSeconds : _t.DeadlineSeconds;
         seconds *= _t.DeadlineMultiplier(state.Mode, state.Round) * state.Modifiers.DeadlineMultiplier;
@@ -74,9 +125,7 @@ public sealed class OrderSystem(GameContent content)
         state.OrdersCreated++;
         state.LiveOrders.Add(order);
         if (guided) state.TutorialOrderIds.Add(order.Id);
-        // Santa sends one kit per toy asked for, so the bins hold exactly what the letters need (see Tuning.ResupplyKits).
-        if (state.LimitedKits && !naughty) state.KitStock[toyId] = state.KitStock.GetValueOrDefault(toyId) + 1;
-        return order;
+        return order; // no kits arrive with it: the bins were stocked for the whole shift in PlanShift
     }
 
     /// <summary>
