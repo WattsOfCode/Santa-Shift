@@ -30,10 +30,6 @@ public sealed class RoomLayout
     public List<NpcPlacement> Npcs { get; init; } = [];
 }
 
-/// <summary>
-/// A point light in game-world metres (Y is height). Drawing only: it never affects the rules.
-/// Intensity ~1 is a lantern, ~3 a fireplace; Radius is how far it reaches; Flicker 0..1 makes it waver like fire.
-/// </summary>
 /// <summary>A halo at a light source: position in metres (Y = height), colour 0..1, width in metres, twinkle 0..1.</summary>
 public sealed class RoomGlow
 {
@@ -45,6 +41,10 @@ public sealed class RoomGlow
     public double Twinkle { get; init; }
 }
 
+/// <summary>
+/// A point light in game-world metres (Y is height). Drawing only: it never affects the rules.
+/// Intensity ~1 is a lantern, ~3 a fireplace; Radius is how far it reaches; Flicker 0..1 makes it waver like fire.
+/// </summary>
 public sealed class RoomLight
 {
     public string Name { get; init; } = "";

@@ -30,7 +30,7 @@ public sealed class WorldView
         _assets = assets;
         _world = world;
         _items = new ItemView(content, assets);
-        _stations = new StationView(content, assets, world, _items);
+        _stations = new StationView(assets, world, _items);
         _player = new PlayerView(assets, world, _items);
     }
 
@@ -39,6 +39,14 @@ public sealed class WorldView
     private WorldEffects Effects => _effects ??= new WorldEffects(_content);
 
     public WorldSpace Space => _world;
+
+    /// <summary>
+    /// Where to draw the elf this frame, between its last two simulation steps (set by the workshop each frame); null =
+    /// exactly where the rules have it.
+    /// </summary>
+    public Point2? PlayerAt { get; set; }
+
+    private Point2 ElfAt(RunState state) => PlayerAt ?? state.PlayerPosition;
 
     /// <summary>The next station in the guided first round (the arrows lead there), or null for no arrows.</summary>
     public Station? GuideTarget { get; set; }
@@ -78,19 +86,20 @@ public sealed class WorldView
 
         var state = sim.State;
         var selected = state.IsWorking ? null : sim.SelectedStation(); // no outline in the way of the work
-        foreach (var s in _content.Stations)
-        {
-            _stations.Draw(s, s == selected, s.Type == StationType.Dispenser && s.ToyId != null ? state.KitsLeft(s.ToyId) : null);
-            if (s.Type == StationType.Bench)
-                DrawBenchTop(s, state.Assembly?.StationId == s.Id ? state.Assembly : null, state.CarriedItem);
-            if (s.Type == StationType.Coal && pose.Activity != ElfActivity.Shovelling) DrawShovelRest(s);
-            if (s.Type == StationType.Ribbon) DrawRibbonTop(s, state);
-        }
+        using (App.FrameProfiler.Time("stations"))
+            foreach (var s in _content.Stations)
+            {
+                _stations.Draw(s, s == selected, s.Type == StationType.Dispenser && s.ToyId != null ? state.KitsLeft(s.ToyId) : null);
+                if (s.Type == StationType.Bench)
+                    DrawBenchTop(s, state.Assembly?.StationId == s.Id ? state.Assembly : null, state.CarriedItem);
+                if (s.Type == StationType.Coal && pose.Activity != ElfActivity.Shovelling) DrawShovelRest(s);
+                if (s.Type == StationType.Ribbon) DrawRibbonTop(s, state);
+            }
 
         using (App.FrameProfiler.Time("npcs")) DrawNpcs();
-        using (App.FrameProfiler.Time("player")) _player.Draw(state, facingDegrees, bob, pose);
+        using (App.FrameProfiler.Time("player")) _player.Draw(state, ElfAt(state), facingDegrees, bob, pose);
         if (GuideTarget != null)
-            (_guide ??= new GuideArrowView(_content, _assets, _world)).Draw(state.PlayerPosition, GuideTarget, Raylib.GetTime(), WorldEffects.ReducedMotion);
+            (_guide ??= new GuideArrowView(_content, _assets, _world)).Draw(ElfAt(state), GuideTarget, Raylib.GetTime(), WorldEffects.ReducedMotion);
         using (App.FrameProfiler.Time("effects")) Effects.Draw(_world, Raylib.GetTime());
         Raylib.EndMode3D();
     }
@@ -106,8 +115,7 @@ public sealed class WorldView
         var along = new Vector3(-dir.Z, 0, dir.X); // along the bench, to the elf's right
         if (game != null && item != null)
         {
-            var toy = _content.FindToy(game.ToyId);
-            _items.DrawKit(spot - along * 0.65f + dir * 0.1f, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
+            _items.DrawKit(spot - along * 0.65f + dir * 0.1f, game.ToyId);
             _items.DrawBuild(game.ToyId, game.Order.Take(game.Placed), spot);
             return;
         }
@@ -155,20 +163,47 @@ public sealed class WorldView
         return _world.InFront(p) ? _world.ToUi(p) : null;
     }
 
-    /// <summary>While choosing a ribbon: each spool's key and colour name above it, the hovered one highlighted.</summary>
+    /// <summary>
+    /// While choosing a ribbon: one label per spool ([key] colour name), in a single row above the spools so they never
+    /// overlap however the camera sees them, each with a thin line down to its spool. The hovered one is gold.
+    /// </summary>
     public void DrawSpoolLabels(UiCanvas ui, Station s, Func<int, string> keyFor)
     {
+        const float size = 18, h = 28, gap = 8;
         var colours = _content.Tuning.RibbonColors;
+        var labels = new List<(int Index, Vector2 At, float KeyW, float W)>();
         for (int i = 0; i < colours.Length; i++)
         {
             if (SpoolOnScreen(s, i) is not { } at) continue;
+            float kw = Math.Max(24, ui.MeasureText(keyFor(i), size) + 12);
+            labels.Add((i, at, kw, 4 + kw + 8 + 10 + 6 + ui.MeasureText(colours[i].Name, size) + 12));
+        }
+        if (labels.Count == 0) return;
+
+        // Left to right as on screen, pushed apart where they would touch, then the row re-centred over the spools.
+        labels.Sort((a, b) => a.At.X.CompareTo(b.At.X));
+        var lefts = new float[labels.Count];
+        for (int k = 0; k < labels.Count; k++)
+        {
+            lefts[k] = labels[k].At.X - labels[k].W / 2;
+            if (k > 0) lefts[k] = MathF.Max(lefts[k], lefts[k - 1] + labels[k - 1].W + gap);
+        }
+        float wanted = labels.Average(l => l.At.X), actual = 0;
+        for (int k = 0; k < labels.Count; k++) actual += lefts[k] + labels[k].W / 2;
+        float shift = wanted - actual / labels.Count;
+        float rowY = labels.Min(l => l.At.Y) - 72;
+
+        for (int k = 0; k < labels.Count; k++)
+        {
+            var (i, at, kw, w) = labels[k];
             bool hot = i == HoveredSpool;
-            string text = $"{keyFor(i)}  {colours[i].Name}";
-            float w = ui.MeasureText(text, 16) + 22;
-            float y = at.Y - (hot ? 74 : 62);
-            ui.FillRounded(at.X - w / 2, y, w, 24, hot ? Palette.Gold : Palette.WithAlpha(Palette.Ink, 220), 0.5f);
-            ui.FillRounded(at.X - w / 2 + 4, y + 4, 6, 16, Palette.Hex(colours[i].Color), 0.5f);
-            ui.Text(text, at.X + 4, y + 4, 16, hot ? Palette.Ink : Palette.Snow, Align.Center);
+            float left = lefts[k] + shift, y = rowY - (hot ? 6 : 0);
+            ui.Line(left + w / 2, y + h, at.X, at.Y - 8, 2, Palette.WithAlpha(hot ? Palette.Gold : Palette.Snow, 170));
+            ui.FillRounded(left, y, w, h, hot ? Palette.Gold : Palette.WithAlpha(Palette.Ink, 230), 0.5f);
+            ui.FillRounded(left + 4, y + 3, kw, h - 6, hot ? Palette.Ink : Palette.Gold, 0.4f);
+            ui.Text(keyFor(i), left + 4 + kw / 2, y + 5, size, hot ? Palette.Gold : Palette.Ink, Align.Center);
+            ui.FillRounded(left + 4 + kw + 8, y + 7, 10, h - 14, Palette.Hex(colours[i].Color), 0.5f);
+            ui.Text(colours[i].Name, left + 4 + kw + 8 + 10 + 6, y + 5, size, hot ? Palette.Ink : Palette.Snow);
         }
     }
 
@@ -205,14 +240,13 @@ public sealed class WorldView
     /// <summary>Where to draw things above the elf's head (progress bar), in UI coordinates. Null if off-screen.</summary>
     public Vector2? AbovePlayer(RunState state, float height = 1.95f)
     {
-        var p = _world.ToWorld(state.PlayerPosition, height);
+        var p = _world.ToWorld(ElfAt(state), height);
         return _world.InFront(p) ? _world.ToUi(p) : null;
     }
 
-    /// <summary>Furniture and decorations, each from its own model. Missing models are simply skipped.</summary>
     /// <summary>
-    /// Furniture and decorations. A prop whose model has an animation loops it (the fireplace's flames burn);
-    /// Raylib samples animations at 60 frames per second.
+    /// Furniture and decorations, each from its own model (missing models are simply skipped). A prop whose model has
+    /// an animation loops it (the fireplace's flames burn), at the 60 key frames per second the export bakes.
     /// </summary>
     private void DrawProps()
     {

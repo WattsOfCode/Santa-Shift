@@ -94,4 +94,15 @@ public class ControlBindingsTests : IDisposable
         Assert.Equal(1f, s.StickSensitivity);
         Assert.Equal("E", s.Controls.KeyAt(ControlBindings.Interact, 0));
     }
+
+    [Theory]
+    [InlineData(37, 120)]   // not one of the choices: back to the default
+    [InlineData(144, 144)]
+    [InlineData(Settings.MatchDisplay, Settings.MatchDisplay)]
+    [InlineData(Settings.Unlimited, Settings.Unlimited)]
+    public void Frame_rate_must_be_one_of_the_choices(int saved, int expected)
+    {
+        Assert.Equal(120, new Settings().FrameRate);
+        Assert.Equal(expected, new Settings { FrameRate = saved }.Clamp().FrameRate);
+    }
 }

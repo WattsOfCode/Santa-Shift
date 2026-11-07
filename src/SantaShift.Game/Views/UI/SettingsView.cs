@@ -123,6 +123,12 @@ public sealed class SettingsView
             GuideMode.Off => "Off",
             _ => "Until you clear a round",
         });
+        Choice(ui, m, 8, "Frame rate", st.FrameRate switch
+        {
+            Settings.MatchDisplay => "Match display (VSync)",
+            Settings.Unlimited => "Unlimited",
+            var fps => $"{fps} fps",
+        });
     }
 
     private static void DrawControls(UiCanvas ui, SettingsMenu m)

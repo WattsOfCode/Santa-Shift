@@ -58,11 +58,19 @@ will ask for (the label says how many are left). Nothing tops them up during the
 bin comes up short: its label turns red, and you have to fetch a supply crate from the **supply sled** against the right
 wall and carry it to the bin (E) to restock it (2 kits per crate, `resupplyKits` in tuning.json). The guided first round
 is one kit short on purpose, so its last lesson order teaches the sled. Without a supply station in `stations.json`, bins
-never run out.
+never run out. Every kit crate and bin sign shows its toy's picture (painted at startup from the order-card icons).
+
+**Punch out early.** The punch clock on the left wall, by the workshop door, ends the shift: press E there, then E again
+to confirm (move or Esc to cancel). The shift is scored as if time had run out, so with the quota met it's a safe pass;
+short of it, the run ends. The door beside it is shut for now (a solid fixture a later update can open).
+
+**Frame rate.** The game draws at 120 fps by default (Settings > Game > Frame rate: 60, 120, 144, match display or
+unlimited) while the rules step at 60 Hz, with movement smoothed between steps. On a laptop running on battery, NVIDIA
+Battery Boost can hold games to 30 fps: plug in or turn it off.
 
 ## Build and run
 
-Requires the .NET 10 SDK.
+Requires the .NET 10 SDK. Double-click **`Play Santa Shift.cmd`** to build the latest code and play, or:
 
 ```
 dotnet build
@@ -77,7 +85,7 @@ Release packaging (`dotnet publish`) is not set up yet.
 ```
 src/SantaShift.Core/    Models and rules. Plain C#, no Raylib, fully unit-tested.
   Models/               Data: Item, Order, Toy, ChildLetter, Station, RunState, Settings...
-  Rules/                Simulation (one 60 Hz step), OrderSystem, CraftingSystem, EventSystem, Scoring
+  Rules/                Simulation (one 60 Hz step; drawn at up to 120+ fps), OrderSystem, CraftingSystem, EventSystem, Scoring
   Content/              Loads and validates the JSON data files
   Persistence/          Settings and best scores (JSON in %AppData%/SantaShift)
 src/SantaShift.Game/    Views and controllers. All Raylib code lives here.
@@ -123,6 +131,9 @@ A missing model simply shows the grey-box shape.
 ## Credits and licenses
 
 Music: "Toy Factory Jingle" and "Cozy Christmas Game Ambience" by **blueeyedmonkey**.
+
+Interface font: the game uses a font already installed with Windows (Bahnschrift, else Segoe UI Bold or Arial Bold);
+it is not shipped. To ship one, put a font whose licence allows it (e.g. OFL) at `Content/fonts/ui.ttf`.
 
 See [ASSET_CREDITS.md](ASSET_CREDITS.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 The project's own code license has not been chosen yet (GDD section 26).

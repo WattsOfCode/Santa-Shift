@@ -10,6 +10,14 @@ public static class FrameProfiler
 {
     public static bool Enabled;
 
+    /// <summary>--profile-capped: keep the player's frame rate setting, to check the frame pacing it gives.</summary>
+    public static bool KeepFrameRate;
+
+    /// <summary>True when the frame rate cap should be lifted (plain --profile shows the real cost of a frame).</summary>
+    public static bool Uncapped => Enabled && !KeepFrameRate;
+
+    private static double _worstFrame, _lastFrameStamp;
+
     private static readonly Dictionary<string, (double Total, int Count)> Sections = new();
     private static readonly Stopwatch Clock = Stopwatch.StartNew();
     private static double _lastReport;
@@ -34,12 +42,15 @@ public static class FrameProfiler
         if (!Enabled) return;
         _frames++;
         double now = Clock.Elapsed.TotalSeconds;
+        if (_lastFrameStamp > 0) _worstFrame = Math.Max(_worstFrame, now - _lastFrameStamp);
+        _lastFrameStamp = now;
         if (now - _lastReport < 2) return;
         double span = now - _lastReport;
         long allocated = GC.GetAllocatedBytesForCurrentThread();
         int gen0 = GC.CollectionCount(0);
-        Console.WriteLine($"[profile] {_frames / span:F0} fps, {span * 1000 / _frames:F2} ms/frame, " +
+        Console.WriteLine($"[profile] {_frames / span:F0} fps, {span * 1000 / _frames:F2} ms/frame (worst {_worstFrame * 1000:F1} ms), " +
             $"{(allocated - _allocatedAtReport) / 1024.0 / _frames:F1} KB allocated/frame, {gen0 - _gen0AtReport} gen0 GCs");
+        _worstFrame = 0;
         (_allocatedAtReport, _gen0AtReport) = (allocated, gen0);
         foreach (var (name, (total, _)) in Sections.OrderByDescending(s => s.Value.Total))
             Console.WriteLine($"[profile]   {name,-18} {total / _frames:F3} ms");

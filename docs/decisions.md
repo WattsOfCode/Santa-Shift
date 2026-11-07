@@ -272,3 +272,28 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - **Validation:** `SupplyTests` (stock fixed at the start, not topped up, a full no-waste shift ends at zero), `TutorialTests`
   and `ShippedLessonTests` (the shortfall with the real data and every naughty list); 179 tests pass.
 - **Supersedes:** "Santa sends one kit per toy asked for, as the letters arrive."
+
+## 2026-11-07: Punch clock and door, toy pictures, 120 fps, clearer text
+- **Reason:** Owner requests: a punch card machine so the player can end the shift early; a door (solid for now, usable
+  later); a picture of each toy on its kit boxes; a tidy-up with a solid 120 fps; clearer text, especially the key labels
+  at the bench and ribbon station.
+- **Punch clock:** a new `clock` station (left wall, back corner). Use asks first, use again punches out: the shift ends
+  scored as if time had run out (live orders unfinished, unwritten letters never arrive). With the quota met Santa signs
+  off (`punched_out` cue) and the review shows the time left; short of quota it is a missed shift and the question says
+  so. No early-finish bonus yet (proposed in GDD section 12).
+- **Door:** `prop_door` on the back wall beside the clock, a solid prop with a collider, not a station. New tool
+  `tools/blender/add_prop.py` adds a prop to room.blend; the clock's markers came from `sync_station_markers.py`.
+- **Toy pictures:** painted once at startup from the order-card icons (`ToyPictures`), drawn as lit squares on all four
+  sides of every kit crate and on each bin's sign. No image files: a new toy gets its picture automatically.
+- **120 fps:** the rules still step at 60 Hz; frames between steps draw the elf and camera part of the way between steps
+  (`FrameClock`). Frame rate is now a setting (60, 120 default, 144, match display, unlimited) instead of render.json
+  `vsync`/`targetFps`; `FramePacer` holds it exactly (Raylib's limiter gave 118-119). Measured: 737 fps uncapped,
+  120 fps capped with every frame within 9.1 ms. The 30 fps seen first was NVIDIA Battery Boost on battery, not the game.
+- **Text:** the UI font is now an outline font loaded large with mipmaps (Windows Bahnschrift, else Segoe UI Bold or
+  Arial Bold; or `Content/fonts/ui.ttf`) instead of Raylib's 10-pixel bitmap font scaled up. Bench key chips are bigger;
+  the ribbon spool labels sit in one row with a line to each spool, so they no longer overlap.
+- **Tidy:** doubled or misplaced doc comments fixed, an unused constructor parameter removed, the review cue chosen in one
+  place (`Simulation.ReviewCueId`), profiler sections for stations and frame pacing (`--profile-capped`).
+- **Affects:** GDD sections 5 to 8, 12 to 15, 17 to 20, 24; `stations.json`, `dialogue.json`, `render.json`, `room_layout.json`.
+- **Validation:** `PunchClockTests` (8), frame rate settings tests; 191 tests pass. Screenshots of the clock, door,
+  crates, bin signs, bench panel, ribbon labels and settings.

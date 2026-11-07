@@ -32,19 +32,20 @@ public sealed class AssemblyPanelView
         var placed = game.Order.Take(game.Placed).ToHashSet();
         int n = game.Keys.Count;
         const float gap = 8;
-        float cardW = (Width - 24 - gap * (n - 1)) / n, cardH = 30, cy = y + 28;
+        float cardW = (Width - 24 - gap * (n - 1)) / n, cardH = 32, cy = y + 27;
         for (int i = 0; i < n; i++)
         {
             string part = game.Keys[i];
             bool done = placed.Contains(part);
             float cx = x + 12 + i * (cardW + gap);
             ui.FillRounded(cx, cy, cardW, cardH, done ? Palette.WithAlpha(Palette.Pine, 160) : Palette.Snow, 0.25f);
+            // The key: big and gold on a dark chip, so it reads at a glance mid-build.
             string key = input.Label(InputAction.Part1 + i);
-            float kw = Math.Max(22, ui.MeasureText(key, 16) + 10);
-            ui.FillRounded(cx + 4, cy + 4, kw, 22, done ? Palette.WithAlpha(Palette.Ink, 120) : Palette.Ink, 0.3f);
-            ui.Text(key, cx + 4 + kw / 2, cy + 6, 16, done ? Palette.Shade(Palette.Snow, 0.7f) : Palette.Gold, Align.Center);
+            float kw = Math.Max(26, ui.MeasureText(key, 20) + 12);
+            ui.FillRounded(cx + 3, cy + 3, kw, cardH - 6, done ? Palette.WithAlpha(Palette.Ink, 120) : Palette.Ink, 0.3f);
+            ui.Text(key, cx + 3 + kw / 2, cy + 5, 20, done ? Palette.Shade(Palette.Snow, 0.7f) : Palette.Gold, Align.Center);
             string name = sim.PartName(game.ToyId, part);
-            ui.Text(ui.Fit(name, 16, cardW - kw - 14), cx + kw + 10, cy + 7, 16, done ? Palette.Shade(Palette.Snow, 0.8f) : Palette.Ink);
+            ui.Text(ui.Fit(name, 17, cardW - kw - 14), cx + kw + 10, cy + 7, 17, done ? Palette.Shade(Palette.Snow, 0.8f) : Palette.Ink);
         }
 
         // The order

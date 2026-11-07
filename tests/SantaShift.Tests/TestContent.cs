@@ -11,7 +11,8 @@ namespace SantaShift.Tests;
 public static class TestContent
 {
     /// <param name="supply">Adds the supply sled, which makes kit bins limited (stocked once per shift from the order plan).</param>
-    public static GameContent Create(List<ChildLetter>? letters = null, Tuning? tuning = null, bool supply = false) =>
+    /// <param name="clock">Adds the punch clock by the door, where the elf can end the shift early.</param>
+    public static GameContent Create(List<ChildLetter>? letters = null, Tuning? tuning = null, bool supply = false, bool clock = false) =>
         ContentLoader.Build(
             tuning ?? new Tuning(),
             [
@@ -29,6 +30,7 @@ public static class TestContent
                 Station("shipping", StationType.Shipping, 830, 420, 70, 60, 780, 420),
                 Station("coal", StationType.Coal, 66, 300, 24, 24, 104, 300),
                 .. (supply ? [Station("supply", StationType.Supply, 904, 280, 48, 80, 858, 280)] : Array.Empty<Station>()),
+                .. (clock ? [Station("clock", StationType.Clock, 29, 164, 18, 40, 62, 164)] : Array.Empty<Station>()),
             ],
             [
                 new SantaEvent { Id = "presentation", Type = SantaEventType.RibbonWindow, WarnAt = 55, StartAt = 60, EndAt = 90 },

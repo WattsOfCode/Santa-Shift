@@ -28,7 +28,7 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
         var toy = content.FindToy(item.ToyId);
         var color = toy != null ? Palette.Hex(toy.Color) : Palette.Wood;
 
-        if (item.Stage == ItemStage.Kit) { DrawKit(Vector3.Zero, color); return; }
+        if (item.Stage == ItemStage.Kit) { DrawKit(Vector3.Zero, item.ToyId); return; }
 
         if (item.IsCoal)
         {
@@ -115,14 +115,39 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
         Raylib.DrawModel(tool, Vector3.Zero, 1f, Color.White);
     }
 
-    public void DrawKit(Vector3 p, Color toyColor)
+    /// <summary>A kit crate in the toy's colour, with the toy's picture pasted on all four sides.</summary>
+    public void DrawKit(Vector3 p, string toyId)
     {
-        if (assets.TryGetModel(AssetLibrary.KitModel, out var model)) { Raylib.DrawModel(model, p, 1f, toyColor); return; }
+        var toy = content.FindToy(toyId);
+        var toyColor = toy != null ? Palette.Hex(toy.Color) : Palette.Wood;
         const float s = 0.42f;
-        var c = p + new Vector3(0, s / 2, 0);
-        Raylib.DrawCube(c, s, s, s, Palette.Wood);
-        Raylib.DrawCube(c, s + 0.02f, 0.12f, s + 0.02f, toyColor); // label band shows which toy
-        Raylib.DrawCubeWires(c, s, s, s, Palette.Ink);
+        if (assets.TryGetModel(AssetLibrary.KitModel, out var model)) Raylib.DrawModel(model, p, 1f, toyColor);
+        else
+        {
+            var c = p + new Vector3(0, s / 2, 0);
+            Raylib.DrawCube(c, s, s, s, Palette.Wood);
+            Raylib.DrawCube(c, s + 0.02f, 0.12f, s + 0.02f, toyColor); // label band shows which toy
+            Raylib.DrawCubeWires(c, s, s, s, Palette.Ink);
+        }
+        for (int side = 0; side < 4; side++) // over the model's front label, between the corner posts
+        {
+            float yaw = side * 90f;
+            var outward = Raymath.Vector3RotateByAxisAngle(Vector3.UnitZ, Vector3.UnitY, yaw * MathF.PI / 180f);
+            DrawPicture(toyId, p + new Vector3(0, s / 2, 0) + outward * (s / 2 + 0.028f), yaw, 0.24f);
+        }
+    }
+
+    /// <summary>
+    /// A toy's picture as a square card <paramref name="size"/> metres wide, centred at <paramref name="centre"/>, standing
+    /// upright and facing <paramref name="yawDegrees"/> (0 = +Z). Lit like everything else. Skipped if there is no picture.
+    /// </summary>
+    public void DrawPicture(string toyId, Vector3 centre, float yawDegrees, float size)
+    {
+        if (!assets.TryGetPicture(toyId, out _, out var quad)) return;
+        quad.Transform = Raymath.MatrixMultiply(
+            Raymath.MatrixMultiply(Raymath.MatrixScale(size, 1, size), Raymath.MatrixRotateX(MathF.PI / 2)),
+            Raymath.MatrixMultiply(Raymath.MatrixRotateY(yawDegrees * MathF.PI / 180f), Raymath.MatrixTranslate(centre.X, centre.Y, centre.Z)));
+        Raylib.DrawModel(quad, Vector3.Zero, 1f, Color.White);
     }
 
     private static float ToyHeight(string toyId) => toyId switch { "train" => 0.42f, "bear" => 0.55f, "robot" => 0.62f, _ => 0.4f };

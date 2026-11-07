@@ -46,6 +46,12 @@ public sealed class Simulation
     public long RemainingShiftTicks => Math.Max(0, Tuning.ShiftTicks - State.Tick);
     public int Quota => Tuning.QuotaFor(State.Mode, State.Round);
 
+    /// <summary>Santa's verdict on the shift, as a dialogue.json cue id (meaningful once the shift has ended).</summary>
+    public string ReviewCueId =>
+        State.SpiritOut ? "spirit_out"
+        : State.Delivered < Quota ? "review_miss"
+        : State.PunchedOut ? "punched_out" : "review_pass";
+
     public void Step(PlayerCommand cmd)
     {
         if (State.Phase != RunPhase.Playing) return;
@@ -58,9 +64,10 @@ public sealed class Simulation
 
         _motion.Move(State, cmd.MoveX, cmd.MoveY);
         _crafting.Update(State, cmd.IsMoving, cmd.PartKey, _pending);
-        if (cmd.IsMoving || cmd.Cancel) State.RecyclePromptOpen = false;
+        if (cmd.IsMoving || cmd.Cancel) State.RecyclePromptOpen = State.PunchPromptOpen = false;
 
         if (cmd.Interact) Interact();
+        if (State.Phase != RunPhase.Playing) return; // punched out: the shift is over
 
         _orders.Expire(State, _pending);
         State.Tick++;
@@ -80,7 +87,7 @@ public sealed class Simulation
     {
         if (State.Phase != RunPhase.Playing) return;
         CraftingSystem.CancelSilently(State, includeAssembly: false);
-        State.RecyclePromptOpen = false;
+        State.RecyclePromptOpen = State.PunchPromptOpen = false;
         State.Phase = RunPhase.Paused;
     }
 
@@ -119,6 +126,8 @@ public sealed class Simulation
         if (State.CraftingAction is { } timed)
             return timed.Type == CraftingType.Shovel ? d.Message("working_shovel") : d.Message("working_ribbon", ToyName(item));
         if (State.RecyclePromptOpen) return d.Message("prompt_recycle_confirm", ItemName(item));
+        if (State.PunchPromptOpen)
+            return State.Delivered >= Quota ? d.Message("prompt_punch_confirm") : d.Message("prompt_punch_confirm_short", State.Delivered, Quota);
         if (station == null) return null;
         bool botched = item is { Stage: ItemStage.Botched };
         if (botched && station.Type is StationType.Bench or StationType.Ribbon or StationType.Shipping)
@@ -142,6 +151,8 @@ public sealed class Simulation
                 ? d.Message("prompt_ribbon", ToyName(item))
                 : d.Message(item == null ? "ribbon_needs_toy" : item.HasRibbon ? "already_ribboned" : "assemble_first"),
             StationType.Coal => item == null ? d.Message("prompt_coal") : d.Message("hands_full"),
+            StationType.Clock => State.Delivered >= Quota ? d.Message("prompt_punch_out")
+                : d.Message("prompt_punch_out_short", State.Delivered, Quota),
             StationType.Shipping => item is { Stage: ItemStage.Assembled or ItemStage.Coal }
                 ? d.Message("prompt_ship", ItemName(item))
                 : d.Message(item == null ? "nothing_to_ship" : "assemble_first"),
@@ -194,6 +205,13 @@ public sealed class Simulation
 
             case StationType.Coal:
                 _crafting.TryShovel(State, station, _pending);
+                break;
+
+            case StationType.Clock:
+                // Punching out ends the shift at once, so it asks first (a second press confirms).
+                if (!State.PunchPromptOpen) { State.PunchPromptOpen = true; _pending.Add(new SimEvent(SimEventType.PunchPrompt)); break; }
+                State.PunchPromptOpen = false;
+                PunchOut();
                 break;
 
             case StationType.Bench or StationType.Ribbon or StationType.Shipping when State.CarriedItem is { IsSupply: true }:
@@ -271,16 +289,26 @@ public sealed class Simulation
         return State.Spirit <= 0;
     }
 
+    /// <summary>
+    /// The elf clocks off at the punch clock: the shift ends now, scored exactly as if time had run out (orders still
+    /// open count as unfinished, letters not yet written never arrive). Short of quota, that ends the run.
+    /// </summary>
+    private void PunchOut()
+    {
+        State.PunchedOut = true;
+        State.TicksLeftAtPunchOut = RemainingShiftTicks;
+        EndShift();
+    }
+
     private void EndShift(bool spiritOut = false)
     {
         State.SpiritOut = spiritOut;
         CraftingSystem.CancelSilently(State, includeAssembly: true);
-        State.RecyclePromptOpen = false;
+        State.RecyclePromptOpen = State.PunchPromptOpen = false;
         _orders.CloseUnfinished(State);
         State.Phase = RunPhase.Results;
 
-        bool passed = State.Delivered >= Quota && !spiritOut;
-        var cue = Content.Dialogue.Cue(spiritOut ? "spirit_out" : passed ? "review_pass" : "review_miss");
+        var cue = Content.Dialogue.Cue(ReviewCueId);
         _pending.Add(new SimEvent(SimEventType.ShiftEnded, cue?.Text, cue?.Santa));
     }
 

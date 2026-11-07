@@ -51,6 +51,15 @@ public sealed class RunState
     public RunModifiers Modifiers { get; init; } = RunModifiers.None;
     public bool RecyclePromptOpen { get; set; }
 
+    /// <summary>The elf has pressed use at the punch clock once: pressing again ends the shift, moving away cancels.</summary>
+    public bool PunchPromptOpen { get; set; }
+
+    /// <summary>True when the elf punched out at the clock before the shift's time was up.</summary>
+    public bool PunchedOut { get; set; }
+
+    /// <summary>Ticks left on the shift clock when the elf punched out (0 when the shift ran its course).</summary>
+    public long TicksLeftAtPunchOut { get; set; }
+
     // Kit bins
     /// <summary>True when kit bins hold limited stock (the room has a supply sled). Otherwise bins never run out.</summary>
     public bool LimitedKits { get; init; }

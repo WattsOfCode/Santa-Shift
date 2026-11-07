@@ -17,10 +17,11 @@ public static class SoundIds
     public const string ShiftEnd = "shift_end";
     public const string HammerHit = "hammer_hit";
     public const string AssemblyBotched = "assembly_botched";
+    public const string PunchClock = "punch_clock";
 
     public static readonly string[] All =
         [UiConfirm, KitPickup, AssemblyComplete, RibbonComplete, DeliverySuccess, ActionRejected, PolicyChime, OrderExpired, ShiftEnd,
-         HammerHit, AssemblyBotched];
+         HammerHit, AssemblyBotched, PunchClock];
 }
 
 /// <summary>Music tracks. Each streams Content/audio/&lt;id&gt;.mp3 (or .ogg / .wav) if that file exists, looping.</summary>

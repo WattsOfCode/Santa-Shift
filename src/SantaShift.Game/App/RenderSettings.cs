@@ -10,8 +10,6 @@ public sealed class RenderSettings
     public int InternalHeight { get; init; } = 540;
     public int WindowWidth { get; init; } = 1280;
     public int WindowHeight { get; init; } = 720;
-    public bool Vsync { get; init; } = true;
-    public int TargetFps { get; init; } = 60;
     public bool Msaa { get; init; }
 
     /// <summary>Draw the 3D picture at the window's resolution (times Settings > Resolution). Off: always internalWidth x internalHeight.</summary>

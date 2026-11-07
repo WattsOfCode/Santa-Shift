@@ -121,7 +121,36 @@ public sealed class WorkshopController : IScreen
             _debugUsePending = DebugUse; // pressed on the first step after READY
         }
         _pause.BeginReady();
+        _lastPosition = _sim.State.PlayerPosition;
+        _lastFacing = _player.FacingDegrees;
         _camera.Update(System.Numerics.Vector2.Zero, _sim.State.PlayerPosition, CurrentWork(), dt: 10);
+    }
+
+    // Where the elf was at the last simulation step, so frames drawn between steps can place it part of the way along.
+    private Point2 _lastPosition;
+    private float _lastFacing;
+
+    /// <summary>The elf's position for this frame: between its last two simulation steps (see <see cref="FrameClock"/>).</summary>
+    private Point2 DrawnPosition
+    {
+        get
+        {
+            var now = _sim.State.PlayerPosition;
+            double t = FrameClock.StepFraction;
+            return new Point2(_lastPosition.X + (now.X - _lastPosition.X) * t, _lastPosition.Y + (now.Y - _lastPosition.Y) * t);
+        }
+    }
+
+    /// <summary>The elf's heading for this frame, turned the short way round from its last step's.</summary>
+    private float DrawnFacing
+    {
+        get
+        {
+            float diff = (_player.FacingDegrees - _lastFacing) % 360f;
+            if (diff > 180f) diff -= 360f;
+            if (diff < -180f) diff += 360f;
+            return _lastFacing + diff * FrameClock.StepFraction;
+        }
     }
 
     private void DebugStartAssembly(int parts)
@@ -193,6 +222,9 @@ public sealed class WorkshopController : IScreen
 
     public void FixedUpdate()
     {
+        _lastPosition = _sim.State.PlayerPosition;
+        _lastFacing = _player.FacingDegrees;
+
         // Losing window focus pauses the shift (GDD section 11).
         if (_s.PauseOnFocusLoss && !Raylib.IsWindowFocused()) _pause.Pause();
 
@@ -201,7 +233,7 @@ public sealed class WorkshopController : IScreen
         bool cancel = false;
         // Esc is both Pause and Back: with the recycle prompt open it only closes the prompt.
         bool back = _s.Input.ConsumePressed(InputAction.Back), pause = _s.Input.ConsumePressed(InputAction.Pause);
-        if (_sim.State.RecyclePromptOpen && back) cancel = true;
+        if ((_sim.State.RecyclePromptOpen || _sim.State.PunchPromptOpen) && back) cancel = true;
         else if (pause) { _pause.Pause(); return; }
 
         var floorMove = _camera.ToFloorDirection(_s.Input.Move());
@@ -242,8 +274,9 @@ public sealed class WorkshopController : IScreen
         bool picking = _sim.State.RibbonPick != null;
         _s.Input.SetMouseCaptured(playing && !picking && Raylib.IsWindowFocused());
         _camera.Follow = _s.Settings.CameraFollow;
-        _camera.Update(_pause.Blocking || picking ? System.Numerics.Vector2.Zero : _s.Input.Look(), _sim.State.PlayerPosition,
-            CurrentWork(), Raylib.GetFrameTime(), _player.FacingDegrees);
+        _camera.Update(_pause.Blocking || picking ? System.Numerics.Vector2.Zero : _s.Input.Look(), DrawnPosition,
+            CurrentWork(), Raylib.GetFrameTime(), DrawnFacing);
+        _world.PlayerAt = DrawnPosition;
         _world.HoveredSpool = picking ? SpoolUnderPointer() : -1;
         _world.GuideTarget = _pause.Blocking ? null : TutorialGuide.Next(_sim)?.Station;
 
@@ -252,7 +285,7 @@ public sealed class WorkshopController : IScreen
     }
 
     public void DrawWorld() =>
-        _world.Draw(_sim, _player.FacingDegrees, _player.Bob, new ElfPose(_player.Walking, CurrentActivity(), _swings));
+        _world.Draw(_sim, DrawnFacing, _player.Bob, new ElfPose(_player.Walking, CurrentActivity(), _swings));
 
     public void DrawUi(UiCanvas ui)
     {
@@ -281,11 +314,12 @@ public sealed class WorkshopController : IScreen
             _s.Save.SaveBest(_s.Best);
         }
 
-        var cue = d.Cue(st.SpiritOut ? "spirit_out" : passed ? "review_pass" : "review_miss");
+        var cue = d.Cue(_sim.ReviewCueId);
         var summary = new ResultsSummary(
             _run, passed,
             Heading: passed ? d.Message("round_complete", _run.Round) : st.SpiritOut ? d.Message("spirit_out") : d.Message("game_over"),
-            ReviewLabel: d.Message(Scoring.ReviewKey(st.Delivered, _sim.Tuning)),
+            ReviewLabel: d.Message(Scoring.ReviewKey(st.Delivered, _sim.Tuning))
+                + (st.PunchedOut ? "   /   " + d.Message("punched_out_left", ClockText(st.TicksLeftAtPunchOut)) : ""),
             SantaLine: cue?.Santa ?? "",
             st.Delivered, quota, st.Missed, st.Unfinished, st.Score, st.BestStreak,
             NextQuota: passed ? _sim.Tuning.QuotaFor(_run.Mode, _run.Round + 1) : 0,
@@ -293,5 +327,12 @@ public sealed class WorkshopController : IScreen
             Unlocked: unlocked.Select(u => u.Name).ToList(), Spirit: st.Spirit);
 
         _s.Scenes.Switch(new ResultsController(_s, summary));
+    }
+
+    /// <summary>Shift-clock time as m:ss.</summary>
+    private string ClockText(long ticks)
+    {
+        long seconds = (ticks + _sim.Tuning.TicksPerSecond - 1) / _sim.Tuning.TicksPerSecond;
+        return $"{seconds / 60}:{seconds % 60:00}";
     }
 }

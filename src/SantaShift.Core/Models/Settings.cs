@@ -42,6 +42,20 @@ public sealed class Settings
     /// <summary>The guided first round: until the player has cleared a round once, every run, or never.</summary>
     public GuideMode Guide { get; set; } = GuideMode.UntilFirstRoundCleared;
 
+    /// <summary>Frame rate cap: one of <see cref="FrameRates"/>.</summary>
+    public int FrameRate { get; set; } = DefaultFrameRate;
+
+    public const int DefaultFrameRate = 120;
+
+    /// <summary>Frame rate meaning "as many as the display shows" (vertical sync, no tearing).</summary>
+    public const int MatchDisplay = -1;
+
+    /// <summary>Frame rate meaning no cap at all.</summary>
+    public const int Unlimited = 0;
+
+    /// <summary>The frame rate choices in Settings > Game, in order.</summary>
+    public static readonly int[] FrameRates = [60, 120, 144, MatchDisplay, Unlimited];
+
     /// <summary>Fixes out-of-range values from a hand-edited or old file.</summary>
     public Settings Clamp()
     {
@@ -54,6 +68,7 @@ public sealed class Settings
         MouseSensitivity = Math.Clamp(float.IsFinite(MouseSensitivity) ? MouseSensitivity : 1f, 0.25f, 3f);
         StickSensitivity = Math.Clamp(float.IsFinite(StickSensitivity) ? StickSensitivity : 1f, 0.25f, 3f);
         RenderScale = Math.Clamp(float.IsFinite(RenderScale) ? RenderScale : 1f, 0.5f, 1.5f);
+        if (!FrameRates.Contains(FrameRate)) FrameRate = DefaultFrameRate;
         Controls = (Controls ?? ControlBindings.Defaults()).Normalized();
         return this;
     }

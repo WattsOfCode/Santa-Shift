@@ -14,6 +14,12 @@ public interface IAssetLibrary : IDisposable
 
     /// <summary>The animations stored in a model file (for the elf: Idle, Walk, Work). Empty if it has none.</summary>
     IReadOnlyList<ModelAnimation> Animations(string fileName);
+
+    /// <summary>
+    /// A painted picture (a toy's, by toy id) and the lit square it is drawn on: 1 x 1 m, lying flat facing up, already
+    /// wearing the picture. False when there is no such picture.
+    /// </summary>
+    bool TryGetPicture(string? id, out Texture2D picture, out Model quad);
 }
 
 public sealed class AssetLibrary : IAssetLibrary
@@ -32,12 +38,42 @@ public sealed class AssetLibrary : IAssetLibrary
     private readonly string _modelDirectory;
     private readonly Dictionary<string, Model> _models = new();
     private readonly Dictionary<string, (nint Pointer, ModelAnimation[] List)> _animations = new();
+    private readonly Dictionary<string, Texture2D> _pictures = new();
+    private Model _quad;
+    private bool _hasQuad;
+    private Action<Model>? _prepare;
 
     public AssetLibrary(string modelDirectory) => _modelDirectory = modelDirectory;
+
+    /// <summary>Keeps a painted picture (the library unloads it). Pictures are drawn on a shared, lit square.</summary>
+    public void AddPicture(string id, Texture2D picture)
+    {
+        if (!_hasQuad)
+        {
+            _quad = Raylib.LoadModelFromMesh(Raylib.GenMeshPlane(1, 1, 1, 1));
+            _prepare?.Invoke(_quad);
+            _hasQuad = true;
+        }
+        if (_pictures.Remove(id, out var old)) Raylib.UnloadTexture(old);
+        _pictures[id] = picture;
+    }
+
+    public unsafe bool TryGetPicture(string? id, out Texture2D picture, out Model quad)
+    {
+        quad = _quad;
+        if (id != null && _hasQuad && _pictures.TryGetValue(id, out picture))
+        {
+            _quad.Materials[0].Maps[(int)MaterialMapIndex.Albedo].Texture = picture;
+            return true;
+        }
+        picture = default;
+        return false;
+    }
 
     /// <summary>Loads every model the content mentions, once, at startup (no loading during play).</summary>
     public unsafe void Preload(GameContent content, Action<Model>? prepare = null)
     {
+        _prepare = prepare;
         var names = new HashSet<string> { ElfModel, KitModel, RibbonModel, RoomModel, HammerModel, CoalModel, ShovelModel, SupplyCrateModel, SpoolModel, GuideArrowModel };
         foreach (var toy in content.Toys)
         {
@@ -93,5 +129,14 @@ public sealed class AssetLibrary : IAssetLibrary
         _animations.Clear();
         foreach (var model in _models.Values) Raylib.UnloadModel(model);
         _models.Clear();
+        foreach (var picture in _pictures.Values) Raylib.UnloadTexture(picture);
+        _pictures.Clear();
+        if (_hasQuad)
+        {
+            // The pictures are unloaded already: leave Raylib's default texture for the model to (not) unload.
+            _quad.Materials[0].Maps[(int)MaterialMapIndex.Albedo].Texture = new Texture2D { Id = Rlgl.GetTextureIdDefault() };
+            Raylib.UnloadModel(_quad);
+            _hasQuad = false;
+        }
     }
 }

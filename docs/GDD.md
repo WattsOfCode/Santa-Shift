@@ -96,14 +96,14 @@ No cutscenes or branching conversations.
 | Title, controls, start, pause, settings, results, restart | Built |
 | Credits screen | **Not built** (credits are only in README) |
 | How to Play | Replaced by the guided first round plus controls on the pause screen |
-| One traversable workshop, one elf, functional fixtures | Built: 9 fixtures (3 kit bins, bench, ribbon, shipping, recycling, coal scuttle, supply sled) |
+| One traversable workshop, one elf, functional fixtures | Built: 10 fixtures (3 kit bins, bench, ribbon, shipping, recycling, coal scuttle, supply sled, punch clock) and a door (solid, for later use) |
 | Three toy kits and assembled forms | Built: train, bear, robot (plus part models and botched forms) |
 | Carry one item; bench; ribbon; delivery; recycling | Built |
 | Up to three visible orders, deadlines, five-minute clock | Built |
 | Two rule-changing event types (ribbon window, rush) | Built |
 | Guided practice | Built: the first six orders of round 1 are a guided lesson |
 | Keyboard operation, readable labels, audio sliders, reduced motion, relaxed mode | Built (plus controller and rebinding) |
-| Seven essential sound effects | **Not built:** the game triggers 11 effects but no sound files exist yet (Section 17) |
+| Seven essential sound effects | **Not built:** the game triggers 12 effects but no sound files exist yet (Section 17) |
 | Music | Built: two tracks by blueeyedmonkey (license to confirm) |
 | Release build, public source, instructions, credits, tested jam submission | **Not built:** packaging not set up (Section 27) |
 
@@ -112,7 +112,8 @@ No cutscenes or branching conversations.
 Recorded in the decision log: 3D Blender models, third-person camera, rounds with game over, the bench minigame with
 toy parts and botched toys, the naughty and nice list with coal, limited kit stock with a supply sled, ribbon colours,
 perks between rounds, the Christmas Spirit meter, unlocks across runs, controller support and full rebinding, guide
-arrows. These replace the original "optional after release" list.
+arrows, the punch clock (end a shift early), toy pictures on kit crates and bins, and a 120 fps frame-rate setting.
+These replace the original "optional after release" list.
 
 ### Outside the jam scope
 
@@ -129,7 +130,8 @@ score and feedback → choose the next order.
 
 Variants: a **naughty** child's order wants a lump of coal (shovel it at the fireplace, ship it). A **botched** toy goes
 to the recycling barrel. An **empty kit bin** (the shift's kits were wasted, or the lesson's planned shortfall) needs a
-supply crate from the sled.
+supply crate from the sled. With the quota met, the elf can **punch out** at the clock by the door and end the shift
+early (Section 12).
 
 Example: a card shows a train, a gold ribbon badge and 65 seconds. The elf takes a train kit and hammers on the wheels,
 boiler and cab on the keys shown. At shipping, an early attempt explains "Needs a gold ribbon" without consuming the toy.
@@ -167,6 +169,10 @@ sprinting. A full hand at a bin gives "Hands full".
 Recycling: the first press opens "Recycle carried item?"; Interact again confirms, Esc or moving cancels. Confirming
 clears the item with no score loss. Empty-handed: "Nothing to recycle".
 
+Punch clock: the same two-press confirmation. The prompt says whether the quota is met ("Punch out early (quota met)")
+or not ("Punch out early (4 of 9 delivered)"); short of quota, the question warns that punching out ends the run. Esc,
+moving or pausing cancels. Hands may be full; the item is simply left behind.
+
 ---
 
 ## 8 Items and crafting
@@ -187,6 +193,11 @@ and every botched or scrapped kit leaves that bin one short. Each shift (round) 
 carried over. The label shows how many are left and turns red when the bin is empty and a live order needs that toy.
 Slow shifts that skip spawn attempts end with kits left over, never short. Without a sled in `stations.json`, bins never
 run out.
+
+**Toy pictures.** Every kit crate (on four sides) and every bin's sign board shows its toy's picture: the order-card
+silhouette on a white card framed in the toy's colour. They are painted when the game starts from the same icons the
+cards use, so a toy added to `toys.json` gets its picture without an image file. Crates are also tinted the toy's colour,
+so shape and colour both say which kit it is.
 
 **Assembly bench (minigame).** Interact with a kit to start. The camera moves in over the elf's shoulder and the three
 parts are shown in order, each on a key. Hammer them on in that order before the time limit runs out.
@@ -346,6 +357,12 @@ Santa to offer, hat colours, and a Head Start perk before round 1 (`unlocks.json
 under 9 "Needs more cocoa", 9 to 11 "Shift survivor", 12 or more "Workshop legend". Santa's line never contradicts the
 counts.
 
+**Punching out.** At any time the elf can punch out at the punch clock (two presses). The shift ends there and is scored
+exactly as if time had run out: live orders close as unfinished, letters not yet written never arrive, and the quota
+decides the round. With the quota met, Santa signs off on it ("Clocking off early? Quota's met, so... fine.") and the
+review notes the time left. There is no early-finish bonus yet; it trades a chance at more points for a safe pass
+(**proposed:** a small bonus per 10 s saved, if playtests show nobody uses it).
+
 **Relaxed mode:** same schedule, deadlines ×1.5, quota 6, a gentler bench, its own personal best. Never ranked or shamed.
 
 **Tuning note:** in standard mode, with no deliveries every order expires before the shift ends; "unfinished" only
@@ -367,10 +384,15 @@ The playable floor is x 20 to 940, y 120 to 480.
 | Shipping | (780, 420) |
 | Coal scuttle (fireplace hearth, left wall) | (104, 300) |
 | Supply sled (right wall) | (858, 280) |
+| Punch clock (left wall, back corner, beside the door) | (62, 164) |
+
+The **workshop door** is on the back wall in the left corner (x −9.9 m), beside the punch clock. For now it is a solid
+fixture (a prop with a collider), not a station: it can't be used. It is placed so a later update can make it open (for
+example a delivery from outside, or a new room).
 
 The elf starts at (470, 410), moves at 200 px/s with a 22 × 18 collider, and collides with static boxes only. The room
-is a Blender log cabin (fireplace, tree, windows, shelves, NPC elves at their own benches); decoration never hides a
-label or adds an invisible collider. Target collect-build-deliver cycle: 10 to 16 s; measure before changing order
+is a Blender log cabin (fireplace, tree, windows, shelves, NPC elves at their own benches, the door); decoration never
+hides a label or adds an invisible collider. Target collect-build-deliver cycle: 10 to 16 s; measure before changing order
 volume.
 
 ---
@@ -388,8 +410,9 @@ volume.
 - **Perk pick:** between rounds, choose one of three or four cards.
 - **Results:** performance, Santa's review, unlocks earned, Play again, Title.
 - **Settings** (from title and pause): Sound (master, music, effects, mute); Controls (rebind keys and buttons); Game
-  (reduced motion, mouse and stick speed, camera follow, smooth edges, 3D resolution, tutorial guide). Volume and
-  reduced motion apply at once; mode never changes an active run.
+  (reduced motion, mouse and stick speed, camera follow, smooth edges, 3D resolution, tutorial guide, frame rate: 60,
+  120 (default), 144, match display (VSync) or unlimited). Volume, reduced motion and frame rate apply at once; mode
+  never changes an active run.
 - **Credits:** **(to build)** a screen reachable from the title and results listing code, music and tools.
 
 ---
@@ -411,6 +434,7 @@ companies, no required profanity.
 | quota_met | Excellent. I shall mention my leadership in the newsletter. | Quota reached. Keep going for a higher score. |
 | review_pass | Another successful Christmas. My system works beautifully. | Shift complete. |
 | review_miss | Let us call this a development opportunity. | Quota missed. Try another shift. |
+| punched_out | Clocking off early? Quota's met, so... fine. I'll note your enthusiasm. | Punched out early. |
 | naughty_order | (naughty-list order line) | Coal order. |
 | spirit_out | (Christmas Spirit ran out) | The shift ends. |
 
@@ -428,6 +452,9 @@ any missing model falls back to a grey-box shape.
 
 - **Lighting:** up to 16 point lights from Blender (quality high/medium/low), tone mapping, fog, vignette, FXAA, glow
   halos (tree bulbs, the star) and window snow. Reduced motion stills the flicker, twinkle and snow.
+- **Type:** one clear sans-serif for all UI text, loaded as an outline font with mipmaps so it stays sharp at any window
+  size (Windows Bahnschrift; Segoe UI Bold or Arial Bold if missing; `Content/fonts/ui.ttf` overrides it). Key labels
+  sit on their own high-contrast chips (gold on ink at the bench, ink on gold over the ribbon spools).
 - **Palette** (UI and badges): snow #F4F0DC, ink #202934, pine #225E4C, berry #B94146, gold #E8BB57, wood #8C6043,
   ice #8EC9CF. Colour reinforces, never carries meaning alone: every requirement also has a shape, icon or label.
 - **Characters:** an animated elf (idle, walk, work, hammer, carry) with selectable hat colours; Santa as a HUD portrait.
@@ -470,6 +497,7 @@ with a crossfade. **License terms to confirm before release.**
 | `policy_chime` | Office-intercom ding-dong on bells | 0.3 to 0.6 s | Wired |
 | `clock_tick` | Quiet tick each second of the last 10 | 0.05 s | To wire |
 | `shift_end` | Workshop whistle | 0.5 to 1.0 s | Wired |
+| `punch_clock` | Time-clock "ka-chunk" with a little bell | 0.3 s | Wired |
 | `round_clear` | Short jingle-bell fanfare | 1.0 s | To wire |
 | `run_over` | Deflating slide-whistle | 0.8 s | To wire |
 | `perk_pick` | Card flip and a warm chime | 0.3 s | To wire |
@@ -479,7 +507,7 @@ with a crossfade. **License terms to confirm before release.**
 | `footstep` | Soft boot on wood planks, 3 or 4 variants | 0.08 s | To wire |
 | `fire_loop` | Fireplace crackle, quiet, looping by the hearth | 4 to 8 s loop | To wire |
 
-**Priority:** the 11 wired effects first (they need only files), then round_clear, run_over, coal_shovel, recycle and
+**Priority:** the 12 wired effects first (they need only files), then round_clear, run_over, coal_shovel, recycle and
 order_new, then the rest.
 
 **Tools:** jsfxr (save its parameters next to each export) or another free synthesiser; Audacity for trimming. Record
@@ -497,7 +525,7 @@ src/SantaShift.Core/    Models, Rules (Simulation, OrderSystem, CraftingSystem, 
                         FloorPath, PlayerMotion), Content (JSON loading and validation), Persistence. No Raylib.
 src/SantaShift.Game/    App (window, fixed-step loop, screens), Controllers, Views/World (3D, lighting, effects),
                         Views/UI (HUD, menus), Services (input, audio, assets), Content/data|models|audio
-tests/SantaShift.Tests/ Rule, content and persistence tests (179 as of this version)
+tests/SantaShift.Tests/ Rule, content and persistence tests (191 as of this version)
 tools/blender/          Model generators and the export tool with rule checks
 source-assets/blender/  .blend sources (not shipped)
 docs/                   GDD, decision log, Blender export guide, playtests
@@ -506,8 +534,15 @@ docs/                   GDD, decision log, Blender export guide, playtests
 A shipment changes run state once and emits a `SimEvent`; HUD, sound and particles respond without changing the score.
 Static box collisions only, no physics engine. Everything is bundled locally: no internet, API key or login at runtime.
 
-Commands: `dotnet build`, `dotnet run --project src/SantaShift.Game`, `dotnet test`. Release: `dotnet publish`
-(Section 27, **not set up**). Debug flags: `--profile`, `--guide`, `--perks`, `--unlocks`, `--settings N` and others.
+**Frame loop.** The rules step at a fixed 60 Hz; the game draws at the player's frame rate (120 by default). Frames drawn
+between two steps place the elf and camera part of the way from the last step to the current one (`FrameClock`), so
+motion stays smooth at any rate without changing the rules. `FramePacer` holds the cap to the frame (Raylib's own
+limiter oversleeps to 118 or 119).
+
+Commands: `dotnet build`, `dotnet run --project src/SantaShift.Game`, `dotnet test`, or double-click
+`Play Santa Shift.cmd` (builds Release and starts the game). Release: `dotnet publish` (Section 27, **not set up**).
+Debug flags: `--profile` (uncapped), `--profile-capped` (frame pacing at the set rate), `--guide`, `--perks`,
+`--unlocks`, `--settings N` and others.
 
 ---
 
@@ -515,13 +550,13 @@ Commands: `dotnet build`, `dotnet run --project src/SantaShift.Game`, `dotnet te
 
 | Record | Main fields |
 |---|---|
-| RunState (one shift) | mode, round, tick, phase, carried item, crafting action, order plan, live and closed orders, delivered, missed, unfinished, score, streak, best streak, event state, Christmas Spirit, modifiers (perks), kit stock, tutorial order IDs |
+| RunState (one shift) | mode, round, tick, phase, carried item, crafting action, order plan, live and closed orders, delivered, missed, unfinished, score, streak, best streak, event state, Christmas Spirit, modifiers (perks), kit stock, tutorial order IDs, punched out (and time left) |
 | PlannedOrder | toy ID, letter, naughty (one per scheduled order, fixed when the shift starts) |
 | Item | toy ID, stage (kit, assembled, botched, coal, supply), ribbon flag, ribbon colour, revision |
 | Order | ID, toy ID, letter, naughty, requires ribbon (+ colour), rush, created tick, deadline tick, allowed duration, status |
 | CraftingAction | station, action type, item revision, start and completion ticks (bench: part sequence and progress) |
 | EventState | ribbon window end tick, pending rush, fired event IDs |
-| Settings | volumes, mute, reduced motion, preferred mode, mouse and stick speed, control bindings, camera follow, smooth edges, 3D resolution, guide mode, hat |
+| Settings | volumes, mute, reduced motion, preferred mode, mouse and stick speed, control bindings, camera follow, smooth edges, 3D resolution, guide mode, frame rate, hat |
 | PersonalBest | best score and furthest round per mode |
 | PlayerProgress | lifetime totals, earned unlocks |
 
@@ -533,9 +568,15 @@ analytics or personal data.
 
 ## 20 Performance and platform
 
-- **Target:** a stable 60 fps on an ordinary laptop. Measured on the development PC: about 1.9 ms per frame uncapped at
-  full resolution with FXAA, about 5 KB allocated per frame.
-- **Weak machines:** Settings > Game > 3D resolution, lighting quality (`render.json`) and smooth edges.
+- **Target:** a solid 120 fps (the default frame rate setting) on an ordinary laptop. Measured on the development PC
+  (GTX 1660 Ti laptop, on mains power, 1280 × 720 window at 150% 3D resolution with FXAA): 737 fps uncapped (1.4 ms
+  per frame); at the 120 cap, 120 fps with every frame within 9.1 ms. About 4.5 KB allocated per frame, no stutter
+  from garbage collection.
+- **Laptops on battery:** NVIDIA Battery Boost (and similar power savers) caps games at 30 fps on battery, whatever
+  the game asks for. Plug in, or turn Battery Boost off in the NVIDIA app, to get 120.
+- **Weak machines:** Settings > Game > 3D resolution, frame rate (60), lighting quality (`render.json`) and smooth edges.
+- **60 Hz displays:** a 120 cap on a 60 Hz screen draws twice per refresh; the picture is smoother in motion but can
+  tear. Settings > Game > Frame rate > Match display turns on VSync instead.
 - **Platform:** Windows 10/11 x64. Self-contained build so no .NET install is needed. Handle resize, minimise, focus loss
   and a missing audio device gracefully. Internal size budget: compressed download under 100 MB.
 - macOS and Linux builds are possible with Raylib but untested and not promised.
@@ -598,10 +639,10 @@ round, clear requirements, pause, results, the core sound effects, credits, the 
 
 ## 24 Test plan and playtest protocol
 
-Automated tests protect rules whose failures lose progress, create unfair results or break restart (179 tests across
+Automated tests protect rules whose failures lose progress, create unfair results or break restart (191 tests across
 items, delivery, timing, events, orders, score, storage, rounds, perks, spirit and unlocks, supply and the shift sack,
-ribbon colours, the bench, naughty and nice, the tutorial and content loading). Drawing code is not unit-tested; check it with screenshots and
-play.
+ribbon colours, the bench, naughty and nice, the tutorial, the punch clock, settings and content loading). Drawing code
+is not unit-tested; check it with screenshots and play.
 
 **Scoring examples:** first ordinary delivery with 27.5 s left of 55 = 110. Second consecutive ribbon rush delivery with
 22.5 s left of 45 = 165 (100 + 25 + 25 + 10 + 5).

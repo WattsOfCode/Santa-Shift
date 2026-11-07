@@ -24,6 +24,16 @@ public sealed class UiCanvas
         Font = font;
     }
 
+    private UiCanvas(float scale, Font font)
+    {
+        Scale = scale;
+        Offset = Vector2.Zero;
+        Font = font;
+    }
+
+    /// <summary>For painting into a square texture <paramref name="pixels"/> wide: logical coordinates 0..100 cover it.</summary>
+    public static UiCanvas ForSquare(int pixels, Font font) => new(pixels / 100f, font);
+
     /// <summary>A window pixel (e.g. the mouse) in logical UI coordinates.</summary>
     public static Vector2 FromScreen(Vector2 screen, int screenWidth, int screenHeight)
     {
@@ -90,5 +100,8 @@ public sealed class UiCanvas
         return text + "...";
     }
 
-    private static float Spacing(float size) => MathF.Max(1, size / 10);
+    /// <summary>Space between letters as a share of the text size (set by <see cref="UiFont"/> to suit the font).</summary>
+    public static float LetterSpacing { get; set; } = 0.1f;
+
+    private static float Spacing(float size) => size * LetterSpacing;
 }

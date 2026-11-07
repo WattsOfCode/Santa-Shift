@@ -1,10 +1,11 @@
-namespace SantaShift.Core.Models;
+﻿namespace SantaShift.Core.Models;
 
 /// <summary>
 /// Coal: the coal scuttle by the fireplace, where the elf grabs coal for children on the naughty list.
 /// Supply: the supply sled, where the elf takes a crate of spare kits to restock an empty kit bin.
+/// Clock: the punch clock by the door, where the elf punches its card to end the shift early.
 /// </summary>
-public enum StationType { Dispenser, Bench, Ribbon, Shipping, Recycle, Coal, Supply }
+public enum StationType { Dispenser, Bench, Ribbon, Shipping, Recycle, Coal, Supply, Clock }
 
 /// <summary>A fixture in the workshop. The layout comes from stations.json.</summary>
 public sealed class Station

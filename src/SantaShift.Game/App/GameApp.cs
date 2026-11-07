@@ -25,8 +25,9 @@ public sealed class LaunchOptions
 }
 
 /// <summary>
-/// Opens the window and runs the main loop: a fixed 60 Hz simulation, with the 3D scene drawn
-/// at a fixed internal resolution and scaled to the window, then sharp UI on top.
+/// Opens the window and runs the main loop: a fixed 60 Hz simulation, drawn at the player's frame rate (120 by default,
+/// with motion smoothed between steps, see <see cref="FrameClock"/>). The 3D scene is drawn at the window's resolution
+/// times the resolution setting, then scaled to the window, with sharp UI on top.
 /// </summary>
 public sealed class GameApp(GameContent content, LaunchOptions options)
 {
@@ -47,6 +48,19 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
         return (w, w * 9 / 16);
     }
 
+    /// <summary>
+    /// Settings > Game > Frame rate: a cap (see <see cref="FramePacer"/>), vertical sync with the display, or flat out.
+    /// Profiling runs flat out, to show the real cost of a frame (unless --profile-capped). Returns the cap to pace to.
+    /// </summary>
+    private static int ApplyFrameRate(int rate)
+    {
+        bool vsync = rate == Core.Models.Settings.MatchDisplay && !FrameProfiler.Uncapped;
+        if (vsync) Raylib.SetWindowState(ConfigFlags.VSyncHint);
+        else Raylib.ClearWindowState(ConfigFlags.VSyncHint);
+        Raylib.SetTargetFPS(0); // the pacer holds the cap; Raylib's own limiter oversleeps
+        return vsync || FrameProfiler.Uncapped ? 0 : Math.Max(0, rate);
+    }
+
     private static IScreen DebugPerkPick(GameServices services, Core.Models.GameMode mode)
     {
         var run = WorkshopController.NewRunProgress(services, mode);
@@ -63,18 +77,17 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
         var render = RenderSettings.Load(Path.Combine(contentDir, "data"));
 
         var flags = ConfigFlags.ResizableWindow;
-        if (render.Vsync && !FrameProfiler.Enabled) flags |= ConfigFlags.VSyncHint;
         if (render.Msaa) flags |= ConfigFlags.Msaa4xHint;
         Raylib.SetConfigFlags(flags);
-        Raylib.SetTraceLogLevel(TraceLogLevel.Warning);
+        Raylib.SetTraceLogLevel(FrameProfiler.Enabled ? TraceLogLevel.Info : TraceLogLevel.Warning); // profiling: show the GPU in use
         Raylib.InitWindow(render.WindowWidth, render.WindowHeight, "Santa Shift");
         Raylib.SetWindowMinSize(640, 360);
-        Raylib.SetTargetFPS(FrameProfiler.Enabled ? 0 : render.TargetFps); // profiling: run flat out to see the real cost
         Raylib.SetExitKey(KeyboardKey.Null); // Escape pauses; it must not close the game
 
         var assets = new AssetLibrary(Path.Combine(contentDir, "models"));
         var lighting = new Lighting(render.Lighting, content.Lights);
         assets.Preload(content, lighting.Apply);
+        ToyPictures.PaintAll(content, assets); // the toy pictures on kit crates and bin signs
         var audio = RaylibAudioService.Create(Path.Combine(contentDir, "audio"));
 
         var save = new SaveData(new JsonFileStore(JsonFileStore.DefaultDirectory));
@@ -104,7 +117,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
 
         var target = Raylib.LoadRenderTexture(render.InternalWidth, render.InternalHeight);
         Raylib.SetTextureFilter(target.Texture, TextureFilter.Bilinear);
-        var font = Raylib.GetFontDefault();
+        var font = UiFont.Load(contentDir);
 
         services.Scenes.Switch(
             options.StartInWorkshop ? new WorkshopController(services, WorkshopController.NewRunProgress(services, settings.PreferredMode))
@@ -114,8 +127,11 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
 
         double accumulator = 0;
         int frame = 0;
+        int frameRate = int.MinValue, cap = 0; // none applied yet
+        var pacer = new FramePacer();
         while (!Raylib.WindowShouldClose() && !services.Scenes.QuitRequested)
         {
+            if (frameRate != services.Settings.FrameRate) cap = ApplyFrameRate(frameRate = services.Settings.FrameRate);
             services.Scenes.ApplyPendingSwitch();
             var screen = services.Scenes.Current!;
 
@@ -128,6 +144,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
                     screen.FixedUpdate();
                     accumulator -= StepSeconds;
                 }
+                FrameClock.StepFraction = (float)(accumulator / StepSeconds);
                 screen.FrameUpdate();
             }
             audio.UpdateMusic(screen.Music, Raylib.GetFrameTime());
@@ -161,6 +178,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
             if (lighting.UsePost) Raylib.EndShaderMode();
             using (FrameProfiler.Time("ui")) screen.DrawUi(ui);
             using (FrameProfiler.Time("present")) Raylib.EndDrawing();
+            pacer.Wait(cap);
             FrameProfiler.EndFrame();
 
             frame++;
@@ -175,6 +193,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
 
         services.Scenes.Current?.Exit();
         Raylib.UnloadRenderTexture(target);
+        if (UiFont.IsCustom) Raylib.UnloadFont(font);
         assets.Dispose();
         lighting.Dispose();
         audio.Dispose();

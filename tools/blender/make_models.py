@@ -1037,6 +1037,92 @@ def prop_clock(c):
         cone(f"Weight.{n}", x, -0.06, 1.0, 0.035, 0.035, 0.18, "gold", c, verts=6)
 
 
+def station_clock(c):
+    """
+    The punch clock by the door, 1.0 x 0.45 (front -Y, back against the wall): a red time clock on an iron post, with a
+    clock face, the elf's card in the slot on top and a punch lever, between two wall racks of punch cards. The face is
+    at the elf's eye height. The elf punches its card here to end the shift early.
+    """
+    back = 0.2
+    box("Backboard", 0, back, 0.75, 1.0, 0.04, 0.95, "plank_b", c)
+    box("Backboard cap", 0, back - 0.01, 1.7, 1.04, 0.06, 0.05, "log_dark", c)
+    for side in (-1, 1):
+        x = side * 0.36
+        box(f"Rack.{side}", x, back - 0.04, 0.95, 0.22, 0.04, 0.45, "log_dark", c)
+        for n in range(4):
+            z = 1.0 + n * 0.1
+            if (n + (side > 0)) % 3 != 2:  # a few pockets are empty: those elves have clocked in
+                box(f"Card.{side}.{n}", x + 0.01 * side, back - 0.065, z - 0.04, 0.14, 0.006, 0.1, "snow", c)
+            box(f"Pocket.{side}.{n}", x, back - 0.075, z - 0.05, 0.2, 0.012, 0.05, "beam", c)
+
+    box("Foot", 0, 0.02, 0, 0.36, 0.3, 0.04, "iron", c)
+    box("Post", 0, 0.02, 0.04, 0.12, 0.12, 0.68, "iron", c)
+    box("Trim bottom", 0, 0.02, 0.7, 0.46, 0.34, 0.04, "gold", c)
+    box("Clock body", 0, 0.02, 0.72, 0.42, 0.3, 0.5, "berry", c)
+    box("Trim top", 0, 0.02, 1.22, 0.46, 0.34, 0.05, "gold", c)
+    cyl("Bezel", 0, -0.128, 1.02, 0.15, 0.012, "Y", "gold", c, verts=20)
+    cyl("Face", 0, -0.137, 1.02, 0.13, 0.012, "Y", "snow", c, verts=20)
+    for n in range(12):  # hour marks
+        a = n * TAU / 12
+        big = n % 3 == 0
+        box(f"Mark.{n}", math.sin(a) * 0.105, -0.145, 1.02 + math.cos(a) * 0.105 - 0.01, 0.012 if big else 0.007, 0.004,
+            0.02, "ink", c, rot=(0, a, 0))
+    for name, length, width, a, y in (("Hand hour", 0.065, 0.016, 2.1, -0.148), ("Hand minute", 0.095, 0.01, 0.0, -0.151)):
+        # Each hand runs out from the centre of the face (box() turns it about its own middle).
+        cx, cz = math.sin(a) * length / 2, 1.02 + math.cos(a) * length / 2
+        box(name, cx, y, cz - length / 2, width, 0.005, length, "ink", c, rot=(0, a, 0))
+    sphere("Hand pin", 0, -0.153, 1.02, 0.012, "gold", c, segments=8, rings=5)
+    box("Name plate", 0, -0.135, 0.77, 0.26, 0.012, 0.07, "gold", c)
+
+    # The elf's card, half in the slot on top, with a row of punched holes.
+    box("Card slot", 0, 0.02, 1.27, 0.2, 0.03, 0.012, "ink", c)
+    box("Punch card", 0, 0.02, 1.2, 0.15, 0.008, 0.2, "crate_light", c)
+    for n in range(4):
+        box(f"Hole.{n}", -0.045 + n * 0.03, 0.015, 1.36, 0.012, 0.004, 0.012, "ink", c)
+
+    # The punch lever on the elf's right, pulled down to stamp the time.
+    cyl("Lever pivot", 0.225, 0.02, 1.0, 0.035, 0.04, "X", "iron", c, verts=10)
+    box("Lever arm", 0.245, -0.07, 0.94, 0.025, 0.2, 0.03, "iron", c, rot=(0.45, 0, 0))
+    sphere("Lever knob", 0.245, -0.165, 0.9, 0.035, "ink", c, segments=8, rings=6)
+
+    # A sprig of holly on top.
+    for side in (-1, 1):
+        box(f"Holly leaf.{side}", -0.13 + side * 0.035, -0.08, 1.27, 0.07, 0.03, 0.012, "pine", c, rot=(0, side * 0.5, 0))
+    for n, (x, z) in enumerate(((-0.14, 1.29), (-0.12, 1.3), (-0.13, 1.315))):
+        sphere(f"Holly berry.{n}", x, -0.085, z, 0.012, "berry", c, segments=6, rings=4)
+
+
+def prop_door(c):
+    """
+    The workshop door, 1.1 x 2.1 m in a log frame: vertical planks with a Z-brace, iron strap hinges, a ring handle and a
+    wreath. Wall-mounted (origin on the wall, faces -Y) and solid. Shut for now; a later update can open it.
+    """
+    w, h = 1.1, 2.1
+    box("Door shadow", 0, -0.01, 0, w, 0.02, h, "floor_gap", c)
+    for n in range(5):
+        x = -w / 2 + w / 10 + n * w / 5
+        box(f"Plank.{n}", x, -0.045, 0.01, w / 5 - 0.012, 0.05, h - 0.02, ("plank_a", "plank_c", "plank_b")[n % 3], c)
+    for z in (0.28, 1.68):
+        box(f"Ledge.{z}", 0, -0.08, z, w - 0.08, 0.03, 0.14, "log_dark", c)
+    rise, run = 1.26, w - 0.26
+    length = math.hypot(rise, run)
+    box("Brace", 0, -0.08, 0.35 + rise / 2 - length / 2, 0.12, 0.03, length, "log_dark", c, rot=(0, math.atan2(run, rise), 0))
+    for z in (0.33, 1.73):
+        box(f"Hinge strap.{z}", -w / 2 + 0.24, -0.1, z, 0.48, 0.012, 0.045, "iron", c)
+        cyl(f"Hinge knuckle.{z}", -w / 2 + 0.02, -0.09, z + 0.022, 0.018, 0.09, "Z", "iron", c, verts=8)
+    box("Latch plate", w / 2 - 0.15, -0.098, 0.95, 0.09, 0.012, 0.16, "iron", c)
+    torus("Ring handle", w / 2 - 0.15, -0.115, 0.98, 0.05, 0.01, "iron", c, rot=(math.pi / 2, 0, 0), segments=(12, 4))
+    torus("Wreath", 0, -0.12, 1.45, 0.16, 0.05, "pine", c, rot=(math.pi / 2, 0, 0), segments=(14, 6))
+    for n in range(6):
+        a = n * TAU / 6 + 0.3
+        sphere(f"Wreath berry.{n}", math.cos(a) * 0.16, -0.17, 1.45 + math.sin(a) * 0.16, 0.022, "berry", c, segments=6, rings=4)
+    box("Wreath bow", 0, -0.16, 1.24, 0.12, 0.03, 0.08, "berry", c)
+    for side in (-1, 1):
+        box(f"Jamb.{side}", side * (w / 2 + 0.06), -0.06, 0, 0.12, 0.12, h + 0.08, "frame", c)
+    box("Lintel", 0, -0.065, h, w + 0.28, 0.13, 0.14, "frame", c)
+    box("Threshold", 0, -0.07, 0, w + 0.2, 0.14, 0.03, "log_dark", c)
+
+
 # ================================================================ catalogue
 
 MODELS = {
@@ -1061,6 +1147,8 @@ MODELS = {
     "station_ribbon": (station_ribbon, True, False),
     "station_shipping": (station_shipping, True, False),
     "station_recycle": (station_recycle, True, False),
+    "station_clock": (station_clock, True, False),
+    "prop_door": (prop_door, True, True),
     "prop_tree": (prop_tree, True, False),
     "prop_fireplace": (prop_fireplace, True, False),
     "prop_firewood": (prop_firewood, True, False),

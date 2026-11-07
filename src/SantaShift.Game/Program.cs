@@ -45,6 +45,7 @@ public static class Program
             else if (args[i] == "--list") list = true;
             else if (args[i] == "--perks") perks = true;
             else if (args[i] == "--profile") FrameProfiler.Enabled = true;
+            else if (args[i] == "--profile-capped") FrameProfiler.Enabled = FrameProfiler.KeepFrameRate = true;
             else if (args[i] == "--spool" && i + 1 < args.Length && int.TryParse(args[++i], out int spool)) Controllers.WorkshopController.DebugSpool = spool;
             else if (args[i] == "--guide") Controllers.WorkshopController.DebugGuide = true;
             else if (args[i] == "--unlocks") Controllers.TitleController.DebugUnlocks = true;

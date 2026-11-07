@@ -52,6 +52,10 @@ public sealed class InteractionController(GameContent content, IInputService inp
                     audio.Play(SoundIds.ActionRejected);
                     if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Rejected, 90);
                     break;
+                case SimEventType.PunchPrompt:
+                    audio.Play(SoundIds.PunchClock);
+                    Feedback.ShowToast(content.Dialogue.Message("punch_prompt"), ToastKind.Info, 120);
+                    break;
                 case SimEventType.Recycled:
                     if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Info, 60);
                     break;

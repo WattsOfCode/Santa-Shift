@@ -22,11 +22,12 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
     public Color? Hat { get => _figure.Hat; set => _figure.Hat = value; }
     private float? _modelTop;
 
+    /// <param name="position">Where to draw the elf (between simulation steps, for smooth motion at high frame rates).</param>
     /// <param name="facingDegrees">0 = facing +Z.</param>
     /// <param name="bob">Small vertical offset for walking/working; 0 under reduced motion. Not used when the elf is animated.</param>
-    public void Draw(RunState state, float facingDegrees, float bob, ElfPose pose)
+    public void Draw(RunState state, Point2 position, float facingDegrees, float bob, ElfPose pose)
     {
-        var p = world.ToWorld(state.PlayerPosition);
+        var p = world.ToWorld(position);
 
         Raylib.DrawCylinder(p + new Vector3(0, 0.01f, 0), 0.32f, 0.32f, 0.01f, 16, Palette.Shadow);
 

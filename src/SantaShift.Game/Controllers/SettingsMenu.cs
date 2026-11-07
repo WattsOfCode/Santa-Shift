@@ -10,7 +10,8 @@ public enum SettingsTab { Sound, Controls, Game }
 
 /// <summary>
 /// The settings screen, opened from the title or the pause menu: Sound (volumes, mute), Controls (two keys and one
-/// controller button per action, rebound by pressing them) and Game (reduced motion, look speed).
+/// controller button per action, rebound by pressing them) and Game (reduced motion, look speed, camera, picture,
+/// tutorial guide, frame rate).
 /// Works the same with keyboard or controller. Changes apply at once and are saved when it closes.
 /// </summary>
 public sealed class SettingsMenu(GameServices s)
@@ -51,7 +52,7 @@ public sealed class SettingsMenu(GameServices s)
     {
         SettingsTab.Sound => 4,
         SettingsTab.Controls => ControlBindings.Actions.Length + 1, // + reset
-        _ => 7,
+        _ => 8,
     };
 
     public void Update()
@@ -113,6 +114,14 @@ public sealed class SettingsMenu(GameServices s)
             case 6: st.RenderScale = Nudge(st.RenderScale, step * 0.1f, 0.5f, 1.5f); break;
             case 7:
                 if (step != 0 || confirm) st.Guide = (GuideMode)(((int)st.Guide + (step < 0 ? 2 : 1)) % 3);
+                break;
+            case 8:
+                if (step != 0 || confirm)
+                {
+                    var rates = Settings.FrameRates;
+                    int at = Math.Max(0, Array.IndexOf(rates, st.FrameRate));
+                    st.FrameRate = rates[(at + (step < 0 ? rates.Length - 1 : 1)) % rates.Length]; // applied by the game loop
+                }
                 break;
         }
         if (step != 0 || confirm) Beep();

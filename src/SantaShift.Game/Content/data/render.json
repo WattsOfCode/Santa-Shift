@@ -2,6 +2,7 @@
 // The 3D picture is drawn at the window's resolution times Settings > Game > 3D resolution (50-150%), never wider
 // than maxRenderWidth, then edge-smoothed (FXAA) and scaled to the window. The UI always uses the 960 x 540 canvas.
 // With followWindow false, the picture is always internalWidth x internalHeight (cost stays flat on big screens).
+// The frame rate is a player setting (Settings > Game > Frame rate, 120 by default), not set here.
 {
   "followWindow": true,
   "maxRenderWidth": 2560,
@@ -9,8 +10,6 @@
   "internalHeight": 540,
   "windowWidth": 1280,
   "windowHeight": 720,
-  "vsync": true,
-  "targetFps": 60,
   "msaa": false,
 
   // Third-person camera behind the elf. The mouse turns it; WASD moves relative to it.

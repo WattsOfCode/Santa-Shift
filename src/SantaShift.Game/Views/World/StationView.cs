@@ -7,7 +7,7 @@ using SantaShift.Game.Services;
 namespace SantaShift.Game.Views.World;
 
 /// <summary>Draws one workshop fixture: its Blender model if present, otherwise a grey-box shape.</summary>
-public sealed class StationView(GameContent content, IAssetLibrary assets, WorldSpace world, ItemView items)
+public sealed class StationView(IAssetLibrary assets, WorldSpace world, ItemView items)
 {
     public static float HeightOf(StationType type) => type switch
     {
@@ -18,6 +18,7 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
         StationType.Recycle => 0.75f,
         StationType.Coal => 0.35f,
         StationType.Supply => 1.35f, // top of the stack of crates
+        StationType.Clock => 1.27f,  // top of the clock, under the elf's card
         _ => 0.8f,
     };
 
@@ -38,15 +39,17 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
 
         if (s.Type == StationType.Dispenser && s.ToyId != null)
         {
-            var toy = content.FindToy(s.ToyId);
-            var colour = toy != null ? Palette.Hex(toy.Color) : Palette.Wood;
             int crates = Math.Clamp(stock ?? 1, 0, 3);
-            var along = Raymath.Vector3RotateByAxisAngle(Vector3.UnitX, Vector3.UnitY, (float)s.Yaw * MathF.PI / 180f);
+            float yaw = (float)s.Yaw * MathF.PI / 180f;
+            var along = Raymath.Vector3RotateByAxisAngle(Vector3.UnitX, Vector3.UnitY, yaw);
             for (int i = 0; i < crates; i++) // side by side along the bin, the middle one first
             {
                 float offset = crates == 1 ? 0 : (i - (crates - 1) / 2f) * 0.5f;
-                items.DrawKit(centre + new Vector3(0, h, 0) + along * offset, colour);
+                items.DrawKit(centre + new Vector3(0, h, 0) + along * offset, s.ToyId);
             }
+            // The toy's picture on the sign board at the front of the bin (station_bin.glb: 0.35-0.6 m up, 3.5 cm proud).
+            var front = Raymath.Vector3RotateByAxisAngle(Vector3.UnitZ, Vector3.UnitY, yaw);
+            items.DrawPicture(s.ToyId, centre + new Vector3(0, 0.475f, 0) + front * (d / 2 + 0.04f), (float)s.Yaw, 0.22f);
         }
 
         if (selected)
@@ -144,6 +147,14 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
                 Raylib.DrawCube(c + new Vector3(0, 0.55f, 0), w * 0.8f, 0.7f, d * 0.8f, Palette.WoodDark);
                 Raylib.DrawCube(c + new Vector3(0, 1.1f, 0), w * 0.5f, 0.4f, d * 0.5f, Palette.Wood);
                 break;
+            case StationType.Clock: // a red box on a post, with a white face towards the room
+            {
+                var front = Raymath.Vector3RotateByAxisAngle(Vector3.UnitZ, Vector3.UnitY, (float)s.Yaw * MathF.PI / 180f);
+                Raylib.DrawCube(c + new Vector3(0, 0.36f, 0), 0.12f, 0.72f, 0.12f, Palette.Ink);
+                Raylib.DrawCube(c + new Vector3(0, 0.97f, 0), 0.42f, 0.5f, 0.42f, Palette.Berry);
+                Raylib.DrawSphere(c + new Vector3(0, 1.02f, 0) + front * 0.2f, 0.12f, Palette.Snow);
+                break;
+            }
         }
         Raylib.DrawCubeWires(mid, w, h, d, Palette.WithAlpha(Palette.Ink, 120));
     }

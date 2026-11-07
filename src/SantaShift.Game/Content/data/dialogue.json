@@ -13,6 +13,7 @@
     "quota_met":      { "santa": "Excellent. I shall mention my leadership in the newsletter.", "text": "Quota reached. Keep going for a higher score." },
     "review_pass":    { "santa": "Another successful Christmas. My system works beautifully.", "text": "Shift complete." },
     "review_miss":    { "santa": "Let us call this a development opportunity.", "text": "Quota missed. Try another shift." },
+    "punched_out":    { "santa": "Clocking off early? Quota's met, so... fine. I'll note your enthusiasm.", "text": "Punched out early." },
     "naughty_order":  { "santa": "Ho ho... no. Coal, please. The good stuff.", "text": "" },
     "spirit_out":     { "santa": "The workshop has lost its sparkle. Christmas is... postponed.", "text": "The Christmas spirit ran out." }
   },
@@ -74,6 +75,13 @@
     "guide_restock": "Restock the empty kit bin",
     "guide_wait": "Wait for the next letter...",
     "guide_done": "Guide complete! You know the whole job now.",
+
+    "prompt_punch_out": "[use]  Punch out early (quota met)",
+    "prompt_punch_out_short": "[use]  Punch out early ({0} of {1} delivered)",
+    "prompt_punch_confirm": "Punch out and end the shift?  [use] Confirm  /  move to cancel",
+    "prompt_punch_confirm_short": "Only {0} of {1}: punching out ends the run!  [use] Confirm  /  move to cancel",
+    "punch_prompt": "Punch your card again to clock off",
+    "punched_out_left": "Punched out with {0} left",
 
     "prompt_supply": "[use]  Take a supply crate",
     "prompt_restock": "[use]  Restock {0} kits",
