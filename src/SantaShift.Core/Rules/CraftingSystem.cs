@@ -20,6 +20,7 @@ public sealed class CraftingSystem(GameContent content, Random random)
         var item = state.CarriedItem;
         if (item == null) { output.Add(Reject(d.Message("bench_needs_kit"))); return; }
         if (item.Stage == ItemStage.Botched) { output.Add(Reject(d.Message("botched_scrap_it"))); return; }
+        if (item.IsCoal) { output.Add(Reject(d.Message("coal_not_a_kit"))); return; }
         if (item.Stage != ItemStage.Kit) { output.Add(Reject(d.Message("already_assembled"))); return; }
 
         var parts = content.Toy(item.ToyId).Parts.Select(p => p.Id).ToList();
@@ -41,7 +42,7 @@ public sealed class CraftingSystem(GameContent content, Random random)
             Keys = keys,
             Order = order,
             StartTick = state.Tick,
-            DeadlineTick = state.Tick + _t.Ticks(a.TimeLimitFor(state.Mode, state.Round)),
+            DeadlineTick = state.Tick + _t.Ticks(a.TimeLimitFor(state.Mode, state.Round) + state.Modifiers.BenchSeconds),
         };
         output.Add(new SimEvent(SimEventType.AssemblyStarted, ToyId: item.ToyId));
     }
@@ -52,18 +53,32 @@ public sealed class CraftingSystem(GameContent content, Random random)
         var item = state.CarriedItem;
         if (item == null) { output.Add(Reject(d.Message("ribbon_needs_toy"))); return; }
         if (item.Stage == ItemStage.Botched) { output.Add(Reject(d.Message("botched_scrap_it"))); return; }
+        if (item.IsCoal) { output.Add(Reject(d.Message("no_ribbon_for_coal"))); return; }
         if (item.Stage != ItemStage.Assembled) { output.Add(Reject(d.Message("assemble_first"))); return; }
         if (item.HasRibbon) { output.Add(Reject(d.Message("already_ribboned"))); return; }
 
+        // With ribbon colours, the elf first picks a spool (part keys, or a click on it); otherwise tying starts now.
+        if (_t.RibbonColors.Length > 0)
+        {
+            state.RibbonPick = new RibbonPickState { StationId = station.Id, ItemRevision = item.Revision, StartTick = state.Tick };
+            output.Add(new SimEvent(SimEventType.RibbonPickStarted, ToyId: item.ToyId));
+            return;
+        }
+        StartTying(state, station.Id, item, null, output);
+    }
+
+    private void StartTying(RunState state, string stationId, Item item, string? colour, List<SimEvent> output)
+    {
         state.CraftingAction = new CraftingAction
         {
-            StationId = station.Id,
+            StationId = stationId,
             Type = CraftingType.Ribbon,
             ItemRevision = item.Revision,
             StartTick = state.Tick,
-            CompletionTick = state.Tick + _t.Ticks(_t.RibbonSeconds),
+            CompletionTick = state.Tick + _t.Ticks(_t.RibbonSeconds * state.Modifiers.RibbonTimeMultiplier),
+            RibbonColor = colour,
         };
-        output.Add(new SimEvent(SimEventType.RibbonStarted, ToyId: item.ToyId));
+        output.Add(new SimEvent(SimEventType.RibbonStarted, _t.FindRibbon(colour)?.Name, ToyId: item.ToyId));
     }
 
     /// <summary>
@@ -73,6 +88,7 @@ public sealed class CraftingSystem(GameContent content, Random random)
     public void Update(RunState state, bool moving, int partKey, List<SimEvent> output)
     {
         UpdateAssembly(state, moving, partKey, output);
+        UpdateRibbonPick(state, moving, partKey, output);
         UpdateRibbon(state, moving, output);
     }
 
@@ -115,10 +131,61 @@ public sealed class CraftingSystem(GameContent content, Random random)
         if (state.Tick >= game.DeadlineTick) Botch(state, item, d.Message("botched_too_slow"), output);
     }
 
+    /// <summary>Choosing a ribbon: part key n takes spool n and tying starts. Moving away cancels.</summary>
+    private void UpdateRibbonPick(RunState state, bool moving, int partKey, List<SimEvent> output)
+    {
+        var pick = state.RibbonPick;
+        if (pick == null) return;
+        var item = state.CarriedItem;
+        if (item == null || item.Revision != pick.ItemRevision) { state.RibbonPick = null; return; } // stale
+
+        if (moving)
+        {
+            state.RibbonPick = null;
+            output.Add(new SimEvent(SimEventType.ActionCancelled, content.Dialogue.Message("ribbon_cancelled"), ToyId: item.ToyId));
+            return;
+        }
+        if (partKey < 1 || partKey > _t.RibbonColors.Length) return;
+        state.RibbonPick = null;
+        StartTying(state, pick.StationId, item, _t.RibbonColors[partKey - 1].Id, output);
+    }
+
+    /// <summary>Starts shovelling coal at the fireplace. The coal lands in the elf's hands when the scoop finishes.</summary>
+    public void TryShovel(RunState state, Station scuttle, List<SimEvent> output)
+    {
+        if (state.CarriedItem != null) { output.Add(Reject(content.Dialogue.Message("hands_full"))); return; }
+        state.CraftingAction = new CraftingAction
+        {
+            StationId = scuttle.Id,
+            Type = CraftingType.Shovel,
+            StartTick = state.Tick,
+            CompletionTick = state.Tick + _t.Ticks(_t.ShovelSeconds * state.Modifiers.ShovelTimeMultiplier),
+        };
+        output.Add(new SimEvent(SimEventType.ShovelStarted, ToyId: Item.CoalId));
+    }
+
+    private void UpdateShovel(RunState state, bool moving, List<SimEvent> output)
+    {
+        var action = state.CraftingAction;
+        if (state.CarriedItem != null) { state.CraftingAction = null; return; } // stale
+        if (moving)
+        {
+            state.CraftingAction = null;
+            output.Add(new SimEvent(SimEventType.ActionCancelled, content.Dialogue.Message("shovel_cancelled"), ToyId: Item.CoalId));
+            return;
+        }
+        if (state.Tick < action!.CompletionTick) return;
+
+        state.CraftingAction = null;
+        state.CarriedItem = Item.Coal(state.NextId());
+        output.Add(new SimEvent(SimEventType.CoalCollected, ToyId: Item.CoalId));
+    }
+
     private void UpdateRibbon(RunState state, bool moving, List<SimEvent> output)
     {
         var action = state.CraftingAction;
         if (action == null) return;
+        if (action.Type == CraftingType.Shovel) { UpdateShovel(state, moving, output); return; }
 
         var item = state.CarriedItem;
         if (item == null || item.Revision != action.ItemRevision) { state.CraftingAction = null; return; } // stale
@@ -135,6 +202,7 @@ public sealed class CraftingSystem(GameContent content, Random random)
         state.CraftingAction = null;
         item.Revision = state.NextId();
         item.HasRibbon = true;
+        item.RibbonColor = action.RibbonColor;
         output.Add(new SimEvent(SimEventType.RibbonComplete, ToyId: item.ToyId));
     }
 
@@ -145,6 +213,7 @@ public sealed class CraftingSystem(GameContent content, Random random)
     public static void CancelSilently(RunState state, bool includeAssembly)
     {
         state.CraftingAction = null;
+        state.RibbonPick = null;
         if (!includeAssembly || state.Assembly == null) return;
         state.Assembly = null;
         if (state.CarriedItem is { Stage: ItemStage.Kit } kit) kit.PartsPlaced = 0;

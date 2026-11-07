@@ -8,16 +8,48 @@ Built in C# with .NET 10 and [Raylib-cs](https://github.com/ChrisDill/Raylib-cs)
 
 ## Controls
 
-| Key | Action |
-|---|---|
-| Mouse | Look around (the camera follows behind the elf) |
-| WASD / Arrows | Move (relative to the camera) |
-| E / Space | Collect, start building, add ribbon, ship, recycle |
-| 1 / 2 / 3 | At the bench: hammer on the part on that key. Follow the order shown; a wrong part or running out of time botches the toy (scrap it in the barrel) |
-| Esc | Pause (or cancel the recycle prompt) |
+| Keyboard | Controller | Action |
+|---|---|---|
+| Mouse | Right stick | Look around (the camera follows behind the elf) |
+| WASD / Arrows | Left stick / D-pad | Move (relative to the camera) |
+| E / Space | A | Collect, start building, add ribbon, ship, recycle |
+| 1 / 2 / 3 | X / Y / RB | At the bench: hammer on the part on that key. Follow the order shown; a wrong part or running out of time botches the toy (scrap it in the barrel) |
+| Esc | Start | Pause (Esc also cancels the recycle prompt) |
+| Arrows, Enter, Esc | D-pad, A, B | Menus |
+
+Every key and button above (except pause and the menu keys) can be changed in **Settings > Controls**, from the
+title screen or the pause menu; prompts show whatever you bound. Settings also has volumes (master, music, effects,
+mute), reduced motion and look speed for the mouse and the stick. The pause menu lists your current controls.
 
 Building gets harder each round: less time, then the parts go on in a random order, then they move to different keys.
-| Tab (title screen) | Switch Standard / Relaxed mode |
+
+Each run starts with **Santa's naughty and nice list**. A few children are naughty: their orders want a lump of coal
+instead of a toy. Shovel coal from the scuttle at the fireplace (E, hold still for a moment) and ship it like a toy.
+
+The camera swings round behind the elf once it has faced one way for 2 seconds with the mouse left alone.
+
+The elf holds whatever it carries up on its right hand, beside its head, so you can always see it from behind.
+
+**Ribbons come in colours.** A ribbon order asks for red, gold or green (shown on its card). At the ribbon station the
+camera leans in over the spools: click the one you want, or press its key (1 / 2 / 3, X / Y / RB on a controller),
+then hold still while it is tied. A toy with the wrong colour won't ship to that child. Colours are in tuning.json.
+
+**Perks between rounds.** After each round you pass, Santa offers three perk cards (four if you beat the quota by 2 or
+more) and you keep one for the rest of the run: walk faster, more time at the bench, quicker ribbons and shovelling,
+bigger supply crates, longer deadlines, more points. Each can stack a few times. They are listed in `perks.json`.
+
+**Christmas Spirit.** The star bar under the clock lasts the whole run. Deliveries raise it; missed orders and botched
+toys lower it, and it recovers a little between rounds. Keep it above 75% for JOLLY: 10% more points. If it runs out,
+the shift ends there and so does the run. Tuned in tuning.json > spirit.
+
+**Unlocks.** Lifetime totals (toys and coal delivered, furthest round, runs played) unlock more perks for Santa to
+offer, hat colours for your elf (pick one in **Unlocks** on the title screen), and a Head Start perk before round 1.
+They are listed in `unlocks.json` and saved in progress.json next to your settings.
+
+**Kit bins run out.** Santa sends one kit per toy asked for, so each bin only holds what the letters so far need
+(the label says how many are left). Botch or scrap a kit and that bin comes up short: its label turns red, and you have
+to fetch a supply crate from the **supply sled** against the right wall and carry it to the bin (E) to restock it
+(2 kits per crate, `resupplyKits` in tuning.json). Without a supply station in `stations.json`, bins never run out.
 
 ## Build and run
 
@@ -59,6 +91,10 @@ source-assets/blender/  .blend source files (not shipped)
 Everything in `src/SantaShift.Game/Content/data/` is plain JSON (comments allowed):
 
 - **letters.json**: add or remove children's letters. A letter for an unknown toy is skipped with a warning.
+- **audio/**: `music_menu.mp3` (title, list, results) and `music_workshop.mp3` (the shift) loop and crossfade; `.ogg` or
+  `.wav` work too. Volume is the Music setting (`MusicVolume`, 0.25 by default). Missing files just mean silence.
+- **perks.json**: the perks Santa offers between rounds (effect, amount, how many times each can stack).
+- **unlocks.json**: what lifetime totals unlock (a perk, a hat colour, or the head start).
 - **tuning.json**: deadlines, quotas, speeds, spawn times, score values.
 - **toys.json / stations.json**: add a toy, give it a dispenser, move fixtures.
 - **events.json / dialogue.json**: Santa's schedule and every line of text.
@@ -76,6 +112,8 @@ with the name used in `toys.json` / `stations.json` (or `elf.glb`, `kit_crate.gl
 A missing model simply shows the grey-box shape.
 
 ## Credits and licenses
+
+Music: "Toy Factory Jingle" and "Cozy Christmas Game Ambience" by **blueeyedmonkey**.
 
 See [ASSET_CREDITS.md](ASSET_CREDITS.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 The project's own code license has not been chosen yet (GDD section 26).

@@ -47,22 +47,28 @@ public sealed class CameraController
     /// With <paramref name="work"/> set (building a toy), the camera swings in over the elf's right shoulder to watch
     /// the toy at <see cref="WorkFocus.Spot"/>; mouse look pauses, and afterwards the chase view carries on from behind the elf.
     /// </summary>
-    public void Update(Vector2 mouseDelta, Point2 playerPosition, WorkFocus? work = null, float dt = 0)
+    /// <param name="facingDegrees">The elf's facing (0 = +Z), for the auto-follow: once it has faced one way for
+    /// <see cref="ChaseCameraSettings.AutoFollowSeconds"/> with the mouse left alone, the camera eases round behind it.</param>
+    public void Update(Vector2 mouseDelta, Point2 playerPosition, WorkFocus? work = null, float dt = 0, float? facingDegrees = null)
     {
         float step = _shoulder.BlendSeconds > 0 ? dt / _shoulder.BlendSeconds : 1;
         ShoulderBlend = Math.Clamp(ShoulderBlend + (work != null ? step : -step), 0, 1);
+        bool mouseMoved = mouseDelta != Vector2.Zero;
+        if (mouseMoved) _mouseMovedSinceInput = true;
 
         if (work is { } w)
         {
             // Turn the chase camera to look the way the elf is working, so leaving the close view is seamless.
             YawDegrees = MathF.Atan2(-w.Direction.X, -w.Direction.Z) * 180f / MathF.PI;
             _lastWork = w;
+            _steadyTime = 0;
         }
         else
         {
             YawDegrees -= mouseDelta.X * _cfg.MouseSensitivity;
             float dy = mouseDelta.Y * _cfg.MouseSensitivity * (_cfg.InvertY ? -1 : 1);
             PitchDegrees = Math.Clamp(PitchDegrees + dy, _cfg.MinPitchDegrees, _cfg.MaxPitchDegrees);
+            if (facingDegrees is { } f) AutoFollow(f, mouseMoved, dt);
         }
 
         var target = _world.ToWorld(playerPosition, _cfg.TargetHeight);
@@ -104,13 +110,56 @@ public sealed class CameraController
 
     private WorkFocus? _lastWork;
 
+    // Auto-follow: how long the elf has kept facing roughly one way, and which way.
+    private float _steadyTime;
+    private float _steadyFacing;
+    private const float SteadyToleranceDegrees = 12;
+
+    // Movement keys are read relative to the camera as it was when they were pressed (or when the mouse last moved),
+    // so an auto-follow swing never bends the elf's path: holding one key keeps walking the same way.
+    private Vector2 _lastInput;
+    private float _inputYaw;
+    private bool _mouseMovedSinceInput = true;
+
+    private void AutoFollow(float facing, bool mouseMoved, float dt)
+    {
+        if (_cfg.AutoFollowSeconds <= 0) return;
+        if (mouseMoved || MathF.Abs(DeltaDegrees(facing, _steadyFacing)) > SteadyToleranceDegrees)
+        {
+            _steadyFacing = facing;
+            _steadyTime = 0;
+            return;
+        }
+        _steadyTime += dt;
+        if (_steadyTime < _cfg.AutoFollowSeconds) return;
+
+        // Behind the elf: the camera looks the way it faces (camera forward = (-sin yaw, -cos yaw)).
+        float behind = facing + 180;
+        float ease = 1 - MathF.Exp(-_cfg.AutoFollowSpeed * dt);
+        YawDegrees += DeltaDegrees(behind, YawDegrees) * ease;
+    }
+
+    private static float DeltaDegrees(float to, float from)
+    {
+        float d = (to - from) % 360;
+        if (d > 180) d -= 360;
+        if (d < -180) d += 360;
+        return d;
+    }
+
     /// <summary>
     /// Turns key input (x: right, y: -1 = forward) into a direction on the floor, relative to the camera.
     /// Floor x matches world X and floor y matches world Z.
     /// </summary>
     public (double X, double Y) ToFloorDirection(Vector2 input)
     {
-        float yaw = YawDegrees * MathF.PI / 180f;
+        if (input != _lastInput || _mouseMovedSinceInput)
+        {
+            _inputYaw = YawDegrees;
+            _lastInput = input;
+            _mouseMovedSinceInput = false;
+        }
+        float yaw = _inputYaw * MathF.PI / 180f;
         var forward = new Vector2(-MathF.Sin(yaw), -MathF.Cos(yaw));
         var right = new Vector2(MathF.Cos(yaw), -MathF.Sin(yaw));
         var dir = right * input.X + forward * -input.Y;

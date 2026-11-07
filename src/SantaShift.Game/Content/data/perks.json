@@ -1,0 +1,22 @@
+// Perks Santa offers after each passed round (pick one; it lasts for the rest of the run).
+// effect: walkSpeed (+fraction), benchTime (+seconds), ribbonSpeed (time x (1 - amount)), shovelSpeed (same),
+//         supplyKits (+kits per crate), deadlines (+fraction), scoreBonus (+fraction of points).
+// maxStacks: how many times it can be picked in one run.
+{
+  "perks": [
+    { "id": "boots",     "name": "Jingle Boots",       "effect": "walkSpeed",   "amount": 0.12, "maxStacks": 3,
+      "description": "Walk 12% faster." },
+    { "id": "hammer",    "name": "Steady Hammer",      "effect": "benchTime",   "amount": 1.0,  "maxStacks": 3,
+      "description": "1 more second to build each toy." },
+    { "id": "fingers",   "name": "Nimble Fingers",     "effect": "ribbonSpeed", "amount": 0.3,  "maxStacks": 2,
+      "description": "Tie ribbons 30% faster." },
+    { "id": "shovel",    "name": "Big Shovel",         "effect": "shovelSpeed", "amount": 0.4,  "maxStacks": 2,
+      "description": "Shovel coal 40% faster." },
+    { "id": "crates",    "name": "Bigger Crates",      "effect": "supplyKits",  "amount": 1,    "maxStacks": 2,
+      "description": "Supply crates hold 1 more kit." },
+    { "id": "reindeer",  "name": "Express Reindeer",   "effect": "deadlines",   "amount": 0.1,  "maxStacks": 3,
+      "description": "Orders wait 10% longer." },
+    { "id": "favour",    "name": "Santa's Favour",     "effect": "scoreBonus",  "amount": 0.15, "maxStacks": 3,
+      "description": "15% more points for every delivery." }
+  ]
+}

@@ -13,10 +13,11 @@ namespace SantaShift.Game.Views.World;
 public sealed class ItemView(GameContent content, IAssetLibrary assets)
 {
     /// <summary>Draws an item standing on <paramref name="basePos"/>, optionally scaled (carried items are smaller).</summary>
-    public void Draw(Item item, Vector3 basePos, float scale = 1f)
+    public void Draw(Item item, Vector3 basePos, float scale = 1f, float yawDegrees = 0f)
     {
         Rlgl.PushMatrix();
         Rlgl.Translatef(basePos.X, basePos.Y, basePos.Z);
+        if (yawDegrees != 0f) Rlgl.Rotatef(yawDegrees, 0, 1, 0);
         Rlgl.Scalef(scale, scale, scale);
         DrawAtOrigin(item);
         Rlgl.PopMatrix();
@@ -28,6 +29,24 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
         var color = toy != null ? Palette.Hex(toy.Color) : Palette.Wood;
 
         if (item.Stage == ItemStage.Kit) { DrawKit(Vector3.Zero, color); return; }
+
+        if (item.IsCoal)
+        {
+            if (assets.TryGetModel(AssetLibrary.CoalModel, out var coal)) { Raylib.DrawModel(coal, Vector3.Zero, 1f, Color.White); return; }
+            var dark = new Color(38, 38, 43, 255);
+            Raylib.DrawSphere(new Vector3(-0.06f, 0.07f, 0), 0.08f, dark);
+            Raylib.DrawSphere(new Vector3(0.07f, 0.06f, 0.03f), 0.07f, dark);
+            Raylib.DrawSphere(new Vector3(0, 0.14f, -0.02f), 0.07f, dark);
+            return;
+        }
+
+        if (item.IsSupply)
+        {
+            if (assets.TryGetModel(AssetLibrary.SupplyCrateModel, out var crate)) { Raylib.DrawModel(crate, Vector3.Zero, 1f, Color.White); return; }
+            Raylib.DrawCube(new Vector3(0, 0.18f, 0), 0.44f, 0.36f, 0.38f, Palette.WoodDark);
+            Raylib.DrawCube(new Vector3(0, 0.18f, 0), 0.06f, 0.37f, 0.39f, Palette.Pine); // strap: not a toy kit
+            return;
+        }
 
         if (item.Stage == ItemStage.Botched)
         {
@@ -46,7 +65,7 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
         else
             DrawToyShape(item.ToyId, Vector3.Zero, color);
 
-        if (item.HasRibbon) DrawRibbon(new Vector3(0, ToyHeight(item.ToyId), 0));
+        if (item.HasRibbon) DrawRibbon(new Vector3(0, ToyHeight(item.ToyId), 0), RibbonTint(item.RibbonColor));
     }
 
     /// <summary>
@@ -84,6 +103,16 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
             Raymath.MatrixMultiply(Raymath.MatrixRotateZ(MathF.PI / 2), Raymath.MatrixRotateY(yawDegrees * MathF.PI / 180f)),
             Raymath.MatrixTranslate(p.X, p.Y + 0.023f, p.Z));
         Raylib.DrawModel(hammer, Vector3.Zero, 1f, Color.White);
+    }
+
+    /// <summary>A standing tool (e.g. the shovel) tipped <paramref name="tiltDegrees"/> backwards, resting on its foot at p.</summary>
+    public void DrawLeaning(string model, Vector3 p, float yawDegrees, float tiltDegrees)
+    {
+        if (!assets.TryGetModel(model, out var tool)) return;
+        tool.Transform = Raymath.MatrixMultiply(
+            Raymath.MatrixMultiply(Raymath.MatrixRotateX(-tiltDegrees * MathF.PI / 180f), Raymath.MatrixRotateY(yawDegrees * MathF.PI / 180f)),
+            Raymath.MatrixTranslate(p.X, p.Y, p.Z));
+        Raylib.DrawModel(tool, Vector3.Zero, 1f, Color.White);
     }
 
     public void DrawKit(Vector3 p, Color toyColor)
@@ -133,11 +162,28 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
         }
     }
 
-    private void DrawRibbon(Vector3 top)
+    /// <summary>The colour of a ribbon (tuning.json > ribbonColors), gold for a plain one.</summary>
+    public Color RibbonTint(string? colourId) =>
+        content.Tuning.FindRibbon(colourId) is { } r ? Palette.Hex(r.Color) : Palette.Gold;
+
+    /// <summary>A spool of ribbon lying on its side, turned to <paramref name="yawDegrees"/>, tinted its colour.</summary>
+    public void DrawSpool(Vector3 p, float yawDegrees, Color colour, float scale = 1f)
     {
-        if (assets.TryGetModel(AssetLibrary.RibbonModel, out var model)) { Raylib.DrawModel(model, top, 1f, Color.White); return; }
-        Raylib.DrawSphere(top + new Vector3(-0.06f, 0.03f, 0), 0.05f, Palette.Gold);
-        Raylib.DrawSphere(top + new Vector3(0.06f, 0.03f, 0), 0.05f, Palette.Gold);
+        if (assets.TryGetModel(AssetLibrary.SpoolModel, out var spool))
+        {
+            Raylib.DrawModelEx(spool, p, Vector3.UnitY, yawDegrees, new Vector3(scale), colour);
+            return;
+        }
+        var axis = Raymath.Vector3RotateByAxisAngle(Vector3.UnitX, Vector3.UnitY, yawDegrees * MathF.PI / 180f) * 0.045f * scale;
+        var c = p + new Vector3(0, 0.06f * scale, 0);
+        Raylib.DrawCylinderEx(c - axis, c + axis, 0.06f * scale, 0.06f * scale, 12, colour);
+    }
+
+    private void DrawRibbon(Vector3 top, Color colour)
+    {
+        if (assets.TryGetModel(AssetLibrary.RibbonModel, out var model)) { Raylib.DrawModel(model, top, 1f, colour); return; }
+        Raylib.DrawSphere(top + new Vector3(-0.06f, 0.03f, 0), 0.05f, colour);
+        Raylib.DrawSphere(top + new Vector3(0.06f, 0.03f, 0), 0.05f, colour);
         Raylib.DrawSphere(top + new Vector3(0, 0.03f, 0), 0.03f, Palette.Berry);
     }
 }

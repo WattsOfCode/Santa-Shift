@@ -15,7 +15,7 @@ public sealed class PlayerMotion(GameContent content)
         if (length == 0) return;
         if (length > 1) { moveX /= length; moveY /= length; } // same speed in every direction
 
-        double step = _t.PlayerSpeed / _t.TicksPerSecond;
+        double step = _t.PlayerSpeed * state.Modifiers.SpeedMultiplier / _t.TicksPerSecond;
         var p = state.PlayerPosition;
 
         var tryX = p with { X = p.X + moveX * step };

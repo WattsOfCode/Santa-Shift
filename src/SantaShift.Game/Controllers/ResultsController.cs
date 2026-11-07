@@ -24,8 +24,7 @@ public sealed class ResultsController(GameServices s, ResultsSummary summary) : 
             s.Audio.Play(SoundIds.UiConfirm);
             if (summary.Passed)
             {
-                run.StartNextRound();
-                s.Scenes.Switch(new WorkshopController(s, run));
+                s.Scenes.Switch(PerkPickController.After(s, run)); // pick a perk, then the next round
             }
             else
             {
@@ -34,14 +33,19 @@ public sealed class ResultsController(GameServices s, ResultsSummary summary) : 
         }
         else if (s.Input.ConsumePressed(InputAction.Back))
         {
-            if (summary.Passed) RecordEndedRun(run); // leaving a passed run still counts it
+            if (summary.Passed) // leaving a passed run still counts it
+            {
+                RecordEndedRun(run);
+                s.Progress.RecordRunLeft(s.Content.Unlocks);
+                s.SaveProgress();
+            }
             s.Scenes.Switch(new TitleController(s));
         }
     }
 
     public void DrawWorld() => _world.DrawRoom();
 
-    public void DrawUi(UiCanvas ui) => _view.Draw(ui, summary);
+    public void DrawUi(UiCanvas ui) => _view.Draw(ui, summary, s.Input);
 
     private void RecordEndedRun(RunProgress run)
     {

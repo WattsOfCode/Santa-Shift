@@ -16,6 +16,12 @@ public sealed class LaunchOptions
     public string? ScreenshotPath { get; init; }
     public int ScreenshotFrame { get; init; } = 90;
     public bool StartInWorkshop { get; init; }
+
+    /// <summary>Start on a new run's naughty and nice list.</summary>
+    public bool StartOnList { get; init; }
+
+    /// <summary>Start on the perk pick after a round passed well over quota (debug).</summary>
+    public bool StartOnPerks { get; init; }
 }
 
 /// <summary>
@@ -27,6 +33,15 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
     private const double StepSeconds = 1.0 / 60.0;
     private const double MaxCatchUpSeconds = 0.25; // after a long stall, don't burn the player's time
 
+    private static IScreen DebugPerkPick(GameServices services, Core.Models.GameMode mode)
+    {
+        var run = WorkshopController.NewRunProgress(services, mode);
+        int quota = services.Content.Tuning.QuotaFor(mode, 1);
+        run.CompleteRound(new Core.Models.RunState { Delivered = quota + 3, Score = 1500 }, quota);
+        run.AddPerk(services.Content.Perks[0]);
+        return new PerkPickController(services, run);
+    }
+
     public void Run()
     {
         string baseDir = AppContext.BaseDirectory;
@@ -34,16 +49,15 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
         var render = RenderSettings.Load(Path.Combine(contentDir, "data"));
 
         var flags = ConfigFlags.ResizableWindow;
-        if (render.Vsync) flags |= ConfigFlags.VSyncHint;
+        if (render.Vsync && !FrameProfiler.Enabled) flags |= ConfigFlags.VSyncHint;
         if (render.Msaa) flags |= ConfigFlags.Msaa4xHint;
         Raylib.SetConfigFlags(flags);
         Raylib.SetTraceLogLevel(TraceLogLevel.Warning);
         Raylib.InitWindow(render.WindowWidth, render.WindowHeight, "Santa Shift");
         Raylib.SetWindowMinSize(640, 360);
-        Raylib.SetTargetFPS(render.TargetFps);
+        Raylib.SetTargetFPS(FrameProfiler.Enabled ? 0 : render.TargetFps); // profiling: run flat out to see the real cost
         Raylib.SetExitKey(KeyboardKey.Null); // Escape pauses; it must not close the game
 
-        var input = new KeyboardInputService();
         var assets = new AssetLibrary(Path.Combine(contentDir, "models"));
         var lighting = new Lighting(render.Lighting, content.Lights);
         assets.Preload(content, lighting.Apply);
@@ -51,7 +65,10 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
 
         var save = new SaveData(new JsonFileStore(JsonFileStore.DefaultDirectory));
         var settings = save.LoadSettings();
+        var input = new PlayerInputService(settings.Controls);
+        input.UseSettings(settings);
         var best = save.LoadBest();
+        var progress = save.LoadProgress();
         if (!save.SaveSettings(settings)) save = new SaveData(new MemoryStore()); // can't write: keep playing without saves
         audio.ApplySettings(settings);
 
@@ -67,6 +84,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
             World = new WorldSpace(render, content.Tuning),
             Settings = settings,
             Best = best,
+            Progress = progress,
             PauseOnFocusLoss = options.ScreenshotPath == null,
         };
 
@@ -74,8 +92,10 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
         Raylib.SetTextureFilter(target.Texture, TextureFilter.Bilinear);
         var font = Raylib.GetFontDefault();
 
-        services.Scenes.Switch(options.StartInWorkshop
-            ? WorkshopController.NewRun(services, settings.PreferredMode)
+        services.Scenes.Switch(
+            options.StartInWorkshop ? new WorkshopController(services, WorkshopController.NewRunProgress(services, settings.PreferredMode))
+            : options.StartOnList ? WorkshopController.NewRun(services, settings.PreferredMode)
+            : options.StartOnPerks ? DebugPerkPick(services, settings.PreferredMode)
             : new TitleController(services));
 
         double accumulator = 0;
@@ -87,17 +107,24 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
 
             input.Poll();
             accumulator += Math.Min(Raylib.GetFrameTime(), MaxCatchUpSeconds);
-            while (accumulator >= StepSeconds)
+            using (FrameProfiler.Time("update"))
             {
-                screen.FixedUpdate();
-                accumulator -= StepSeconds;
+                while (accumulator >= StepSeconds)
+                {
+                    screen.FixedUpdate();
+                    accumulator -= StepSeconds;
+                }
+                screen.FrameUpdate();
             }
-            screen.FrameUpdate();
+            audio.UpdateMusic(screen.Music, Raylib.GetFrameTime());
 
             lighting.Update(Raylib.GetTime(), services.World.Camera.Position, services.World.Camera.Target, services.Settings.ReducedMotion);
-            Raylib.BeginTextureMode(target);
-            screen.DrawWorld();
-            Raylib.EndTextureMode();
+            using (FrameProfiler.Time("world"))
+            {
+                Raylib.BeginTextureMode(target);
+                screen.DrawWorld();
+                Raylib.EndTextureMode();
+            }
 
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
@@ -106,8 +133,9 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
             if (lighting.UsePost) Raylib.BeginShaderMode(lighting.Post); // vignette and colour grade
             Raylib.DrawTexturePro(target.Texture, source, ui.ScreenArea, Vector2.Zero, 0, Color.White);
             if (lighting.UsePost) Raylib.EndShaderMode();
-            screen.DrawUi(ui);
-            Raylib.EndDrawing();
+            using (FrameProfiler.Time("ui")) screen.DrawUi(ui);
+            using (FrameProfiler.Time("present")) Raylib.EndDrawing();
+            FrameProfiler.EndFrame();
 
             frame++;
             if (options.ScreenshotPath != null && frame == options.ScreenshotFrame)

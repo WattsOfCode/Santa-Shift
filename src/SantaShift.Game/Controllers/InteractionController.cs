@@ -22,7 +22,13 @@ public sealed class InteractionController(GameContent content, IInputService inp
             switch (e.Type)
             {
                 case SimEventType.Collected:
+                case SimEventType.CoalCollected:
+                case SimEventType.SupplyTaken:
                     audio.Play(SoundIds.KitPickup);
+                    break;
+                case SimEventType.Restocked:
+                    audio.Play(SoundIds.KitPickup);
+                    if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Success, 90);
                     break;
                 case SimEventType.PartAdded:
                     audio.Play(SoundIds.HammerHit);
@@ -81,6 +87,12 @@ public sealed class InteractionController(GameContent content, IInputService inp
         var order = _sim?.State.LiveOrders.FirstOrDefault(o => o.Id == orderId);
         if (order?.Letter is not { } letter) return;
         string toy = content.FindToy(order.ToyId)?.Name ?? order.ToyId;
+        if (content.Tuning.FindRibbon(order.RibbonColor) is { } ribbon) toy += $", {ribbon.Name.ToLowerInvariant()} ribbon";
         Feedback.ShowLetter($"New letter from {letter.Child}, {letter.Age} ({toy}): \"{letter.Line}\"");
+        if (order.Naughty)
+        {
+            audio.Play(SoundIds.PolicyChime);
+            Feedback.ShowSanta(content.Dialogue.Cue("naughty_order")?.Santa, content.Dialogue.Message("naughty_order", letter.Child));
+        }
     }
 }

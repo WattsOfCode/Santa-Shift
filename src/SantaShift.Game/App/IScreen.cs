@@ -21,5 +21,8 @@ public interface IScreen
     /// <summary>Draws 2D interface on top, in logical 960 x 540 coordinates.</summary>
     void DrawUi(UiCanvas ui);
 
+    /// <summary>The music track for this screen (see <see cref="Services.MusicIds"/>); null = silence. Crossfades on change.</summary>
+    string? Music => Services.MusicIds.Menu;
+
     void Exit() { }
 }

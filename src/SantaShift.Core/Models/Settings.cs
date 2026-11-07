@@ -15,6 +15,15 @@ public sealed class Settings
     public bool ReducedMotion { get; set; }
     public GameMode PreferredMode { get; set; } = GameMode.Standard;
 
+    /// <summary>Keyboard and controller bindings (Settings > Controls).</summary>
+    public ControlBindings Controls { get; set; } = ControlBindings.Defaults();
+
+    /// <summary>Multiplies the mouse look speed (render.json sets the base).</summary>
+    public float MouseSensitivity { get; set; } = 1f;
+
+    /// <summary>Multiplies how fast the controller's right stick turns the camera.</summary>
+    public float StickSensitivity { get; set; } = 1f;
+
     /// <summary>Fixes out-of-range values from a hand-edited or old file.</summary>
     public Settings Clamp()
     {
@@ -22,6 +31,9 @@ public sealed class Settings
         MusicVolume = Math.Clamp(float.IsFinite(MusicVolume) ? MusicVolume : 0.25f, 0f, 1f);
         EffectsVolume = Math.Clamp(float.IsFinite(EffectsVolume) ? EffectsVolume : 0.7f, 0f, 1f);
         if (!Enum.IsDefined(PreferredMode)) PreferredMode = GameMode.Standard;
+        MouseSensitivity = Math.Clamp(float.IsFinite(MouseSensitivity) ? MouseSensitivity : 1f, 0.25f, 3f);
+        StickSensitivity = Math.Clamp(float.IsFinite(StickSensitivity) ? StickSensitivity : 1f, 0.25f, 3f);
+        Controls = (Controls ?? ControlBindings.Defaults()).Normalized();
         return this;
     }
 }

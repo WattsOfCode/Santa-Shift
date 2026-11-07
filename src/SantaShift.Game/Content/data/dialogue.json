@@ -1,6 +1,7 @@
 // All player-facing text (GDD section 15).
 // cues: Santa's flavour line plus the plain mechanical text shown with it.
-// messages: functional text. {0}, {1} are filled in by the game (toy name, points...).
+// messages: functional text. {0}, {1} are filled in by the game (toy name, points...). [use] becomes the key or
+// controller button the player has bound to "use" (E by default).
 {
   "cues": {
     "intro":          { "santa": "Welcome aboard. We are one big festive family. Your break is next year.", "text": "Collect a train kit." },
@@ -11,17 +12,19 @@
     "final_rush":     { "santa": "One last tiny favor. It is only Christmas at stake.", "text": "The next new order will be RUSH." },
     "quota_met":      { "santa": "Excellent. I shall mention my leadership in the newsletter.", "text": "Quota reached. Keep going for a higher score." },
     "review_pass":    { "santa": "Another successful Christmas. My system works beautifully.", "text": "Shift complete." },
-    "review_miss":    { "santa": "Let us call this a development opportunity.", "text": "Quota missed. Try another shift." }
+    "review_miss":    { "santa": "Let us call this a development opportunity.", "text": "Quota missed. Try another shift." },
+    "naughty_order":  { "santa": "Ho ho... no. Coal, please. The good stuff.", "text": "" },
+    "spirit_out":     { "santa": "The workshop has lost its sparkle. Christmas is... postponed.", "text": "The Christmas spirit ran out." }
   },
   "messages": {
-    "prompt_collect": "E  Collect {0} kit",
-    "prompt_assemble": "E  Build {0}",
-    "prompt_ribbon": "E  Add ribbon to {0}",
-    "prompt_ship": "E  Ship {0}",
-    "prompt_recycle": "E  Recycle {0}",
-    "prompt_recycle_confirm": "Recycle {0}?  E Confirm  /  move to cancel",
+    "prompt_collect": "[use]  Collect {0} kit",
+    "prompt_assemble": "[use]  Build {0}",
+    "prompt_ribbon": "[use]  Add ribbon to {0}",
+    "prompt_ship": "[use]  Ship {0}",
+    "prompt_recycle": "[use]  Recycle {0}",
+    "prompt_recycle_confirm": "Recycle {0}?  [use] Confirm  /  move to cancel",
     "working_assemble": "Hammer the parts on in order  /  move to stop",
-    "prompt_scrap_botched": "E  Scrap {0}",
+    "prompt_scrap_botched": "[use]  Scrap {0}",
     "working_ribbon": "Adding ribbon to {0}...",
 
     "hands_full": "Hands full",
@@ -38,6 +41,36 @@
     "botched_wrong_part": "Wrong part ({0})! It's botched: scrap it",
     "botched_too_slow": "Too slow! It's botched: scrap it",
     "botched_scrap_it": "Botched: take it to the scrap barrel",
+
+    "prompt_coal": "[use]  Shovel coal",
+    "working_shovel": "Shovelling coal...",
+    "shovel_cancelled": "Shovelling stopped",
+    "item_coal": "Lump of coal",
+    "coal_not_a_kit": "Coal can't be built. Ship it to a naughty child",
+    "no_ribbon_for_coal": "Coal doesn't get a ribbon",
+    "coal_no_naughty": "Nobody naughty is waiting for coal",
+    "naughty_no_toy": "{0} is on the naughty list: send coal instead",
+    "coal_delivered": "Coal for {0}!  +{1}",
+    "naughty_order": "{0} is NAUGHTY: ship coal from the fireplace",
+
+    "picking_ribbon": "Pick a ribbon: click a spool or press its key  /  move to cancel",
+    "wrong_ribbon_colour": "{0} wants a {1} ribbon",
+    "ribbon_colour": "{0} ribbon",
+    "perk_title": "Santa is pleased. Pick a perk",
+    "perk_extra": "Well over quota: an extra card!",
+    "spirit_out": "Spirit ran out",
+    "spirit_jolly": "JOLLY +{0}%",
+    "unlocked": "Unlocked: {0}!",
+    "head_start": "Head start: pick a perk for round 1",
+
+    "prompt_supply": "[use]  Take a supply crate",
+    "prompt_restock": "[use]  Restock {0} kits",
+    "bin_empty": "Out of {0} kits! Fetch a supply crate from the sled",
+    "restocked": "+{1} {0} kits",
+    "supply_goes_to_bin": "Supply crates go in a kit bin",
+    "item_supply": "Supply crate",
+    "bin_stock": "{0} left",
+    "bin_stock_empty": "EMPTY",
     "ribbon_cancelled": "Ribbon cancelled",
     "order_expired": "Order expired",
     "delivered": "{0} delivered!  +{1}",
@@ -46,6 +79,7 @@
     "empty_hands": "Empty hands",
     "item_kit": "{0} kit",
     "item_ribboned": "{0} with ribbon",
+    "item_ribboned_colour": "{0} with {1} ribbon",
     "item_botched": "Botched {0}",
 
     "review_low": "Needs more cocoa",

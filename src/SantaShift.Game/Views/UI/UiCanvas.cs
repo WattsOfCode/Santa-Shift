@@ -24,6 +24,14 @@ public sealed class UiCanvas
         Font = font;
     }
 
+    /// <summary>A window pixel (e.g. the mouse) in logical UI coordinates.</summary>
+    public static Vector2 FromScreen(Vector2 screen, int screenWidth, int screenHeight)
+    {
+        float scale = MathF.Min(screenWidth / Width, screenHeight / Height);
+        var offset = new Vector2((screenWidth - Width * scale) / 2, (screenHeight - Height * scale) / 2);
+        return (screen - offset) / scale;
+    }
+
     /// <summary>The area of the real window the game picture occupies (letterboxed).</summary>
     public Rectangle ScreenArea => new(Offset.X, Offset.Y, Width * Scale, Height * Scale);
 
@@ -44,6 +52,25 @@ public sealed class UiCanvas
     public void Line(float x1, float y1, float x2, float y2, float thickness, Color c) =>
         Raylib.DrawLineEx(new Vector2(Offset.X + x1 * Scale, Offset.Y + y1 * Scale),
                           new Vector2(Offset.X + x2 * Scale, Offset.Y + y2 * Scale), thickness * Scale, c);
+
+    /// <summary>A filled, opaque triangle; the corners can be in either winding order.</summary>
+    public void Triangle(Vector2 a, Vector2 b, Vector2 c, Color color)
+    {
+        Vector2 S(Vector2 p) => new(Offset.X + p.X * Scale, Offset.Y + p.Y * Scale);
+        // Raylib draws one winding order only (counter-clockwise on screen): put the corners in that order once,
+        // rather than drawing both orders.
+        float cross = (b.X - a.X) * (c.Y - a.Y) - (b.Y - a.Y) * (c.X - a.X);
+        if (cross > 0) Raylib.DrawTriangle(S(a), S(c), S(b), color);
+        else Raylib.DrawTriangle(S(a), S(b), S(c), color);
+    }
+
+    /// <summary>Text turned by <paramref name="degrees"/> around its centre at (cx, cy).</summary>
+    public void TextRotated(string text, float cx, float cy, float size, float degrees, Color c)
+    {
+        var measured = Raylib.MeasureTextEx(Font, text, size * Scale, Spacing(size) * Scale);
+        Raylib.DrawTextPro(Font, text, new Vector2(Offset.X + cx * Scale, Offset.Y + cy * Scale), measured / 2,
+            degrees, size * Scale, Spacing(size) * Scale, c);
+    }
 
     public float MeasureText(string text, float size) => Raylib.MeasureTextEx(Font, text, size, Spacing(size)).X;
 

@@ -35,6 +35,38 @@
   "rushDeadlineSeconds": 45,
   "relaxedDeadlineMultiplier": 1.5,
 
+  // Santa's naughty and nice list: at the start of each run this many children (from letters.json) are marked naughty.
+  // Their orders want a lump of coal from the fireplace instead of their toy.
+  "naughtyPerRun": 3,
+
+  // With a supply sled in the room, each kit bin only holds the kits Santa sent for the letters so far (one per toy
+  // asked for). A botched or scrapped kit leaves a bin short: fetch a supply crate from the sled to restock it.
+  "resupplyKits": 2,
+
+  // Ribbon colours at the ribbon station (up to 9; spool n is on part key n). Ribbon orders ask for one of them.
+  // Remove them all for plain ribbons that any order accepts.
+  "ribbonColors": [
+    { "id": "red",   "name": "Red",   "color": "#C8323A" },
+    { "id": "gold",  "name": "Gold",  "color": "#E8BB57" },
+    { "id": "green", "name": "Green", "color": "#2F8A52" }
+  ],
+
+  // Perk cards offered after a passed round (perks.json), plus one more when the round beat its quota by bonusPerkMargin.
+  "perkOffers": 3,
+  "bonusPerkMargin": 2,
+
+  // The Christmas Spirit meter lasts the whole run: deliveries raise it, missed orders and botched toys lower it, and
+  // it recovers a little between rounds. At or above jollyAt deliveries earn jollyBonus more points; at 0 the shift
+  // ends there and the run is over.
+  "spirit": {
+    "enabled": true,
+    "start": 100, "max": 100,
+    "delivered": 4, "coalDelivered": 4,
+    "missed": 20, "botched": 8,
+    "betweenRounds": 15,
+    "jollyAt": 75, "jollyBonus": 0.1
+  },
+
   "score": { "base": 100, "ribbonBonus": 25, "rushBonus": 25, "timeBonusMax": 20, "streakStep": 5, "streakCap": 4 },
   "quota": 9,
   "relaxedQuota": 6,

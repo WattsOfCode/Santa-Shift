@@ -72,6 +72,25 @@ def ceiling(x0, x1, y0, y1, col):
         box(f"Beam.{n}", bx, cy, ROOM_HEIGHT - 0.3, 0.25, y1 - y0 + 0.6, 0.3, "beam", col)
 
 
+# Workbenches where elves build trains, near the front wall (Blender x, y of the bench centre). Each gets an elf
+# marker on its working (-Y) side, turned to face the bench and the room.
+NPC_BENCHES = [(-4.6, -2.9), (4.0, -2.9)]
+
+
+def place_npc_benches(placer, markers):
+    """Adds the elves' workbenches (linked prop_npc_bench) and an npc_<n> marker for each elf."""
+    for n, (bx, by) in enumerate(NPC_BENCHES):
+        placer.place("prop_npc_bench", bx, by, 0)
+        bpy.ops.object.empty_add(type="SINGLE_ARROW", location=(bx - 0.15, by - 0.82, 0), rotation=(0, 0, math.pi))
+        e = bpy.context.active_object
+        e.name = f"npc_{n}"
+        e.empty_display_size = 0.4
+        e.hide_render = True
+        for c in list(e.users_collection):
+            c.objects.unlink(e)
+        markers.objects.link(e)
+
+
 class PropPlacer:
     """Links prop_<name>.blend collections from the room's folder and places instances of them."""
 
@@ -147,6 +166,7 @@ def main():
     p.place("prop_shelf", -7.5, y1, 0)
     p.place("prop_shelf", 4.5, y1, 0)
     p.place("prop_clock", x1, 1.5, -90)
+    place_npc_benches(p, markers)
 
     # Layout markers from the current stations.json.
     box("floor_bounds", cx, cy, 0, x1 - x0, y1 - y0, 0.05, None, markers)

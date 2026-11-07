@@ -23,6 +23,9 @@ public sealed class Tuning
     // Crafting (GDD section 8)
     public double RibbonSeconds { get; init; } = 1.0;
 
+    /// <summary>Time to shovel a lump of coal out of the scuttle by the fireplace.</summary>
+    public double ShovelSeconds { get; init; } = 0.8;
+
     /// <summary>The bench minigame: time limit and how the part order gets mixed up as rounds go on.</summary>
     public AssemblyTuning Assembly { get; init; } = new();
 
@@ -35,6 +38,31 @@ public sealed class Tuning
     public double RibbonDeadlineSeconds { get; init; } = 65;
     public double RushDeadlineSeconds { get; init; } = 45;
     public double RelaxedDeadlineMultiplier { get; init; } = 1.5;
+
+    /// <summary>How many children Santa puts on the naughty list at the start of each run. Their orders want coal.</summary>
+    public int NaughtyPerRun { get; init; } = 3;
+
+    /// <summary>
+    /// Kits in one supply crate. With a supply sled in the room, each kit bin only holds the kits Santa sent for the
+    /// letters so far (one per toy asked for); a wasted kit means fetching a crate from the sled.
+    /// </summary>
+    public int ResupplyKits { get; init; } = 2;
+
+    /// <summary>
+    /// Ribbon colours at the ribbon station. When there are any, ribbon orders ask for one of them and the elf picks a
+    /// spool before tying (spool n on part key n). Empty: any ribbon will do and tying starts at once.
+    /// </summary>
+    public RibbonColor[] RibbonColors { get; init; } = [];
+
+    /// <summary>Perk cards Santa offers after a passed round; one more after a round well over quota.</summary>
+    public int PerkOffers { get; init; } = 3;
+
+    /// <summary>Delivering this many over the quota earns an extra perk card to choose from.</summary>
+    public int BonusPerkMargin { get; init; } = 2;
+
+    public SpiritTuning Spirit { get; init; } = new();
+
+    public RibbonColor? FindRibbon(string? id) => id == null ? null : RibbonColors.FirstOrDefault(r => r.Id == id);
 
     // Scoring and review (GDD section 12)
     public ScoreTuning Score { get; init; } = new();
@@ -132,4 +160,27 @@ public sealed class ScoreTuning
     public int TimeBonusMax { get; init; } = 20;
     public int StreakStep { get; init; } = 5;
     public int StreakCap { get; init; } = 4;
+}
+
+/// <summary>
+/// The Christmas Spirit meter: it lasts the whole run. Deliveries raise it, missed orders and botched toys lower it.
+/// High spirit ("jolly") earns bonus points; if it runs out, the shift ends there as a failure.
+/// Off unless tuning.json turns it on, so rule tests that don't mention it are unaffected.
+/// </summary>
+public sealed class SpiritTuning
+{
+    public bool Enabled { get; init; }
+    public double Start { get; init; } = 100;
+    public double Max { get; init; } = 100;
+    public double Delivered { get; init; } = 4;
+    public double CoalDelivered { get; init; } = 4;
+    public double Missed { get; init; } = 20;
+    public double Botched { get; init; } = 8;
+
+    /// <summary>Spirit regained between rounds (a night's sleep).</summary>
+    public double BetweenRounds { get; init; } = 15;
+
+    /// <summary>At or above this, deliveries earn <see cref="JollyBonus"/> more points.</summary>
+    public double JollyAt { get; init; } = 75;
+    public double JollyBonus { get; init; } = 0.1;
 }

@@ -34,27 +34,47 @@ to a grey-box shape (or skips a decoration), so nothing ever breaks.
 ## Elf animation
 
 11. One armature. Actions named exactly **`Idle`** (loops), **`Walk`** (loops), **`Work`** (one hammer swing; its
-    first and last frame are the "ready" pose held between swings). Push each to an NLA track so it is exported
-    (`make_models.py` does this). The export warns if one is missing.
-12. The right hand bone must be named **`hand.R`**, with its head at the wrist: the game puts the hammer in that hand,
-    4 cm below the wrist, pointing forward when the arm hangs down. Keep the elf facing -Y.
+    first and last frame are the "ready" pose held between swings), **`Shovel`** (one scoop of coal, 0.8 s, played
+    from the start each time) and **`Carry`** (loops; only the right arm counts, see below). Push each to an NLA
+    track so it is exported (`make_models.py` does this). The export warns if Idle, Walk or Work is missing.
+12. The right hand bone must be named **`hand.R`**, with its head at the wrist: the game puts the tools in that hand,
+    4 cm below the wrist. With the arm hanging down, the hammer points forward (striking face down) and the shovel
+    points forward and down. Keep the elf facing -Y.
+13. The hammer arm swings out to the side (upper arm turned 45 degrees on Y in Work), so the hammer comes down beside the
+    head, where the over-the-shoulder camera sees it. The game builds toys a little to the elf's right for the same reason.
+14. **`Carry`** holds an item up on the right hand beside the head (held in front, the big head hides it from the camera
+    behind). The game lays only the right arm (`upper_arm.R`, `forearm.R`, `hand.R`) over Walk or Idle, kept in place
+    relative to `chest`, so the legs keep walking. The item stands upright on the wrist (the head of `hand.R`).
 
 The generated elf has 15 bones; each part follows one bone fully (rigid skinning), which is cheap and suits the
-low-poly look. The game crossfades between the actions, plays one Work swing per number key pressed at the bench, and
-plays them at their Blender length (it samples them at 60 frames per second). Without an armature the elf still
-works: it is drawn in its rest pose and bobs while walking.
+low-poly look. Skinning runs on the GPU: the game works out the 15 bone matrices and the lit shader moves the vertices,
+so any number of elves cost almost nothing on the CPU. The game crossfades between the actions, plays one Work swing per
+number key pressed at the bench, and plays them at their Blender length (it samples them at 60 frames per second). Without an armature the elf still
+works: it is drawn in its rest pose and bobs while walking. The workshop elves at their benches use the same model
+and actions.
+
+## Animated props
+
+A prop whose `.glb` has an animation loops its first one in the game. The fireplace does this: its flames each follow
+a bone, and its **`Burn`** action stretches, squashes and sways them on different rhythms over 2 s. Everything else in
+the fireplace follows a still `root` bone. Use the same trick for any prop (a clock pendulum, a turning wheel).
 
 ## The models
 
 | File | What it is | Notes |
 |---|---|---|
-| `elf` | Player character | Rigged, with Idle / Walk / Work actions |
+| `elf` | Player character (and the workshop elves) | Rigged, with Idle / Walk / Work / Shovel / Carry actions |
 | `hammer` | The elf's hammer | Stands on its handle; grip 6 cm up the handle, striking face towards -Y. Lies on the bench when not in use |
 | `toy_train`, `toy_bear`, `toy_robot` | Finished toys | Names set in `toys.json` |
 | `toy_<toy>_<part>` | One part of a toy (9 files) | Placed where it sits on the finished toy, so parts stack up on the bench. May float (scene property `toy_part`) |
 | `toy_<toy>_botched` | A toy built wrong | The same parts jumbled; it can only be scrapped |
+| `coal_lump` | Coal carried for a naughty child | About 0.25 m across |
+| `station_coal` | Coal scuttle on the fireplace hearth | 0.6 x 0.6 m; glowing `ember` lumps |
+| `station_supply` | Supply sled | 2.0 x 1.2 m (front -Y), stacked crates; stands against the right wall turned -90 |
 | `kit_crate` | Every toy kit | Light neutral wood: the game tints it with the toy's colour |
-| `ribbon_bow` | Bow on a ribboned toy | Origin is where it sits on the toy |
+| `supply_crate` | A crate of spare kits | Dark wood, green straps, gold star: never tinted, so it never looks like a kit |
+| `ribbon_bow` | Bow on a ribboned toy | Origin is where it sits on the toy. Near-white: tinted with the ribbon colour |
+| `ribbon_spool` | A spool of ribbon on the ribbon station (one per colour) | Lies on its side, 0.12 m across, near-white: tinted per colour |
 | `station_bin` | Kit bins (all three) | 2.25 x 1.0 m, rim at 0.8 m (a kit crate sits on top) |
 | `station_bench` | Assembly bench | 3.0 x 1.0 m, top at 0.55 m (elf height, for hammering) |
 | `station_ribbon` | Ribbon station | 2.5 x 1.0 m |
@@ -62,6 +82,8 @@ works: it is drawn in its rest pose and bobs while walking.
 | `station_recycle` | Scrap barrel | 1.25 x 1.25 m |
 | `prop_tree`, `prop_fireplace`, `prop_firewood`, `prop_barrels`, `prop_sled` | Furniture | Solid: the elf walks around them |
 | `prop_rug` | Braided rug | Not solid |
+| `prop_npc_bench` | A workshop elf's bench, with trains | Solid; the elf stands on the mat on its -Y side (placed with an `npc_<n>` marker) |
+| `shovel` | The elf's coal shovel | Stands on its blade; grip 0.62 m up the shaft. Leans on the scuttle when not in use |
 | `prop_window`, `prop_lantern`, `prop_wreath`, `prop_shelf`, `prop_clock` | Wall decorations | Not solid, wall-mounted |
 | `room` | Cabin shell and the layout | See below |
 
@@ -112,8 +134,8 @@ and tree each carry a **point light**, and the rest of the room falls into soft,
 - **Light settings** are custom properties on the light object: `intensity` (about 1 = lantern, 3 = fireplace),
   `radius` (metres it reaches, fading smoothly to zero), `flicker` (0 = steady, 0.35 = fire). Colour comes from the
   light's colour. Without the custom properties, Blender's Power / 50 is used as the intensity.
-- **Glowing materials:** a material with **Emission Color** set glows in the game (flames, lantern glass, window panes).
-  `make_models.py` sets this for the `flame`, `flame_core`, `lamp_glow` and `glass` materials.
+- **Glowing materials:** a material with **Emission Color** set glows in the game (flames, lantern glass, window panes, embers).
+  `make_models.py` sets this for the `flame`, `flame_core`, `lamp_glow`, `glass` and `ember` materials.
 - **Limits:** up to 16 lights are used at once (high quality); the game picks the most important ones near the camera.
   There are no shadow maps, to keep it light on weak devices. Baked ambient occlusion in textures still helps a lot.
 - **Tuning** is in `render.json` under `lighting`: quality (high 16 lights / medium 8 / low 4 with no haze or
@@ -150,8 +172,19 @@ use **File > Link**, pick `prop_<name>.blend > Collection > prop_<name>`, and re
 | `st_<id>` | box | A station's solid footprint, e.g. `st_bench`. Rotate it to turn the station's model. |
 | `ip_<id>` | empty | Where the elf stands to use that station, e.g. `ip_bench`. Keep it just outside the box. |
 | `col_<name>` | box | An extra invisible obstacle, if a prop's footprint isn't enough. |
+| `npc_<n>` | empty | A workshop elf, hammering. Its turn (Z rotation) is the way it faces; 180 faces +Y. Also a small obstacle. |
 
-`<id>` must match an id in `stations.json` (kits_train, kits_bear, kits_robot, bench, ribbon, recycle, shipping).
+To add the two elf workbenches to an existing room without rebuilding it:
+`D:\Blender\blender.cmd --background source-assets\blender\room.blend --python tools\blender\add_npc_benches.py`
+
+`<id>` must match an id in `stations.json` (kits_train, kits_bear, kits_robot, bench, ribbon, recycle, shipping, coal, supply).
+
+When a new station is added to `stations.json`, add its markers to the room without rebuilding it (your edits are kept).
+A `"yaw"` in its stations.json entry turns the `st_` box (90 or -90 for a station against a side wall):
+
+```
+D:\Blender\blender.cmd --background source-assets\blender\room.blend --python tools\blender\sync_station_markers.py -- src\SantaShift.Game\Content\data\stations.json src\SantaShift.Game\Content\data\tuning.json
+```
 
 After any change, save and run `.\tools\blender\export.ps1 room`. No code changes are needed. To start again from the
 default cabin (run `make_models.py` first if the prop files are missing):

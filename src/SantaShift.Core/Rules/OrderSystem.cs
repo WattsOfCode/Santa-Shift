@@ -27,8 +27,14 @@ public sealed class OrderSystem(GameContent content)
         bool rush = state.Events.PendingRush;
         state.Events.PendingRush = false;
 
+        var letter = NextLetter(state, toyId);
+        // A child on the naughty list gets coal instead (only if there is a coal station to get it from). Coal never
+        // needs a ribbon.
+        bool naughty = letter != null && content.HasCoal && state.NaughtyChildren.Contains(letter.Child);
+        if (naughty) ribbon = false;
+
         double seconds = rush ? _t.RushDeadlineSeconds : ribbon ? _t.RibbonDeadlineSeconds : _t.DeadlineSeconds;
-        seconds *= _t.DeadlineMultiplier(state.Mode, state.Round);
+        seconds *= _t.DeadlineMultiplier(state.Mode, state.Round) * state.Modifiers.DeadlineMultiplier;
         long allowed = _t.Ticks(seconds);
 
         var order = new Order
@@ -36,26 +42,42 @@ public sealed class OrderSystem(GameContent content)
             Id = state.NextId(),
             ToyId = toyId,
             RequiresRibbon = ribbon,
+            // Colours take turns, shifted each round so the pattern isn't the same every shift.
+            RibbonColor = ribbon && _t.RibbonColors.Length > 0
+                ? _t.RibbonColors[(state.OrdersCreated + state.Round) % _t.RibbonColors.Length].Id : null,
             IsRush = rush,
+            Naughty = naughty,
             CreatedTick = state.Tick,
             DeadlineTick = state.Tick + allowed,
             AllowedDurationTicks = allowed,
-            Letter = NextLetter(state, toyId),
+            Letter = letter,
         };
         state.OrdersCreated++;
         state.LiveOrders.Add(order);
+        // Santa sends one kit per toy asked for, so the bins hold exactly what the letters need (see Tuning.ResupplyKits).
+        if (state.LimitedKits && !naughty) state.KitStock[toyId] = state.KitStock.GetValueOrDefault(toyId) + 1;
         return order;
     }
 
-    /// <summary>The order a carried toy would go to: earliest deadline, then oldest, then smallest id.</summary>
+    /// <summary>
+    /// The order a carried item would go to: earliest deadline, then oldest, then smallest id.
+    /// Coal goes to any naughty child's order; a toy only to a nice child who asked for it.
+    /// </summary>
     public Order? FindMatch(RunState state, Item item)
     {
-        if (item.Stage != ItemStage.Assembled) return null;
+        if (item.Stage is not (ItemStage.Assembled or ItemStage.Coal)) return null;
         return state.LiveOrders
-            .Where(o => o.DeadlineTick >= state.Tick && o.ToyId == item.ToyId && (!o.RequiresRibbon || item.HasRibbon))
+            .Where(o => o.DeadlineTick >= state.Tick)
+            .Where(o => item.IsCoal
+                ? o.Naughty
+                : !o.Naughty && o.ToyId == item.ToyId && RibbonOk(o, item))
             .OrderBy(o => o.DeadlineTick).ThenBy(o => o.CreatedTick).ThenBy(o => o.Id)
             .FirstOrDefault();
     }
+
+    /// <summary>The order wants no ribbon, or the item has one (in the right colour, if a colour was asked for).</summary>
+    private static bool RibbonOk(Order o, Item item) =>
+        !o.RequiresRibbon || (item.HasRibbon && (o.RibbonColor == null || o.RibbonColor == item.RibbonColor));
 
     /// <summary>Ships the carried item. A rejection never consumes the item or changes the score.</summary>
     public void TryDeliver(RunState state, List<SimEvent> output)
@@ -69,22 +91,40 @@ public sealed class OrderSystem(GameContent content)
         var order = FindMatch(state, item);
         if (order == null)
         {
-            bool needsRibbon = state.LiveOrders.Any(o => o.ToyId == item.ToyId && o.RequiresRibbon && !item.HasRibbon);
+            if (item.IsCoal) { output.Add(Reject(d.Message("coal_no_naughty"), item.ToyId)); return; }
+            var naughtyAsker = state.LiveOrders.FirstOrDefault(o => o.Naughty && o.ToyId == item.ToyId);
+            if (naughtyAsker != null && !state.LiveOrders.Any(o => !o.Naughty && o.ToyId == item.ToyId))
+            {
+                output.Add(Reject(d.Message("naughty_no_toy", naughtyAsker.Letter?.Child ?? "That child"), item.ToyId));
+                return;
+            }
+            var wrongColour = state.LiveOrders.FirstOrDefault(o => !o.Naughty && o.ToyId == item.ToyId && o.RequiresRibbon
+                && item.HasRibbon && o.RibbonColor != null && o.RibbonColor != item.RibbonColor);
+            if (wrongColour != null)
+            {
+                output.Add(Reject(d.Message("wrong_ribbon_colour", wrongColour.Letter?.Child ?? "That child",
+                    _t.FindRibbon(wrongColour.RibbonColor)?.Name ?? wrongColour.RibbonColor!), item.ToyId));
+                return;
+            }
+            bool needsRibbon = state.LiveOrders.Any(o => !o.Naughty && o.ToyId == item.ToyId && o.RequiresRibbon && !item.HasRibbon);
             output.Add(Reject(d.Message(needsRibbon ? "ribbon_needed" : "no_matching_order"), item.ToyId));
             return;
         }
 
         state.Streak++;
         state.BestStreak = Math.Max(state.BestStreak, state.Streak);
-        int points = Scoring.Points(order, state.Tick, state.Streak, _t.Score);
+        double jolly = _t.Spirit.Enabled && state.Spirit >= _t.Spirit.JollyAt ? 1 + _t.Spirit.JollyBonus : 1;
+        int points = (int)Math.Round(Scoring.Points(order, state.Tick, state.Streak, _t.Score) * state.Modifiers.ScoreMultiplier * jolly);
         state.Score += points;
         state.Delivered++;
+        if (item.IsCoal) state.CoalDelivered++;
         Close(state, order, OrderStatus.Delivered);
         state.CarriedItem = null;
 
-        var toy = content.Toy(item.ToyId);
-        output.Add(new SimEvent(SimEventType.Delivered, d.Message("delivered", toy.Name, points),
-            ToyId: item.ToyId, OrderId: order.Id, Points: points));
+        string text = item.IsCoal
+            ? d.Message("coal_delivered", order.Letter?.Child ?? "", points)
+            : d.Message("delivered", content.Toy(item.ToyId).Name, points);
+        output.Add(new SimEvent(SimEventType.Delivered, text, ToyId: item.ToyId, OrderId: order.Id, Points: points));
 
         if (!state.QuotaMetAnnounced && state.Delivered >= _t.QuotaFor(state.Mode, state.Round))
         {

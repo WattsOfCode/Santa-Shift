@@ -10,7 +10,8 @@ namespace SantaShift.Tests;
 /// </summary>
 public static class TestContent
 {
-    public static GameContent Create(List<ChildLetter>? letters = null, Tuning? tuning = null) =>
+    /// <param name="supply">Adds the supply sled, which makes kit bins limited (one kit per toy asked for).</param>
+    public static GameContent Create(List<ChildLetter>? letters = null, Tuning? tuning = null, bool supply = false) =>
         ContentLoader.Build(
             tuning ?? new Tuning(),
             [
@@ -26,6 +27,8 @@ public static class TestContent
                 Station("ribbon", StationType.Ribbon, 610, 255, 100, 40, 610, 285),
                 Station("recycle", StationType.Recycle, 120, 420, 50, 50, 165, 420),
                 Station("shipping", StationType.Shipping, 830, 420, 70, 60, 780, 420),
+                Station("coal", StationType.Coal, 66, 300, 24, 24, 104, 300),
+                .. (supply ? [Station("supply", StationType.Supply, 904, 280, 48, 80, 858, 280)] : Array.Empty<Station>()),
             ],
             [
                 new SantaEvent { Id = "presentation", Type = SantaEventType.RibbonWindow, WarnAt = 55, StartAt = 60, EndAt = 90 },
@@ -68,6 +71,7 @@ public static class SimExtensions
     public static void FinishCrafting(this Simulation sim)
     {
         while (sim.State.Assembly is { } game) sim.PressPart(game.NextKey);
+        if (sim.State.RibbonPick != null) sim.PressPart(1); // the first spool
         while (sim.State.CraftingAction != null) sim.Step(PlayerCommand.None);
     }
 

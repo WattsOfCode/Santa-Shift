@@ -16,10 +16,13 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
         StationType.Ribbon => 0.85f,
         StationType.Shipping => 1.1f,
         StationType.Recycle => 0.75f,
+        StationType.Coal => 0.35f,
+        StationType.Supply => 1.35f, // top of the stack of crates
         _ => 0.8f,
     };
 
-    public void Draw(Station s, bool selected)
+    /// <param name="stock">Kits left in a kit bin when bins are limited (shown as that many crates on top, up to 3); null = a full bin.</param>
+    public void Draw(Station s, bool selected, int? stock = null)
     {
         var centre = world.ToWorld(new Point2(s.Body.X, s.Body.Y));
         float w = world.Metres(s.Body.W), d = world.Metres(s.Body.H), h = HeightOf(s.Type);
@@ -36,7 +39,14 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
         if (s.Type == StationType.Dispenser && s.ToyId != null)
         {
             var toy = content.FindToy(s.ToyId);
-            items.DrawKit(centre + new Vector3(0, h, 0), toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
+            var colour = toy != null ? Palette.Hex(toy.Color) : Palette.Wood;
+            int crates = Math.Clamp(stock ?? 1, 0, 3);
+            var along = Raymath.Vector3RotateByAxisAngle(Vector3.UnitX, Vector3.UnitY, (float)s.Yaw * MathF.PI / 180f);
+            for (int i = 0; i < crates; i++) // side by side along the bin, the middle one first
+            {
+                float offset = crates == 1 ? 0 : (i - (crates - 1) / 2f) * 0.5f;
+                items.DrawKit(centre + new Vector3(0, h, 0) + along * offset, colour);
+            }
         }
 
         if (selected)
@@ -53,6 +63,31 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
     /// </summary>
     public Vector3 WorkSpot(Station s)
     {
+        var spot = StraightAhead(s);
+        if (s.Type != StationType.Bench) return spot;
+        // On the bench the toy sits a little to the elf's right, under the hammer in its right hand.
+        var dir = WorkDirection(s);
+        return spot + new Vector3(-dir.Z, 0, dir.X) * BenchSideOffset;
+    }
+
+    /// <summary>
+    /// Where the ribbon spools sit on a ribbon station: a row along its front edge, in front of the toy (so it never hides
+    /// them), spool n on part key n from the elf's left
+    /// to its right, so the keys read in the same order as the spools.
+    /// </summary>
+    public Vector3 SpoolSpot(Station s, int index, int count)
+    {
+        var spot = StraightAhead(s);
+        var dir = WorkDirection(s);
+        var right = new Vector3(-dir.Z, 0, dir.X);
+        return spot - dir * 0.12f + right * ((index - (count - 1) / 2f) * 0.34f);
+    }
+
+    /// <summary>How far to the elf's right a toy is built on the bench (metres).</summary>
+    public const float BenchSideOffset = 0.25f;
+
+    private Vector3 StraightAhead(Station s)
+    {
         var centre = world.ToWorld(new Point2(s.Body.X, s.Body.Y));
         var stand = world.ToWorld(s.Interact);
         var flat = new Vector3(centre.X - stand.X, 0, centre.Z - stand.Z);
@@ -65,7 +100,7 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
     /// <summary>Unit vector along the floor from where the elf stands towards the work spot.</summary>
     public Vector3 WorkDirection(Station s)
     {
-        var spot = WorkSpot(s);
+        var spot = StraightAhead(s);
         var stand = world.ToWorld(s.Interact);
         var flat = new Vector3(spot.X - stand.X, 0, spot.Z - stand.Z);
         return flat.LengthSquared() < 1e-6f ? -Vector3.UnitZ : Vector3.Normalize(flat);
@@ -99,6 +134,15 @@ public sealed class StationView(GameContent content, IAssetLibrary assets, World
             case StationType.Recycle:
                 Raylib.DrawCylinder(c, w / 2, w / 2 * 0.85f, h, 14, Palette.Pine);
                 Raylib.DrawCylinder(c + new Vector3(0, h, 0), w / 2 + 0.03f, w / 2 + 0.03f, 0.05f, 14, Palette.Shade(Palette.Pine, 0.7f));
+                break;
+            case StationType.Coal:
+                Raylib.DrawCylinder(c, w / 2 * 0.85f, w / 2, h, 12, Palette.Ink);                     // scuttle
+                Raylib.DrawSphere(c + new Vector3(0, h, 0), w / 2 * 0.75f, new Color(30, 30, 34, 255)); // heap of coal
+                break;
+            case StationType.Supply: // a sled stacked with crates
+                Raylib.DrawCube(c + new Vector3(0, 0.12f, 0), w, 0.12f, d, Palette.Berry);
+                Raylib.DrawCube(c + new Vector3(0, 0.55f, 0), w * 0.8f, 0.7f, d * 0.8f, Palette.WoodDark);
+                Raylib.DrawCube(c + new Vector3(0, 1.1f, 0), w * 0.5f, 0.4f, d * 0.5f, Palette.Wood);
                 break;
         }
         Raylib.DrawCubeWires(mid, w, h, d, Palette.WithAlpha(Palette.Ink, 120));

@@ -1,4 +1,5 @@
 using SantaShift.Core.Rules;
+using SantaShift.Game.Services;
 
 namespace SantaShift.Game.Views.UI;
 
@@ -10,7 +11,7 @@ public sealed class AssemblyPanelView
 {
     public const float Width = 440, Height = 92;
 
-    public void Draw(UiCanvas ui, Simulation sim, float x, float y)
+    public void Draw(UiCanvas ui, Simulation sim, IInputService input, float x, float y)
     {
         if (sim.State.Assembly is not { } game) return;
         var toy = sim.Content.FindToy(game.ToyId);
@@ -38,10 +39,12 @@ public sealed class AssemblyPanelView
             bool done = placed.Contains(part);
             float cx = x + 12 + i * (cardW + gap);
             ui.FillRounded(cx, cy, cardW, cardH, done ? Palette.WithAlpha(Palette.Pine, 160) : Palette.Snow, 0.25f);
-            ui.FillRounded(cx + 4, cy + 4, 22, 22, done ? Palette.WithAlpha(Palette.Ink, 120) : Palette.Ink, 0.3f);
-            ui.Text($"{i + 1}", cx + 15, cy + 6, 18, done ? Palette.Shade(Palette.Snow, 0.7f) : Palette.Gold, Align.Center);
+            string key = input.Label(InputAction.Part1 + i);
+            float kw = Math.Max(22, ui.MeasureText(key, 16) + 10);
+            ui.FillRounded(cx + 4, cy + 4, kw, 22, done ? Palette.WithAlpha(Palette.Ink, 120) : Palette.Ink, 0.3f);
+            ui.Text(key, cx + 4 + kw / 2, cy + 6, 16, done ? Palette.Shade(Palette.Snow, 0.7f) : Palette.Gold, Align.Center);
             string name = sim.PartName(game.ToyId, part);
-            ui.Text(ui.Fit(name, 16, cardW - 36), cx + 32, cy + 7, 16, done ? Palette.Shade(Palette.Snow, 0.8f) : Palette.Ink);
+            ui.Text(ui.Fit(name, 16, cardW - kw - 14), cx + kw + 10, cy + 7, 16, done ? Palette.Shade(Palette.Snow, 0.8f) : Palette.Ink);
         }
 
         // The order

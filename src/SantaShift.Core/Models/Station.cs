@@ -1,6 +1,10 @@
 namespace SantaShift.Core.Models;
 
-public enum StationType { Dispenser, Bench, Ribbon, Shipping, Recycle }
+/// <summary>
+/// Coal: the coal scuttle by the fireplace, where the elf grabs coal for children on the naughty list.
+/// Supply: the supply sled, where the elf takes a crate of spare kits to restock an empty kit bin.
+/// </summary>
+public enum StationType { Dispenser, Bench, Ribbon, Shipping, Recycle, Coal, Supply }
 
 /// <summary>A fixture in the workshop. The layout comes from stations.json.</summary>
 public sealed class Station

@@ -17,6 +17,15 @@
     { "id": "recycle", "type": "recycle", "label": "RECYCLE",
       "body": { "x": 120, "y": 420, "w": 50, "h": 50 }, "interact": { "x": 165, "y": 420 }, "model": "station_recycle.glb" },
     { "id": "shipping", "type": "shipping", "label": "SHIPPING",
-      "body": { "x": 830, "y": 420, "w": 70, "h": 60 }, "interact": { "x": 780, "y": 420 }, "model": "station_shipping.glb" }
+      "body": { "x": 830, "y": 420, "w": 70, "h": 60 }, "interact": { "x": 780, "y": 420 }, "model": "station_shipping.glb" },
+
+    // Coal scuttle on the fireplace hearth: coal for children on the naughty list. Optional: without it, nobody is naughty.
+    { "id": "coal", "type": "coal", "label": "COAL",
+      "body": { "x": 66, "y": 300, "w": 24, "h": 24 }, "interact": { "x": 104, "y": 300 }, "model": "station_coal.glb" },
+
+    // Supply sled against the right wall: crates of spare kits. With it in the room, kit bins hold only the kits for the
+    // letters so far, and an empty bin is restocked with a crate from here. Optional: without it, bins never run out.
+    { "id": "supply", "type": "supply", "label": "SUPPLY SLED", "yaw": -90,
+      "body": { "x": 904, "y": 280, "w": 48, "h": 80 }, "interact": { "x": 858, "y": 280 }, "model": "station_supply.glb" }
   ]
 }

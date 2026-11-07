@@ -2,8 +2,8 @@ namespace SantaShift.Core.Rules;
 
 public enum SimEventType
 {
-    Collected, AssemblyStarted, PartAdded, AssemblyComplete, AssemblyBotched,
-    RibbonStarted, RibbonComplete, ActionCancelled,
+    Collected, ShovelStarted, CoalCollected, SupplyTaken, Restocked, AssemblyStarted, PartAdded, AssemblyComplete, AssemblyBotched,
+    RibbonPickStarted, RibbonStarted, RibbonComplete, ActionCancelled,
     Delivered, Rejected, RecyclePrompt, Recycled,
     OrderCreated, OrderExpired, PolicyWarning, PolicyStarted, QuotaMet, ShiftEnded,
 }

@@ -1,0 +1,24 @@
+// Unlocks earned across runs (kept in progress.json in the save folder).
+// stat: toysDelivered, coalDelivered, bestRound (furthest round reached), roundsCleared, runsPlayed.
+// reward: perk (value = a perks.json id, which Santa won't offer until it is unlocked),
+//         hat (value = the elf's hat colour), headStart (pick a perk before round 1 of every run).
+{
+  "unlocks": [
+    { "id": "perk_crates",   "name": "Bigger Crates",    "stat": "toysDelivered", "target": 25, "reward": "perk", "value": "crates",
+      "description": "Santa can offer the Bigger Crates perk." },
+    { "id": "perk_shovel",   "name": "Big Shovel",       "stat": "coalDelivered", "target": 5,  "reward": "perk", "value": "shovel",
+      "description": "Santa can offer the Big Shovel perk." },
+    { "id": "perk_reindeer", "name": "Express Reindeer", "stat": "bestRound",     "target": 3,  "reward": "perk", "value": "reindeer",
+      "description": "Santa can offer the Express Reindeer perk." },
+    { "id": "hat_gold",      "name": "Golden Hat",       "stat": "toysDelivered", "target": 50, "reward": "hat",  "value": "#E8BB57",
+      "description": "A shiny gold hat for the elf." },
+    { "id": "hat_green",     "name": "Evergreen Hat",    "stat": "coalDelivered", "target": 15, "reward": "hat",  "value": "#2F8A52",
+      "description": "A pine-green hat for the elf." },
+    { "id": "hat_frost",     "name": "Frosty Hat",       "stat": "bestRound",     "target": 5,  "reward": "hat",  "value": "#8EC9CF",
+      "description": "An icy blue hat for the elf." },
+    { "id": "head_start",    "name": "Head Start",       "stat": "bestRound",     "target": 4,  "reward": "headStart",
+      "description": "Pick a perk before round 1 of every run." },
+    { "id": "hat_night",     "name": "Night Shift Hat",  "stat": "runsPlayed",    "target": 10, "reward": "hat",  "value": "#3B3F6B",
+      "description": "A midnight-blue hat for a veteran elf." }
+  ]
+}

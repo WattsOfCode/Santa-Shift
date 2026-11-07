@@ -27,8 +27,23 @@ public sealed class GameContent
     /// <summary>Point lights from the Blender room (drawing only).</summary>
     public IReadOnlyList<RoomLight> Lights { get; init; } = [];
 
+    /// <summary>Workshop elves working at their own benches (scenery, from the Blender room).</summary>
+    public IReadOnlyList<Npc> Npcs { get; init; } = [];
+
     /// <summary>True when the layout came from a Blender room export.</summary>
     public bool HasRoomLayout { get; init; }
+
+    /// <summary>True when there is a coal station, so naughty children can be sent coal.</summary>
+    public bool HasCoal => Stations.Any(s => s.Type == StationType.Coal);
+
+    /// <summary>With a supply sled in the room, kit bins hold limited stock (see <see cref="Tuning.ResupplyKits"/>).</summary>
+    public bool HasSupply => Stations.Any(s => s.Type == StationType.Supply);
+
+    /// <summary>The perks Santa can offer between rounds (perks.json). Empty: rounds follow each other directly.</summary>
+    public IReadOnlyList<Perk> Perks { get; init; } = [];
+
+    /// <summary>Things earned across runs (unlocks.json): extra perks, hat colours, a head start.</summary>
+    public IReadOnlyList<Unlock> Unlocks { get; init; } = [];
 
     /// <summary>Non-fatal problems found while loading (for example a letter naming an unknown toy).</summary>
     public IReadOnlyList<string> Warnings { get; init; } = [];

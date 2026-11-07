@@ -23,11 +23,26 @@ public static class SoundIds
          HammerHit, AssemblyBotched];
 }
 
+/// <summary>Music tracks. Each streams Content/audio/&lt;id&gt;.mp3 (or .ogg / .wav) if that file exists, looping.</summary>
+public static class MusicIds
+{
+    /// <summary>Title, Santa's list and results: "Cozy Christmas Game Ambience" by blueeyedmonkey.</summary>
+    public const string Menu = "music_menu";
+
+    /// <summary>During a shift: "Toy Factory Jingle" by blueeyedmonkey.</summary>
+    public const string Workshop = "music_workshop";
+
+    public static readonly string[] All = [Menu, Workshop];
+}
+
 /// <summary>Plays sound effects. Swappable; the game never depends on sound working (GDD section 14).</summary>
 public interface IAudioService : IDisposable
 {
     void Play(string soundId);
     void ApplySettings(Settings settings);
+
+    /// <summary>Call once per frame: fades towards <paramref name="musicId"/> (null = silence) and keeps the stream fed.</summary>
+    void UpdateMusic(string? musicId, float dt);
 }
 
 /// <summary>Used when there is no audio device. Does nothing, safely.</summary>
@@ -35,6 +50,7 @@ public sealed class SilentAudioService : IAudioService
 {
     public void Play(string soundId) { }
     public void ApplySettings(Settings settings) { }
+    public void UpdateMusic(string? musicId, float dt) { }
     public void Dispose() { }
 }
 
@@ -45,6 +61,14 @@ public sealed class RaylibAudioService : IAudioService
     private readonly Dictionary<string, Sound> _sounds = new();
     private readonly Dictionary<string, double> _lastPlayed = new();
     private float _effectsVolume = 0.7f;
+    private float _musicVolume = 0.25f;
+
+    /// <summary>Seconds for one track to fade out and the next to fade in.</summary>
+    private const float FadeSeconds = 1.2f;
+
+    private readonly Dictionary<string, Music> _music = new();
+    private readonly Dictionary<string, float> _fade = new(); // 0..1 per loaded track
+    private string? _wanted;
 
     private RaylibAudioService() { }
 
@@ -66,6 +90,16 @@ public sealed class RaylibAudioService : IAudioService
             var sound = Raylib.LoadSound(path);
             if (Raylib.IsSoundValid(sound)) service._sounds[id] = sound;
         }
+        foreach (var id in MusicIds.All)
+        {
+            string? path = new[] { ".mp3", ".ogg", ".wav" }.Select(ext => Path.Combine(audioDirectory, id + ext)).FirstOrDefault(File.Exists);
+            if (path == null) continue;
+            var music = Raylib.LoadMusicStream(path);
+            if (!Raylib.IsMusicValid(music)) continue;
+            music.Looping = true;
+            service._music[id] = music;
+            service._fade[id] = 0f;
+        }
         return service;
     }
 
@@ -83,12 +117,40 @@ public sealed class RaylibAudioService : IAudioService
     {
         Raylib.SetMasterVolume(settings.Muted ? 0 : settings.MasterVolume);
         _effectsVolume = settings.EffectsVolume;
+        _musicVolume = settings.MusicVolume;
+    }
+
+    /// <summary>
+    /// Crossfades: the wanted track fades in (from the top if it had faded right out, else from where it was), the
+    /// others fade out and pause. Streams are fed a little every frame, so music never loads all at once.
+    /// </summary>
+    public void UpdateMusic(string? musicId, float dt)
+    {
+        if (musicId != _wanted && musicId != null && _music.TryGetValue(musicId, out var next) && !Raylib.IsMusicStreamPlaying(next))
+        {
+            if (_fade[musicId] <= 0f) Raylib.PlayMusicStream(next); else Raylib.ResumeMusicStream(next);
+        }
+        _wanted = musicId;
+
+        foreach (var (id, music) in _music)
+        {
+            float target = id == _wanted ? 1f : 0f;
+            float f = _fade[id];
+            f = target > f ? Math.Min(target, f + dt / FadeSeconds) : Math.Max(target, f - dt / FadeSeconds);
+            _fade[id] = f;
+            if (!Raylib.IsMusicStreamPlaying(music)) continue;
+            if (f <= 0f && target == 0f) { Raylib.PauseMusicStream(music); continue; }
+            Raylib.SetMusicVolume(music, _musicVolume * f * f); // eased, so the swap sounds even
+            Raylib.UpdateMusicStream(music);
+        }
     }
 
     public void Dispose()
     {
         foreach (var sound in _sounds.Values) Raylib.UnloadSound(sound);
         _sounds.Clear();
+        foreach (var music in _music.Values) Raylib.UnloadMusicStream(music);
+        _music.Clear();
         Raylib.CloseAudioDevice();
     }
 }

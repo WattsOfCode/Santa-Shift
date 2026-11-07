@@ -39,6 +39,40 @@ public sealed class Lighting : IDisposable
         }
         """;
 
+    // The same, for rigged models: each vertex follows its bones on the GPU (Raylib uploads boneMatrices per draw),
+    // so animating an elf costs almost nothing on the CPU however many elves share the model.
+    private const string SkinnedVertexShader = """
+        #version 330
+        #define MAX_BONES 64
+        in vec3 vertexPosition;
+        in vec2 vertexTexCoord;
+        in vec3 vertexNormal;
+        in vec4 vertexColor;
+        in vec4 vertexBoneIndices;
+        in vec4 vertexBoneWeights;
+        uniform mat4 mvp;
+        uniform mat4 matModel;
+        uniform mat4 matNormal;
+        uniform mat4 boneMatrices[MAX_BONES];
+        out vec3 fragPos;
+        out vec2 fragTexCoord;
+        out vec4 fragColor;
+        out vec3 fragNormal;
+        void main()
+        {
+            ivec4 b = ivec4(vertexBoneIndices);
+            vec4 w = vertexBoneWeights;
+            mat4 skin = boneMatrices[b.x] * w.x + boneMatrices[b.y] * w.y + boneMatrices[b.z] * w.z + boneMatrices[b.w] * w.w;
+            vec4 pos = skin * vec4(vertexPosition, 1.0);
+            vec3 normal = mat3(skin) * vertexNormal;
+            fragPos = vec3(matModel * pos);
+            fragTexCoord = vertexTexCoord;
+            fragColor = vertexColor;
+            fragNormal = normalize(vec3(matNormal * vec4(normal, 0.0)));
+            gl_Position = mvp * pos;
+        }
+        """;
+
     private const string FragmentShader = """
         #version 330
         #define MAX_LIGHTS 16
@@ -122,11 +156,20 @@ public sealed class Lighting : IDisposable
     private readonly float[] _color = new float[MaxLights * 3];
     private readonly float[] _radius = new float[MaxLights];
     private readonly int[] _order;
-    private readonly int _locCount, _locPos, _locColor, _locRadius, _locView;
+    private readonly ShaderSlots[] _shaders;
 
+    /// <summary>A lit shader and its per-frame uniform locations.</summary>
+    private sealed record ShaderSlots(Shader Shader, int Count, int Pos, int Color, int Radius, int View);
+
+    /// <summary>The lit shader for still models.</summary>
     public Shader Shader { get; }
+
+    /// <summary>The lit shader for rigged models (GPU skinning). Same look as <see cref="Shader"/>.</summary>
+    public Shader Skinned { get; }
+
     public Shader Post { get; }
     public bool IsValid { get; }
+    public bool SkinsOnGpu { get; }
     public bool UsePost { get; }
 
     public Lighting(LightingSettings cfg, IReadOnlyList<RoomLight> lights)
@@ -138,25 +181,25 @@ public sealed class Lighting : IDisposable
 
         Shader = Raylib.LoadShaderFromMemory(VertexShader, FragmentShader);
         IsValid = Raylib.IsShaderValid(Shader);
+        Skinned = IsValid ? Raylib.LoadShaderFromMemory(SkinnedVertexShader, FragmentShader) : default;
+        SkinsOnGpu = IsValid && Raylib.IsShaderValid(Skinned);
         Post = Raylib.LoadShaderFromMemory(null!, PostShader);
         UsePost = cfg.PostEffectsForQuality() && Raylib.IsShaderValid(Post);
-        if (!IsValid) return;
+        if (!IsValid) { _shaders = []; return; }
 
-        _locCount = Raylib.GetShaderLocation(Shader, "lightCount");
-        _locPos = Raylib.GetShaderLocation(Shader, "lightPos");
-        _locColor = Raylib.GetShaderLocation(Shader, "lightColor");
-        _locRadius = Raylib.GetShaderLocation(Shader, "lightRadius");
-        _locView = Raylib.GetShaderLocation(Shader, "viewPos");
-
+        _shaders = SkinsOnGpu ? [Slots(Shader), Slots(Skinned)] : [Slots(Shader)];
         bool hasRoomLights = lights.Count > 0;
-        SetVec3("ambientSky", hasRoomLights ? cfg.AmbientSky : cfg.FallbackAmbient);
-        SetVec3("ambientGround", hasRoomLights ? cfg.AmbientGround : cfg.FallbackAmbient);
-        SetVec3("dirLightDir", Vector3.Normalize(cfg.DirectionalDirection.ToVector()));
-        SetVec3("dirLightColor", hasRoomLights ? cfg.DirectionalColor : cfg.FallbackDirectionalColor);
-        SetVec3("fogColor", cfg.FogColor);
-        SetFloat("fogDensity", cfg.FogForQuality() ? cfg.FogDensity : 0f);
-        SetFloat("exposure", cfg.Exposure);
-        SetFloat("emissiveBoost", cfg.EmissiveBoost);
+        foreach (var s in _shaders)
+        {
+            SetVec3(s.Shader, "ambientSky", hasRoomLights ? cfg.AmbientSky : cfg.FallbackAmbient);
+            SetVec3(s.Shader, "ambientGround", hasRoomLights ? cfg.AmbientGround : cfg.FallbackAmbient);
+            SetVec3(s.Shader, "dirLightDir", Vector3.Normalize(cfg.DirectionalDirection.ToVector()));
+            SetVec3(s.Shader, "dirLightColor", hasRoomLights ? cfg.DirectionalColor : cfg.FallbackDirectionalColor);
+            SetVec3(s.Shader, "fogColor", cfg.FogColor);
+            SetFloat(s.Shader, "fogDensity", cfg.FogForQuality() ? cfg.FogDensity : 0f);
+            SetFloat(s.Shader, "exposure", cfg.Exposure);
+            SetFloat(s.Shader, "emissiveBoost", cfg.EmissiveBoost);
+        }
 
         if (UsePost)
         {
@@ -165,21 +208,66 @@ public sealed class Lighting : IDisposable
         }
     }
 
+    private static unsafe ShaderSlots Slots(Shader s)
+    {
+        // The glTF emissive colour is moved into the specular slot (see Apply), which Raylib uploads for us.
+        s.Locs[(int)ShaderLocationIndex.ColorSpecular] = Raylib.GetShaderLocation(s, "colEmission");
+        return new ShaderSlots(s, Raylib.GetShaderLocation(s, "lightCount"), Raylib.GetShaderLocation(s, "lightPos"),
+            Raylib.GetShaderLocation(s, "lightColor"), Raylib.GetShaderLocation(s, "lightRadius"), Raylib.GetShaderLocation(s, "viewPos"));
+    }
+
     /// <summary>
-    /// Makes every material of a model use this lighting, and moves its glTF emissive colour into the slot
-    /// Raylib uploads for us each draw (the specular colour, read by the shader as colEmission).
+    /// Makes every material of a model use this lighting (the skinned variant for rigged models), and moves its glTF
+    /// emissive colour into the slot Raylib uploads for us each draw (the specular colour, read by the shader as colEmission).
     /// </summary>
     public unsafe void Apply(Model model)
     {
         if (!IsValid) return;
-        Shader.Locs[(int)ShaderLocationIndex.ColorSpecular] = Raylib.GetShaderLocation(Shader, "colEmission");
+        bool rigged = SkinsOnGpu && model.Skeleton.BoneCount > 0 && UploadBoneBuffers(model);
+        if (rigged) SkeletonPoser.UseGpuSkinning(model);
         for (int i = 0; i < model.MaterialCount; i++)
         {
             var maps = model.Materials[i].Maps;
             maps[(int)MaterialMapIndex.Specular].Color = maps[(int)MaterialMapIndex.Emission].Color;
-            model.Materials[i].Shader = Shader;
+            model.Materials[i].Shader = rigged ? Skinned : Shader;
         }
     }
+
+    /// <summary>
+    /// Raylib's glTF loader keeps each vertex's bone indices and weights on the CPU only (it skins there). GPU skinning
+    /// needs them on the GPU too: upload them into each mesh's vertex array at the skinned shader's attribute slots.
+    /// The buffers go in the mesh's own VBO slots, so unloading the model frees them. False if a mesh lacks bone data.
+    /// </summary>
+    private unsafe bool UploadBoneBuffers(Model model)
+    {
+        int idsAt = Skinned.Locs[(int)ShaderLocationIndex.VertexBoneIds];
+        int weightsAt = Skinned.Locs[(int)ShaderLocationIndex.VertexBoneWeights];
+        if (idsAt < 0 || weightsAt < 0) return false;
+        for (int m = 0; m < model.MeshCount; m++)
+            if (model.Meshes[m].BoneIndices == null || model.Meshes[m].BoneWeights == null || model.Meshes[m].VaoId == 0) return false;
+
+        for (int m = 0; m < model.MeshCount; m++)
+        {
+            ref var mesh = ref model.Meshes[m];
+            if (mesh.VboId[BoneIdsVbo] != 0) continue; // already there (shared mesh, or a newer Raylib uploads them)
+            Rlgl.EnableVertexArray(mesh.VaoId);
+            mesh.VboId[BoneIdsVbo] = Rlgl.LoadVertexBuffer(mesh.BoneIndices, mesh.VertexCount * 4 * ElementSize(mesh.BoneIndices), false);
+            Rlgl.SetVertexAttribute((uint)idsAt, 4, GlTypeOf(mesh.BoneIndices), false, 0, 0);
+            Rlgl.EnableVertexAttribute((uint)idsAt);
+            mesh.VboId[BoneWeightsVbo] = Rlgl.LoadVertexBuffer(mesh.BoneWeights, mesh.VertexCount * 4 * sizeof(float), false);
+            Rlgl.SetVertexAttribute((uint)weightsAt, 4, GlFloat, false, 0, 0);
+            Rlgl.EnableVertexAttribute((uint)weightsAt);
+            Rlgl.DisableVertexArray();
+        }
+        return true;
+    }
+
+    // Mesh VBO slots Raylib reserves for bone indices and weights (it frees every slot on unload).
+    private const int BoneIdsVbo = 7, BoneWeightsVbo = 8;
+    private const int GlUnsignedByte = 0x1401, GlUnsignedShort = 0x1403, GlFloat = 0x1406;
+
+    private static unsafe int ElementSize<T>(T* _) where T : unmanaged => sizeof(T);
+    private static unsafe int GlTypeOf<T>(T* _) where T : unmanaged => sizeof(T) == 1 ? GlUnsignedByte : GlUnsignedShort;
 
     /// <summary>Picks the lights nearest the camera, applies flicker, and uploads them. Call once per frame.</summary>
     /// <param name="focus">The point the camera looks at (the elf in play). A soft fill light sits between it and the camera.</param>
@@ -217,14 +305,17 @@ public sealed class Lighting : IDisposable
             count++;
         }
 
-        Raylib.SetShaderValue(Shader, _locCount, count, ShaderUniformDataType.Int);
-        if (count > 0)
+        foreach (var s in _shaders)
         {
-            Raylib.SetShaderValueV(Shader, _locPos, _pos, ShaderUniformDataType.Vec3, count);
-            Raylib.SetShaderValueV(Shader, _locColor, _color, ShaderUniformDataType.Vec3, count);
-            Raylib.SetShaderValueV(Shader, _locRadius, _radius, ShaderUniformDataType.Float, count);
+            Raylib.SetShaderValue(s.Shader, s.Count, count, ShaderUniformDataType.Int);
+            if (count > 0)
+            {
+                Raylib.SetShaderValueV(s.Shader, s.Pos, _pos, ShaderUniformDataType.Vec3, count);
+                Raylib.SetShaderValueV(s.Shader, s.Color, _color, ShaderUniformDataType.Vec3, count);
+                Raylib.SetShaderValueV(s.Shader, s.Radius, _radius, ShaderUniformDataType.Float, count);
+            }
+            Raylib.SetShaderValue(s.Shader, s.View, cameraPosition, ShaderUniformDataType.Vec3);
         }
-        Raylib.SetShaderValue(Shader, _locView, cameraPosition, ShaderUniformDataType.Vec3);
     }
 
     /// <summary>Lower = more important: distance compared with how far and how brightly the light reaches.</summary>
@@ -239,18 +330,19 @@ public sealed class Lighting : IDisposable
     private static float Noise(double t, int seed) =>
         (float)(0.55 * Math.Sin(t * 9.1 + seed * 1.7) + 0.3 * Math.Sin(t * 17.3 + seed * 3.1) + 0.15 * Math.Sin(t * 31.7 + seed));
 
-    private void SetVec3(string name, float[] v) =>
-        Raylib.SetShaderValue(Shader, Raylib.GetShaderLocation(Shader, name), new Vector3(v[0], v[1], v[2]), ShaderUniformDataType.Vec3);
+    private static void SetVec3(Shader s, string name, float[] v) =>
+        Raylib.SetShaderValue(s, Raylib.GetShaderLocation(s, name), new Vector3(v[0], v[1], v[2]), ShaderUniformDataType.Vec3);
 
-    private void SetVec3(string name, Vector3 v) =>
-        Raylib.SetShaderValue(Shader, Raylib.GetShaderLocation(Shader, name), v, ShaderUniformDataType.Vec3);
+    private static void SetVec3(Shader s, string name, Vector3 v) =>
+        Raylib.SetShaderValue(s, Raylib.GetShaderLocation(s, name), v, ShaderUniformDataType.Vec3);
 
-    private void SetFloat(string name, float v) =>
-        Raylib.SetShaderValue(Shader, Raylib.GetShaderLocation(Shader, name), v, ShaderUniformDataType.Float);
+    private static void SetFloat(Shader s, string name, float v) =>
+        Raylib.SetShaderValue(s, Raylib.GetShaderLocation(s, name), v, ShaderUniformDataType.Float);
 
     public void Dispose()
     {
         if (IsValid) Raylib.UnloadShader(Shader);
+        if (SkinsOnGpu) Raylib.UnloadShader(Skinned);
         if (Raylib.IsShaderValid(Post)) Raylib.UnloadShader(Post);
     }
 }

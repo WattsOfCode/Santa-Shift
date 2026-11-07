@@ -16,21 +16,30 @@ public sealed class OrderCardView(GameContent content)
         double seconds = (double)remaining / t.TicksPerSecond;
         bool urgent = seconds <= 10;
 
-        ui.FillRounded(x, y, Width, Height, Palette.Snow, 0.18f);
-        if (order.IsRush) ui.OutlineRounded(x, y, Width, Height, Palette.Berry, 3, 0.18f);
+        ui.FillRounded(x, y, Width, Height, order.Naughty ? Palette.Hex("#EBDDBF") : Palette.Snow, 0.18f);
+        if (order.IsRush || order.Naughty) ui.OutlineRounded(x, y, Width, Height, Palette.Berry, 3, 0.18f);
 
-        // Icon
+        // Icon: a naughty child gets coal, whatever they asked for.
         ui.FillRounded(x + 6, y + 6, 52, 52, Palette.WithAlpha(Palette.Ink, 25), 0.2f);
-        ToyIcon.Draw(ui, order.ToyId, x + 32, y + 32, 40, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
+        if (order.Naughty) ToyIcon.Draw(ui, Item.CoalId, x + 32, y + 32, 40, Palette.Ink);
+        else ToyIcon.Draw(ui, order.ToyId, x + 32, y + 32, 40, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
 
-        // Text: toy name large, child small
-        ui.Text(toy?.Name ?? order.ToyId, x + 66, y + 8, 20, Palette.Ink);
+        // Text: what to ship large, child small
+        ui.Text(order.Naughty ? "Coal" : toy?.Name ?? order.ToyId, x + 66, y + 8, 20, Palette.Ink);
         string who = order.Letter != null ? $"for {order.Letter.Child}, {order.Letter.Age}" : $"Order #{order.Id}";
         ui.Text(ui.Fit(who, 14, 110), x + 66, y + 32, 14, Palette.Shade(Palette.Ink, 1.6f));
 
         // Badges
         float bx = x + 66;
-        if (order.RequiresRibbon) bx = Badge(ui, "RIBBON", bx, y + 50, Palette.Gold, Palette.Ink);
+        if (order.Naughty) bx = Badge(ui, "NAUGHTY", bx, y + 50, Palette.Ink, Palette.Snow);
+        if (order.RequiresRibbon)
+        {
+            // A coloured ribbon order names its colour, in that colour.
+            var ribbon = t.FindRibbon(order.RibbonColor);
+            var bg = ribbon != null ? Palette.Hex(ribbon.Color) : Palette.Gold;
+            bool dark = bg.R * 0.3 + bg.G * 0.59 + bg.B * 0.11 < 140;
+            bx = Badge(ui, ribbon != null ? $"{ribbon.Name.ToUpperInvariant()} RIBBON" : "RIBBON", bx, y + 50, bg, dark ? Palette.Snow : Palette.Ink);
+        }
         if (order.IsRush) Badge(ui, "RUSH", bx, y + 50, Palette.Berry, Palette.Snow);
 
         // Time left

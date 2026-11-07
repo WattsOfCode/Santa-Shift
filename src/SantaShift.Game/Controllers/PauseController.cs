@@ -1,4 +1,5 @@
 using SantaShift.Core.Rules;
+using SantaShift.Game.App;
 using SantaShift.Game.Services;
 using SantaShift.Game.Views.UI;
 
@@ -7,14 +8,19 @@ namespace SantaShift.Game.Controllers;
 public enum PauseState { Running, Paused, ConfirmRestart, ConfirmQuit, Ready }
 
 /// <summary>
-/// Pause menu and the one-second READY countdown (GDD sections 11 and 14).
-/// While anything here is showing, the simulation does not step.
+/// Pause menu (resume, restart, settings, quit), with the player's controls beside it, and the one-second READY
+/// countdown (GDD sections 11 and 14). While anything here is showing, the simulation does not step.
 /// </summary>
-public sealed class PauseController(IInputService input, Simulation sim, Action restart, Action quitToTitle)
+public sealed class PauseController(GameServices s, Simulation sim, Action restart, Action quitToTitle)
 {
+    private enum Item { Resume, Restart, Settings, Quit }
+    private const int ItemCount = 4;
+
     private const int ReadyTicks = 60;
     private int _readyLeft;
     private readonly MenuView _menu = new();
+    private readonly SettingsMenu _settings = new(s);
+    private Item _selected;
 
     public PauseState State { get; private set; } = PauseState.Running;
     public bool Blocking => State != PauseState.Running;
@@ -31,11 +37,14 @@ public sealed class PauseController(IInputService input, Simulation sim, Action 
         if (State != PauseState.Running) return;
         sim.Pause();
         State = PauseState.Paused;
+        _selected = Item.Resume;
+        s.Input.Clear(); // presses from play (a held move key) must not move the menu
     }
 
     /// <summary>Handles menu input. Returns true if the simulation should not step this tick.</summary>
     public bool Update()
     {
+        var input = s.Input;
         switch (State)
         {
             case PauseState.Ready:
@@ -43,13 +52,23 @@ public sealed class PauseController(IInputService input, Simulation sim, Action 
                 return true;
 
             case PauseState.Paused:
-                if (input.ConsumePressed(InputAction.Confirm) || input.ConsumePressed(InputAction.Back))
-                {
-                    input.Clear();
-                    BeginReady(); // resume needs an explicit action, then a 1 second READY
-                }
+                if (_settings.IsOpen) { _settings.Update(); return true; }
+                if (input.ConsumePressed(InputAction.MenuUp)) Select((int)_selected - 1);
+                if (input.ConsumePressed(InputAction.MenuDown)) Select((int)_selected + 1);
+                if (input.ConsumePressed(InputAction.Back) | input.ConsumePressed(InputAction.Pause)) Resume();
                 else if (input.ConsumePressed(InputAction.Restart)) State = PauseState.ConfirmRestart;
                 else if (input.ConsumePressed(InputAction.Quit)) State = PauseState.ConfirmQuit;
+                else if (input.ConsumePressed(InputAction.Confirm))
+                {
+                    s.Audio.Play(SoundIds.UiConfirm);
+                    switch (_selected)
+                    {
+                        case Item.Resume: Resume(); break;
+                        case Item.Restart: State = PauseState.ConfirmRestart; break;
+                        case Item.Settings: _settings.Open(); break;
+                        case Item.Quit: State = PauseState.ConfirmQuit; break;
+                    }
+                }
                 return true;
 
             case PauseState.ConfirmRestart:
@@ -66,13 +85,28 @@ public sealed class PauseController(IInputService input, Simulation sim, Action 
         }
     }
 
+    private void Select(int index)
+    {
+        _selected = (Item)((index + ItemCount) % ItemCount);
+        s.Audio.Play(SoundIds.UiConfirm);
+    }
+
+    private void Resume()
+    {
+        s.Input.Clear();
+        BeginReady(); // resume needs an explicit action, then a 1 second READY
+    }
+
     public void Draw(UiCanvas ui)
     {
         switch (State)
         {
-            case PauseState.Paused: _menu.DrawPause(ui); break;
-            case PauseState.ConfirmRestart: _menu.DrawConfirm(ui, "Restart this shift?"); break;
-            case PauseState.ConfirmQuit: _menu.DrawConfirm(ui, "Quit to title? This shift will be lost."); break;
+            case PauseState.Paused:
+                _menu.DrawPause(ui, (int)_selected, s.Settings.Controls, s.Input);
+                _settings.Draw(ui);
+                break;
+            case PauseState.ConfirmRestart: _menu.DrawConfirm(ui, "Restart this shift?", s.Input); break;
+            case PauseState.ConfirmQuit: _menu.DrawConfirm(ui, "Quit to title? This shift will be lost.", s.Input); break;
             case PauseState.Ready: _menu.DrawReady(ui, _readyLeft / 60f); break;
         }
     }

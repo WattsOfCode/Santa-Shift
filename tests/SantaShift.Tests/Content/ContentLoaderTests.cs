@@ -24,7 +24,9 @@ public class ContentLoaderTests : IDisposable
 
         Assert.Empty(content.Warnings);
         Assert.Equal(3, content.Toys.Count);
-        Assert.Equal(7, content.Stations.Count);
+        Assert.Equal(9, content.Stations.Count); // 7 GDD stations + the coal scuttle + the supply sled
+        Assert.True(content.HasCoal);
+        Assert.True(content.HasSupply);
         Assert.Equal(4, content.Events.Count);
         Assert.Equal(15, content.Letters.Count);
         Assert.Equal(300, content.Tuning.ShiftSeconds);
@@ -45,6 +47,10 @@ public class ContentLoaderTests : IDisposable
             "assembly_cancelled", "ribbon_cancelled", "order_expired", "delivered", "recycled", "empty_hands", "item_kit",
             "item_ribboned", "review_low", "review_survivor", "review_legend",
             "botched_wrong_part", "botched_too_slow", "botched_scrap_it", "item_botched", "prompt_scrap_botched",
+            "prompt_coal", "item_coal", "coal_not_a_kit", "no_ribbon_for_coal", "coal_no_naughty", "naughty_no_toy", "coal_delivered",
+            "naughty_order", "working_shovel", "shovel_cancelled",
+            "prompt_supply", "prompt_restock", "bin_empty", "restocked", "supply_goes_to_bin", "item_supply", "bin_stock",
+            "bin_stock_empty", "picking_ribbon", "wrong_ribbon_colour", "item_ribboned_colour", "perk_title", "perk_extra",
         ];
         Assert.All(keys, k => Assert.True(d.Messages.ContainsKey(k), $"dialogue.json is missing message '{k}'"));
         Assert.All(new[] { "quota_met", "review_pass", "review_miss" }, c => Assert.NotNull(d.Cue(c)));

@@ -29,7 +29,8 @@ EXPECTED_ACTIONS = {"Idle", "Walk", "Work"}
 #   col_<name>     box mesh: an extra invisible obstacle
 #   pr_<model>.<n> empty showing a linked prop_<model>.blend: drawn by the game as its own model;
 #                  solid props also become obstacles, sized from the prop's actual shape
-MARKER_PREFIXES = ("floor_bounds", "player_start", "st_", "ip_", "col_", "pr_")
+#   npc_<n>        empty:    a workshop elf working at a bench; its turn is the way it faces. Also a small obstacle.
+MARKER_PREFIXES = ("floor_bounds", "player_start", "st_", "ip_", "col_", "pr_", "npc_")
 
 
 def is_marker(ob) -> bool:
@@ -143,6 +144,15 @@ def build_layout(source_name, warnings):
         layout["colliders"].append({"name": ob.name, "x": cx, "z": cz,
                                     "w": round(hi.x - lo.x, 4), "d": round(hi.y - lo.y, 4)})
     layout["lights"] = collect_lights(objects)
+
+    # Workshop elves: drawn by the game with the elf model, hammering. Each also blocks the player.
+    layout["npcs"] = []
+    for ob in objects:
+        if not ob.name.startswith("npc_"):
+            continue
+        x, z = to_game(ob.matrix_world.translation.x, ob.matrix_world.translation.y)
+        layout["npcs"].append({"x": x, "z": z, "yaw": round(math.degrees(ob.matrix_world.to_euler().z), 2)})
+        layout["colliders"].append({"name": ob.name, "x": x, "z": z, "w": 0.5, "d": 0.5})
     return layout
 
 
@@ -278,7 +288,7 @@ def main() -> int:
             with open(layout_path, "w", encoding="utf-8") as f:
                 json.dump(layout, f, indent=2)
             print(f"RESULT room layout: {len(layout['stations'])} stations, {len(layout['colliders'])} obstacles, "
-                  f"{len(layout['props'])} props, {len(layout['lights'])} lights -> {layout_path}")
+                  f"{len(layout['props'])} props, {len(layout['lights'])} lights, {len(layout['npcs'])} elves -> {layout_path}")
         else:
             warnings.append("no data folder given; room_layout.json was not written")
 

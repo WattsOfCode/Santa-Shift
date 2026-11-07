@@ -34,6 +34,18 @@ public static class ToyIcon
                 ui.Fill(cx + s * 0.18f, cy - s * 0.25f, s * 0.22f, s * 0.22f, Palette.Ink);
                 ui.Fill(cx - s * 0.35f, cy + s * 0.3f, s * 0.7f, s * 0.12f, Palette.Ink);
                 break;
+            case "coal": // a heap of black lumps with a glint
+                ui.Circle(cx - s * 0.4f, cy + s * 0.25f, s * 0.42f, Palette.Hex("#26262B"));
+                ui.Circle(cx + s * 0.42f, cy + s * 0.3f, s * 0.36f, Palette.Hex("#303036"));
+                ui.Circle(cx + s * 0.02f, cy - s * 0.28f, s * 0.45f, Palette.Hex("#1C1C20"));
+                ui.Circle(cx - s * 0.12f, cy - s * 0.45f, s * 0.1f, Palette.WithAlpha(Palette.Snow, 120));
+                break;
+            case "supply": // a dark crate with a green strap and a gold star
+                ui.FillRounded(cx - s * 0.85f, cy - s * 0.7f, s * 1.7f, s * 1.4f, Palette.Hex("#6B4A2C"), 0.15f);
+                ui.Fill(cx - s * 0.85f, cy - s * 0.7f, s * 1.7f, s * 0.22f, Palette.Hex("#4A3220"));
+                ui.Fill(cx - s * 0.12f, cy - s * 0.7f, s * 0.24f, s * 1.4f, Palette.Pine);
+                ui.Circle(cx + s * 0.45f, cy + s * 0.1f, s * 0.2f, Palette.Gold);
+                break;
             default:
                 ui.FillRounded(cx - s * 0.7f, cy - s * 0.7f, s * 1.4f, s * 1.4f, color);
                 break;

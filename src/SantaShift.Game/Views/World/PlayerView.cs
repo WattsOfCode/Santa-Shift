@@ -5,7 +5,7 @@ using SantaShift.Game.Services;
 
 namespace SantaShift.Game.Views.World;
 
-/// <summary>Draws the elf (animated when elf.glb has actions), its hammer while building, its shadow, and the carried item.</summary>
+/// <summary>Draws the elf (animated when elf.glb has actions) with the tool it's using, its shadow, and the carried item.</summary>
 public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView items)
 {
     public const float CarryHeight = 1.4f;
@@ -13,7 +13,13 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
     /// <summary>Carried items are drawn smaller so they do not block the view ahead.</summary>
     public const float CarriedScale = 0.75f;
 
-    private ElfAnimator? _animator;
+    /// <summary>Held up on the elf's hand, items are a little smaller still, so they fit beside its head.</summary>
+    public const float HeldScale = 0.6f;
+
+    private readonly ElfFigure _figure = new(assets);
+
+    /// <summary>The player's hat colour (an unlock), or null for the classic red.</summary>
+    public Color? Hat { get => _figure.Hat; set => _figure.Hat = value; }
     private float? _modelTop;
 
     /// <param name="facingDegrees">0 = facing +Z.</param>
@@ -25,21 +31,16 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
         Raylib.DrawCylinder(p + new Vector3(0, 0.01f, 0), 0.32f, 0.32f, 0.01f, 16, Palette.Shadow);
 
         float carryHeight = CarryHeight;
+        Vector3? held = null;
         if (assets.TryGetModel(AssetLibrary.ElfModel, out var model))
         {
             _modelTop ??= Raylib.GetModelBoundingBox(model).Max.Y; // measured in the rest pose, before any animation
-            _animator ??= new ElfAnimator(model, assets.Animations(AssetLibrary.ElfModel));
-            if (_animator.IsAnimated)
-            {
-                _animator.Update(model, Raylib.GetFrameTime(), pose);
-                bob = 0; // the animation has its own bounce
-            }
-
+            if (_figure.IsAnimated) bob = 0;                        // the animation has its own bounce
             var at = p + new Vector3(0, bob, 0);
-            Raylib.DrawModelEx(model, at, Vector3.UnitY, facingDegrees, Vector3.One, Color.White);
+            _figure.Draw(at, facingDegrees, pose with { Carrying = state.CarriedItem != null && !OnStation(state) },
+                Raylib.GetFrameTime());
+            if (_figure.CanCarry && _figure.TryHoldPoint(at, facingDegrees, out var hand)) held = hand;
             carryHeight = _modelTop.Value + 0.08f; // carry above the hat, whatever height the elf model is
-
-            if (pose.Hammering) DrawHammerInHand(model, at, facingDegrees);
         }
         else
         {
@@ -51,21 +52,19 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
         }
 
         // While building, the toy sits on the bench instead (see WorldView).
-        if (state.CarriedItem != null && state.Assembly == null)
+        if (state.CarriedItem == null || OnStation(state)) return;
+        if (held is { } h) // held up on the right hand; toys are long side-to-side, so their outline shows from behind
+            items.Draw(state.CarriedItem, h + new Vector3(0, 0.02f, 0), HeldScale, facingDegrees);
+        else // no Carry pose in elf.glb (or no elf model): float it above the head
             items.Draw(state.CarriedItem, p + new Vector3(0, carryHeight + bob, 0), CarriedScale);
     }
 
-    private void DrawHammerInHand(Model elf, Vector3 at, float facingDegrees)
-    {
-        if (_animator == null || !assets.TryGetModel(AssetLibrary.HammerModel, out var hammer)) return;
-        if (!_animator.HammerTransform(elf, out var local)) return;
-        var elfWorld = Raymath.MatrixMultiply(Raymath.MatrixRotateY(facingDegrees * MathF.PI / 180f), Raymath.MatrixTranslate(at.X, at.Y, at.Z));
-        hammer.Transform = Raymath.MatrixMultiply(local, elfWorld);
-        Raylib.DrawModel(hammer, Vector3.Zero, 1f, Color.White);
-    }
+    /// <summary>While building or ribboning, the item sits on the station (see WorldView), not in the elf's hand.</summary>
+    private static bool OnStation(RunState s) =>
+        s.Assembly != null || s.RibbonPick != null || s.CraftingAction is { Type: CraftingType.Ribbon };
 
     /// <summary>A tired little elf made of primitives, facing +Z.</summary>
-    private static void DrawGreyBoxElf()
+    public static void DrawGreyBoxElf()
     {
         Raylib.DrawCylinder(new Vector3(-0.09f, 0, 0), 0.06f, 0.06f, 0.22f, 8, Palette.Ink);   // legs
         Raylib.DrawCylinder(new Vector3(0.09f, 0, 0), 0.06f, 0.06f, 0.22f, 8, Palette.Ink);

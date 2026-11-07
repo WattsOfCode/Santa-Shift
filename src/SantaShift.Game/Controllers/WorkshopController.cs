@@ -26,20 +26,35 @@ public sealed class WorkshopController : IScreen
     {
         _s = services;
         _run = run;
-        _sim = new Simulation(services.Content, run.Mode, run.Round, seed: Random.Shared.Next());
-        _player = new PlayerController(services.Input, services.Settings);
+        _sim = new Simulation(services.Content, run.Mode, run.Round, seed: Random.Shared.Next(), naughty: run.List.NaughtyChildren,
+            modifiers: run.Modifiers, spirit: run.SpiritForNextRound(services.Content.Tuning.Spirit));
+        _player = new PlayerController(services.Input, services.Settings, services.Render.Movement);
         _interaction = new InteractionController(services.Content, services.Input, services.Audio);
         _interaction.Attach(_sim);
-        _pause = new PauseController(services.Input, _sim,
-            restart: () => services.Scenes.Switch(new WorkshopController(services, new RunProgress(run.Mode))),
+        _pause = new PauseController(services, _sim,
+            restart: () => services.Scenes.Switch(NewRun(services, run.Mode)),
             quitToTitle: () => services.Scenes.Switch(new TitleController(services)));
         _camera = new CameraController(services.Render.ChaseCamera, services.Render.ShoulderCamera, services.World, services.Content);
         _world = new WorldView(services.Content, services.Assets, services.World);
-        _hud = new HudView(services.Content);
+        _world.PlayerHat = DebugHat != null ? Views.Palette.Hex(DebugHat) : services.HatColour;
+        _hud = new HudView(services.Content, services.Input);
     }
 
-    /// <summary>Starts a brand-new run at round 1.</summary>
-    public static WorkshopController NewRun(GameServices services, GameMode mode) => new(services, new RunProgress(mode));
+    /// <summary>Starts a brand-new run at round 1: Santa draws a fresh naughty and nice list and shows it first.</summary>
+    public static IScreen NewRun(GameServices services, GameMode mode) => new NaughtyNiceController(services, NewRunProgress(services, mode));
+
+    /// <summary>A fresh run with its naughty and nice list (nobody is naughty if the room has no coal station).</summary>
+    public static RunProgress NewRunProgress(GameServices services, GameMode mode)
+    {
+        var content = services.Content;
+        if (DebugNaughty is { } names)
+            return new RunProgress(mode, new NaughtyNiceList(content.Letters.GroupBy(l => l.Child).Select(g => g.First())
+                .Select(l => new ListEntry(l.Child, l.Age, l.ToyId, names.Contains(l.Child)))));
+        return RunProgress.Start(mode, content.Letters, content.HasCoal ? content.Tuning.NaughtyPerRun : 0, Random.Shared.Next());
+    }
+
+    /// <summary>The upbeat toy factory jingle while the shift runs.</summary>
+    public string? Music => MusicIds.Workshop;
 
     public Simulation Simulation => _sim;
 
@@ -52,6 +67,25 @@ public sealed class WorkshopController : IScreen
     /// <summary>Debug builds only (--swing-every N): swing the hammer every N frames, for screenshots of the swing.</summary>
     public static int? DebugSwingEvery;
 
+    /// <summary>Debug builds only (--naughty A,B): these children are naughty instead of a random pick.</summary>
+    public static string[]? DebugNaughty;
+
+    /// <summary>Debug builds only (--at stationId): start standing at that station, facing it.</summary>
+    public static string? DebugAt;
+
+    /// <summary>Debug builds only (--hat #RRGGBB): wear this hat colour, for screenshots.</summary>
+    public static string? DebugHat;
+
+    /// <summary>Debug builds only (--spool N): when choosing a ribbon, take spool N.</summary>
+    public static int? DebugSpool;
+
+    /// <summary>Debug builds only (--pause): open the pause menu once READY is over.</summary>
+    public static bool DebugPause;
+
+    /// <summary>Debug builds only (--use, with --at): press interact there once at the start.</summary>
+    public static bool DebugUse;
+    private bool _debugUsePending;
+
     /// <summary>Counts hammer swings (one per number key pressed while building); drives the swing animation.</summary>
     private int _swings;
     private int _frames;
@@ -60,6 +94,17 @@ public sealed class WorkshopController : IScreen
     {
         if (DebugCarry != null) _sim.State.CarriedItem = DebugCarry;
         if (DebugAssembleParts is { } parts) DebugStartAssembly(parts);
+        if (DebugAt != null && DebugAt.Split(',') is [var mx, var mz]
+            && double.TryParse(mx, System.Globalization.CultureInfo.InvariantCulture, out double x)
+            && double.TryParse(mz, System.Globalization.CultureInfo.InvariantCulture, out double z))
+            _sim.PlacePlayer(_s.Content.Tuning.MetresToPixels(x, z)); // --at x,z in metres
+        else if (DebugAt != null && _s.Content.Stations.FirstOrDefault(st => st.Id == DebugAt) is { } at)
+        {
+            _sim.PlacePlayer(at.Interact);
+            var dir = _world.WorkDirection(at);
+            _player.FaceInstantly(MathF.Atan2(dir.X, dir.Z) * 180f / MathF.PI);
+            _debugUsePending = DebugUse; // pressed on the first step after READY
+        }
         _pause.BeginReady();
         _camera.Update(System.Numerics.Vector2.Zero, _sim.State.PlayerPosition, CurrentWork(), dt: 10);
     }
@@ -75,16 +120,55 @@ public sealed class WorkshopController : IScreen
             _sim.Step(new PlayerCommand(0, 0, false, PartKey: game.NextKey));
         _sim.DrainEvents();
         var dir = _world.WorkDirection(bench);
-        _player.ReadMove((0, 0), working: true, faceWork: (dir.X, dir.Z));
+        _player.FaceInstantly(MathF.Atan2(dir.X, dir.Z) * 180f / MathF.PI);
     }
 
-    /// <summary>The bench spot while the elf is building there, for the camera and the elf's facing.</summary>
+    /// <summary>
+    /// Where the camera leans in over the elf's shoulder: the bench while building, the ribbon station while choosing
+    /// and tying a ribbon.
+    /// </summary>
     private WorkFocus? CurrentWork()
     {
-        if (_sim.State.Assembly is not { } game) return null;
-        var bench = _s.Content.Stations.FirstOrDefault(st => st.Id == game.StationId);
-        return bench == null ? null : new WorkFocus(_world.WorkSpot(bench), _world.WorkDirection(bench));
+        var state = _sim.State;
+        string? id = state.Assembly?.StationId ?? state.RibbonPick?.StationId
+            ?? (state.CraftingAction is { Type: CraftingType.Ribbon } tie ? tie.StationId : null);
+        var station = id == null ? null : _s.Content.Stations.FirstOrDefault(st => st.Id == id);
+        return station == null ? null : new WorkFocus(_world.WorkSpot(station), _world.WorkDirection(station));
     }
+
+    private Station? RibbonPickStation =>
+        _sim.State.RibbonPick is { } pick ? _s.Content.Stations.FirstOrDefault(st => st.Id == pick.StationId) : null;
+
+    /// <summary>The spool under the mouse pointer while choosing a ribbon, or -1.</summary>
+    private int SpoolUnderPointer()
+    {
+        if (RibbonPickStation is not { } station || _s.Input.UsingGamepad) return -1;
+        var pointer = UiCanvas.FromScreen(_s.Input.Pointer(), Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
+        int best = -1;
+        float bestDistance = 46; // UI pixels
+        for (int i = 0; i < _s.Content.Tuning.RibbonColors.Length; i++)
+        {
+            if (_world.SpoolOnScreen(station, i) is not { } at) continue;
+            float d = System.Numerics.Vector2.Distance(at, pointer);
+            if (d < bestDistance) (best, bestDistance) = (i, d);
+        }
+        return best;
+    }
+
+    /// <summary>While building, shovelling or tying a ribbon: the floor direction towards that station, so the elf faces it.</summary>
+    private (double X, double Y)? FaceWorkDirection()
+    {
+        var state = _sim.State;
+        string? id = state.Assembly?.StationId ?? state.RibbonPick?.StationId ?? state.CraftingAction?.StationId;
+        if (id == null || _s.Content.Stations.FirstOrDefault(st => st.Id == id) is not { } station) return null;
+        var dir = _world.WorkDirection(station);
+        return (dir.X, dir.Z);
+    }
+
+    private ElfActivity CurrentActivity() =>
+        _sim.State.Assembly != null ? ElfActivity.Hammering
+        : _sim.State.CraftingAction is { Type: CraftingType.Shovel } ? ElfActivity.Shovelling
+        : ElfActivity.None;
 
     public void Exit()
     {
@@ -100,21 +184,28 @@ public sealed class WorkshopController : IScreen
         if (_pause.Update()) return;
 
         bool cancel = false;
-        if (_s.Input.ConsumePressed(InputAction.Back))
-        {
-            if (_sim.State.RecyclePromptOpen) cancel = true;
-            else { _pause.Pause(); return; }
-        }
+        // Esc is both Pause and Back: with the recycle prompt open it only closes the prompt.
+        bool back = _s.Input.ConsumePressed(InputAction.Back), pause = _s.Input.ConsumePressed(InputAction.Pause);
+        if (_sim.State.RecyclePromptOpen && back) cancel = true;
+        else if (pause) { _pause.Pause(); return; }
 
         var floorMove = _camera.ToFloorDirection(_s.Input.Move());
-        var work = CurrentWork();
         var (mx, my) = _player.ReadMove(floorMove, working: _sim.State.IsWorking,
-            faceWork: work is { } w ? (w.Direction.X, w.Direction.Z) : null);
-        bool interact = _interaction.ReadInteract();
+            faceWork: FaceWorkDirection(), dt: 1f / _sim.Tuning.TicksPerSecond);
+        if (DebugPause) { DebugPause = false; _pause.Pause(); return; }
+        bool interact = _interaction.ReadInteract() || _debugUsePending;
+        _debugUsePending = false;
 
-        // Number keys only mean something during the bench minigame; otherwise they are dropped.
+        // Part keys only mean something in the bench minigame and when choosing a ribbon (key n = spool n);
+        // otherwise they are dropped. Clicking a spool counts as pressing its key.
         int partKey = _s.Input.ConsumePartKey();
-        if (_sim.State.Assembly == null) { while (_s.Input.ConsumePartKey() != 0) { } partKey = 0; }
+        bool click = _s.Input.ConsumePressed(InputAction.Click);
+        if (_sim.State.RibbonPick != null)
+        {
+            if (partKey == 0 && click && _world.HoveredSpool >= 0) partKey = _world.HoveredSpool + 1;
+            if (DebugSpool is { } spool && _sim.State.Tick > 30) { partKey = spool; DebugSpool = null; }
+        }
+        else if (_sim.State.Assembly == null) { while (_s.Input.ConsumePartKey() != 0) { } partKey = 0; }
         else if (partKey != 0) _swings++;
 
         _sim.Step(new PlayerCommand(mx, my, interact, cancel, partKey));
@@ -128,21 +219,26 @@ public sealed class WorkshopController : IScreen
     public void FrameUpdate()
     {
         // Mouse look only while actually playing; menus and READY get a normal cursor.
+        // Choosing a ribbon frees the pointer too, so the spools can be clicked (the camera holds still meanwhile).
         bool playing = !_pause.Blocking || _pause.State == PauseState.Ready;
-        _s.Input.SetMouseCaptured(playing && Raylib.IsWindowFocused());
-        _camera.Update(_pause.Blocking ? System.Numerics.Vector2.Zero : _s.Input.MouseDelta(), _sim.State.PlayerPosition,
-            CurrentWork(), Raylib.GetFrameTime());
+        bool picking = _sim.State.RibbonPick != null;
+        _s.Input.SetMouseCaptured(playing && !picking && Raylib.IsWindowFocused());
+        _camera.Update(_pause.Blocking || picking ? System.Numerics.Vector2.Zero : _s.Input.Look(), _sim.State.PlayerPosition,
+            CurrentWork(), Raylib.GetFrameTime(), _player.FacingDegrees);
+        _world.HoveredSpool = picking ? SpoolUnderPointer() : -1;
 
         _frames++;
         if (DebugSwingEvery is { } every && every > 0 && _frames % every == 0) _swings++;
     }
 
     public void DrawWorld() =>
-        _world.Draw(_sim, _player.FacingDegrees, _player.Bob, new ElfPose(_player.Walking, _sim.State.Assembly != null, _swings));
+        _world.Draw(_sim, _player.FacingDegrees, _player.Bob, new ElfPose(_player.Walking, CurrentActivity(), _swings));
 
     public void DrawUi(UiCanvas ui)
     {
         _hud.Draw(ui, _sim, _interaction.Feedback, _world, _run.TotalScore);
+        if (RibbonPickStation is { } station && !_pause.Blocking)
+            _world.DrawSpoolLabels(ui, station, i => _s.Input.Label(InputAction.Part1 + i));
         _pause.Draw(ui);
     }
 
@@ -151,7 +247,12 @@ public sealed class WorkshopController : IScreen
         var st = _sim.State;
         var d = _s.Content.Dialogue;
         int quota = _sim.Quota;
+        int round = _run.Round;
         bool passed = _run.CompleteRound(st, quota);
+
+        // Lifetime totals and unlocks, saved straight away.
+        var unlocked = _s.Progress.RecordRound(st, round, passed, _s.Content.Unlocks);
+        _s.SaveProgress();
 
         bool newBest = false;
         if (!passed)
@@ -160,15 +261,16 @@ public sealed class WorkshopController : IScreen
             _s.Save.SaveBest(_s.Best);
         }
 
-        var cue = d.Cue(passed ? "review_pass" : "review_miss");
+        var cue = d.Cue(st.SpiritOut ? "spirit_out" : passed ? "review_pass" : "review_miss");
         var summary = new ResultsSummary(
             _run, passed,
-            Heading: passed ? d.Message("round_complete", _run.Round) : d.Message("game_over"),
+            Heading: passed ? d.Message("round_complete", _run.Round) : st.SpiritOut ? d.Message("spirit_out") : d.Message("game_over"),
             ReviewLabel: d.Message(Scoring.ReviewKey(st.Delivered, _sim.Tuning)),
             SantaLine: cue?.Santa ?? "",
             st.Delivered, quota, st.Missed, st.Unfinished, st.Score, st.BestStreak,
             NextQuota: passed ? _sim.Tuning.QuotaFor(_run.Mode, _run.Round + 1) : 0,
-            BestScore: _s.Best.For(_run.Mode), BestRound: _s.Best.RoundFor(_run.Mode), NewBest: newBest);
+            BestScore: _s.Best.For(_run.Mode), BestRound: _s.Best.RoundFor(_run.Mode), NewBest: newBest,
+            Unlocked: unlocked.Select(u => u.Name).ToList(), Spirit: st.Spirit);
 
         _s.Scenes.Switch(new ResultsController(_s, summary));
     }

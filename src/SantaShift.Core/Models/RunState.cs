@@ -12,6 +12,9 @@ public sealed class RunState
 
     public RunPhase Phase { get; set; } = RunPhase.Playing;
 
+    /// <summary>Children on this run's naughty list. Their orders want coal, not toys.</summary>
+    public IReadOnlySet<string> NaughtyChildren { get; init; } = new HashSet<string>();
+
     /// <summary>Simulation steps completed. 60 ticks = 1 second.</summary>
     public long Tick { get; set; }
 
@@ -23,9 +26,34 @@ public sealed class RunState
     /// <summary>The bench minigame, while the elf is building a toy.</summary>
     public AssemblyState? Assembly { get; set; }
 
-    /// <summary>True while the elf is busy at a station (building or tying a ribbon).</summary>
-    public bool IsWorking => CraftingAction != null || Assembly != null;
+    /// <summary>Choosing a ribbon colour at the ribbon station, before tying.</summary>
+    public RibbonPickState? RibbonPick { get; set; }
+
+    /// <summary>True while the elf is busy at a station (building, choosing or tying a ribbon, shovelling).</summary>
+    public bool IsWorking => CraftingAction != null || Assembly != null || RibbonPick != null;
+
+    /// <summary>The Christmas Spirit meter (0 to <see cref="SpiritTuning.Max"/>), carried over from earlier rounds.</summary>
+    public double Spirit { get; set; } = 100;
+
+    /// <summary>True when the shift ended early because the spirit ran out.</summary>
+    public bool SpiritOut { get; set; }
+
+    /// <summary>Lumps of coal delivered to naughty children this shift.</summary>
+    public int CoalDelivered { get; set; }
+
+    /// <summary>The perks picked so far this run, combined.</summary>
+    public RunModifiers Modifiers { get; init; } = RunModifiers.None;
     public bool RecyclePromptOpen { get; set; }
+
+    // Kit bins
+    /// <summary>True when kit bins hold limited stock (the room has a supply sled). Otherwise bins never run out.</summary>
+    public bool LimitedKits { get; init; }
+
+    /// <summary>Kits left in each bin, by toy id (only used when <see cref="LimitedKits"/>).</summary>
+    public Dictionary<string, int> KitStock { get; } = new();
+
+    /// <summary>Kits left in the bin for a toy, or null if bins are unlimited.</summary>
+    public int? KitsLeft(string toyId) => LimitedKits ? KitStock.GetValueOrDefault(toyId) : null;
 
     // Orders
     public List<Order> LiveOrders { get; } = new();

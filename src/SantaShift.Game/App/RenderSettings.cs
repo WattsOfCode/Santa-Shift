@@ -15,6 +15,7 @@ public sealed class RenderSettings
     public bool Msaa { get; init; }
     public ChaseCameraSettings ChaseCamera { get; init; } = new();
     public ShoulderCameraSettings ShoulderCamera { get; init; } = new();
+    public MovementSettings Movement { get; init; } = new();
     public MenuCameraSettings MenuCamera { get; init; } = new();
     public LightingSettings Lighting { get; init; } = new();
 
@@ -43,6 +44,24 @@ public sealed class ChaseCameraSettings
     public bool InvertY { get; init; }
     public float WallMargin { get; init; } = 0.25f;
     public float MaxHeight { get; init; } = 3.0f;
+
+    /// <summary>After the elf has faced one way this long (and the mouse is left alone), the camera swings in behind it. 0 = never.</summary>
+    public float AutoFollowSeconds { get; init; } = 2.0f;
+
+    /// <summary>How quickly it swings round (higher = faster).</summary>
+    public float AutoFollowSpeed { get; init; } = 2.5f;
+}
+
+/// <summary>How the elf turns and gets going (feel only: the rules still decide where it can walk).</summary>
+public sealed class MovementSettings
+{
+    public float TurnDegreesPerSecond { get; init; } = 720;
+
+    /// <summary>Time to reach full speed from standing.</summary>
+    public float AccelerationSeconds { get; init; } = 0.12f;
+
+    /// <summary>Slowest speed (fraction of full) while coming round a sharp turn.</summary>
+    public float TurningSpeedFloor { get; init; } = 0.2f;
 }
 
 /// <summary>Close view over the elf's right shoulder while it builds a toy at the bench.</summary>

@@ -14,6 +14,8 @@ public static class ContentLoader
     private sealed class LetterFile { public int SchemaVersion { get; init; } = 1; public List<ChildLetter> Letters { get; init; } = []; }
     private sealed class StationFile { public List<Station> Stations { get; init; } = []; }
     private sealed class EventFile { public List<SantaEvent> Events { get; init; } = []; }
+    private sealed class PerkFile { public List<Perk> Perks { get; init; } = []; }
+    private sealed class UnlockFile { public List<Unlock> Unlocks { get; init; } = []; }
 
     public static GameContent LoadFromDirectory(string dataDirectory)
     {
@@ -25,12 +27,14 @@ public static class ContentLoader
         var events = ReadOptional<EventFile>(dataDirectory, "events.json", warnings)?.Events ?? [];
         var dialogue = ReadOptional<DialogueBook>(dataDirectory, "dialogue.json", warnings) ?? new DialogueBook();
         var letters = ReadOptional<LetterFile>(dataDirectory, "letters.json", warnings)?.Letters ?? [];
+        var perks = ReadOptional<PerkFile>(dataDirectory, "perks.json", warnings)?.Perks ?? [];
+        var unlocks = ReadOptional<UnlockFile>(dataDirectory, "unlocks.json", warnings)?.Unlocks ?? [];
 
         RoomLayout? room = null;
         if (File.Exists(Path.Combine(dataDirectory, RoomLayoutFile)))
             room = ReadOptional<RoomLayout>(dataDirectory, RoomLayoutFile, warnings);
 
-        return Build(tuning, toys, stations, events, dialogue, letters, warnings, room);
+        return Build(tuning, toys, stations, events, dialogue, letters, warnings, room, perks, unlocks);
     }
 
     public const string RoomLayoutFile = "room_layout.json";
@@ -38,7 +42,8 @@ public static class ContentLoader
     /// <summary>Validates content that is already in memory. Also used by tests.</summary>
     public static GameContent Build(
         Tuning tuning, List<Toy> toys, List<Station> stations, List<SantaEvent> events,
-        DialogueBook dialogue, List<ChildLetter> letters, List<string>? warnings = null, RoomLayout? room = null)
+        DialogueBook dialogue, List<ChildLetter> letters, List<string>? warnings = null, RoomLayout? room = null,
+        List<Perk>? perks = null, List<Unlock>? unlocks = null)
     {
         warnings ??= [];
         var floor = tuning.Floor;
@@ -90,8 +95,20 @@ public static class ContentLoader
             goodLetters.Add(letter);
         }
 
+        // Perks and ribbon colours: skip bad ones with a warning.
+        var goodPerks = new List<Perk>();
+        foreach (var p in perks ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(p.Id) || p.MaxStacks < 1 || goodPerks.Any(g => g.Id == p.Id)) { warnings.Add($"perks.json: perk '{p.Id}' is missing an id, has no stacks, or is listed twice; it was skipped."); continue; }
+            goodPerks.Add(p);
+        }
+        RequireUniqueIds(tuning.RibbonColors.Select(r => r.Id), "ribbon colour");
+        if (tuning.RibbonColors.Length > 9) throw new ContentException("tuning.json has more than 9 ribbon colours (they sit on keys 1-9).");
+
         return new GameContent
         {
+            Perks = goodPerks,
+            Unlocks = (unlocks ?? []).Where(u => !string.IsNullOrWhiteSpace(u.Id)).GroupBy(u => u.Id).Select(g => g.First()).ToList(),
             Tuning = tuning, Toys = toys, Stations = stations, Events = events,
             Dialogue = dialogue, Letters = goodLetters, Warnings = warnings,
             Floor = floor, Colliders = colliders, HasRoomLayout = room != null, PlayerStart = start,
@@ -100,6 +117,7 @@ public static class ContentLoader
                 .Where(p => !string.IsNullOrWhiteSpace(p.Model))
                 .Select(p => new Prop(p.Model, tuning.MetresToPixels(p.X, p.Z), p.Yaw, p.Scale > 0 ? p.Scale : 1))
                 .ToList() ?? [],
+            Npcs = room?.Npcs.Select(n => new Npc(tuning.MetresToPixels(n.X, n.Z), n.Yaw)).ToList() ?? [],
         };
     }
 

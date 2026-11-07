@@ -39,6 +39,8 @@ PALETTE = {
     "elf_green": (0.13, 0.42, 0.28, 1), "boot": (0.30, 0.18, 0.10, 1),
     "goblin_skin": (0.47, 0.62, 0.24, 1), "goblin_dark": (0.32, 0.45, 0.16, 1), "eye_white": (0.96, 0.94, 0.82, 1),
     "tunic": (0.50, 0.31, 0.16, 1), "patch": (0.78, 0.58, 0.28, 1),
+    "ribbon_white": (0.97, 0.96, 0.95, 1), "ribbon_shade": (0.74, 0.73, 0.75, 1),  # neutral: tinted per colour in game
+    "coal": (0.07, 0.07, 0.08, 1), "coal_shine": (0.16, 0.16, 0.18, 1), "ember": (1.0, 0.42, 0.12, 1),
     "bear_fur": (0.55, 0.36, 0.20, 1), "bear_light": (0.80, 0.64, 0.45, 1),
     "robot_body": (0.56, 0.79, 0.81, 1), "robot_dark": (0.38, 0.58, 0.62, 1),
     "train_red": (0.73, 0.25, 0.27, 1),
@@ -46,7 +48,7 @@ PALETTE = {
 
 
 # Materials that glow (exported as glTF emission, so the game lights them from inside). Value = glow strength 0..1.
-EMISSIVE = {"flame": 1.0, "flame_core": 1.0, "lamp_glow": 0.9, "glass": 0.35}
+EMISSIVE = {"flame": 1.0, "flame_core": 1.0, "lamp_glow": 0.9, "glass": 0.35, "ember": 0.9}
 
 
 def read_json(path):

@@ -7,6 +7,7 @@ public sealed class SaveData(ISaveStore store)
 {
     public const string SettingsName = "settings";
     public const string BestName = "best";
+    public const string ProgressName = "progress";
 
     public Settings LoadSettings()
     {
@@ -26,4 +27,13 @@ public sealed class SaveData(ISaveStore store)
     }
 
     public bool SaveBest(PersonalBest b) => store.Save(BestName, b);
+
+    /// <summary>Lifetime totals and unlocks. A missing, broken or old file starts fresh.</summary>
+    public PlayerProgress LoadProgress()
+    {
+        var p = store.Load<PlayerProgress>(ProgressName);
+        return p == null || p.SchemaVersion != PlayerProgress.CurrentSchema ? new PlayerProgress() : p.Clamp();
+    }
+
+    public bool SaveProgress(PlayerProgress p) => store.Save(ProgressName, p);
 }

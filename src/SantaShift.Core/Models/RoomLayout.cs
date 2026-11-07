@@ -22,6 +22,9 @@ public sealed class RoomLayout
 
     /// <summary>Point lights: placed in room.blend or carried by props (fireplace, lanterns, windows).</summary>
     public List<RoomLight> Lights { get; init; } = [];
+
+    /// <summary>Workshop elves at their own benches (scenery).</summary>
+    public List<NpcPlacement> Npcs { get; init; } = [];
 }
 
 /// <summary>
@@ -38,6 +41,14 @@ public sealed class RoomLight
     public double Intensity { get; init; } = 1;
     public double Radius { get; init; } = 5;
     public double Flicker { get; init; }
+}
+
+/// <summary>A workshop elf in game-world metres, facing Yaw degrees (0 = +Z).</summary>
+public sealed class NpcPlacement
+{
+    public double X { get; init; }
+    public double Z { get; init; }
+    public double Yaw { get; init; }
 }
 
 public sealed class PropPlacement

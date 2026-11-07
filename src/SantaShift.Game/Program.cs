@@ -32,20 +32,32 @@ public static class Program
     private static LaunchOptions ParseOptions(string[] args)
     {
 #if DEBUG
-        // Debug-only automation: --screenshot <file.png> [--frame N] [--workshop] [--yaw deg] [--pitch deg]
-        //   [--carry toy[:assembled|:botched][:ribbon]] [--assemble partsPlaced] [--swing-every frames]
+        // Debug-only automation: --screenshot <file.png> [--frame N] [--workshop] [--yaw deg] [--pitch deg] [--profile]
+        //   [--list] [--carry toy[:assembled|:botched][:ribbon] | coal | supply] [--assemble partsPlaced] [--swing-every frames]
         string? shot = null;
         int frame = 90;
-        bool workshop = false;
+        bool workshop = false, list = false, perks = false;
         for (int i = 0; i < args.Length; i++)
         {
             if (args[i] == "--screenshot" && i + 1 < args.Length) shot = Path.GetFullPath(args[++i]);
             else if (args[i] == "--frame" && i + 1 < args.Length && int.TryParse(args[++i], out int f)) frame = f;
             else if (args[i] == "--workshop") workshop = true;
+            else if (args[i] == "--list") list = true;
+            else if (args[i] == "--perks") perks = true;
+            else if (args[i] == "--profile") FrameProfiler.Enabled = true;
+            else if (args[i] == "--spool" && i + 1 < args.Length && int.TryParse(args[++i], out int spool)) Controllers.WorkshopController.DebugSpool = spool;
+            else if (args[i] == "--unlocks") Controllers.TitleController.DebugUnlocks = true;
+            else if (args[i] == "--hat" && i + 1 < args.Length) Controllers.WorkshopController.DebugHat = args[++i];
+            else if (args[i] == "--pause") Controllers.WorkshopController.DebugPause = true;
+            else if (args[i] == "--settings" && i + 1 < args.Length && int.TryParse(args[++i], out int tab)) Controllers.TitleController.DebugSettingsTab = tab;
+            else if (args[i] == "--naughty" && i + 1 < args.Length) Controllers.WorkshopController.DebugNaughty = args[++i].Split(',');
+            else if (args[i] == "--at" && i + 1 < args.Length) Controllers.WorkshopController.DebugAt = args[++i];
+            else if (args[i] == "--use") Controllers.WorkshopController.DebugUse = true;
             else if (args[i] == "--carry" && i + 1 < args.Length)
             {
                 var parts = args[++i].Split(':');
-                Controllers.WorkshopController.DebugCarry = new Core.Models.Item
+                Controllers.WorkshopController.DebugCarry = parts[0] == Core.Models.Item.CoalId ? Core.Models.Item.Coal(0)
+                    : parts[0] == Core.Models.Item.SupplyId ? Core.Models.Item.Supply(0) : new Core.Models.Item
                 {
                     ToyId = parts[0],
                     Stage = parts.Contains("botched") ? Core.Models.ItemStage.Botched
@@ -58,7 +70,7 @@ public static class Program
             else if (args[i] == "--yaw" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float yaw)) Controllers.CameraController.DebugStartYaw = yaw;
             else if (args[i] == "--pitch" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float pitch)) Controllers.CameraController.DebugStartPitch = pitch;
         }
-        return new LaunchOptions { ScreenshotPath = shot, ScreenshotFrame = frame, StartInWorkshop = workshop };
+        return new LaunchOptions { ScreenshotPath = shot, ScreenshotFrame = frame, StartInWorkshop = workshop, StartOnList = list, StartOnPerks = perks };
 #else
         return new LaunchOptions();
 #endif

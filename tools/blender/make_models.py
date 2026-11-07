@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from helpers import box, cone, cyl, disc, light, new_file, save, sphere, torus  # noqa: E402
 
 import bpy  # noqa: E402
+from mathutils import Vector  # noqa: E402
 
 TAU = math.pi * 2
 
@@ -48,6 +49,17 @@ class Rig:
         for ob in self.c.objects:
             if ob.type == "MESH" and ob not in self.bone_of:
                 self.bone_of[ob] = bone
+
+
+def face_y(x, z, hy, hz):
+    """Where the front of the elf's face is (its Y) at a point (x, z): the nearer of the head and chin surfaces.
+    Used to set face details into the skin instead of floating in front of it."""
+    def front(cx, cy, cz, rx, ry, rz):
+        k = 1 - ((x - cx) / rx) ** 2 - ((z - cz) / rz) ** 2
+        return cy - ry * math.sqrt(k) if k > 0 else None
+    head = front(0, hy, hz, 0.17 * 1.12, 0.17, 0.17 * 0.95)
+    chin = front(0, hy - 0.08, hz - 0.12, 0.07, 0.07, 0.07 * 1.3)
+    return min(v for v in (head, chin) if v is not None)
 
 
 def side_name(side):
@@ -132,20 +144,35 @@ def elf(c):
         limb(f"Inner ear.{side}", (side * 0.18, hy - 0.005, hz + 0.0), (side * 0.32, hy + 0.02, hz - 0.025), 0.03, 0.0,
              "goblin_dark", c, verts=6)
         # Half-lidded eyes glancing sideways, heavy scowling brows.
-        ex = side * 0.065
-        sphere(f"Eye.{side}", ex, hy - 0.14, hz + 0.02, 0.042, "eye_white", c, segments=10, rings=6)
-        sphere(f"Pupil.{side}", ex + 0.016, hy - 0.178, hz + 0.012, 0.016, "ink", c, segments=8, rings=5)
-        sphere(f"Lid.{side}", ex, hy - 0.142, hz + 0.038, 0.046, "goblin_dark", c, segments=10, rings=6,
+        # The pupil is a sphere sunk into the eyeball, so only a flat dark cap shows on its surface (no floating dot).
+        ex, ey, ez, er = side * 0.065, hy - 0.14, hz + 0.02, 0.042
+        sphere(f"Eye.{side}", ex, ey, ez, er, "eye_white", c, segments=12, rings=8)
+        look = Vector((0.38, -1.0, -0.12)).normalized()
+        pr = 0.021
+        p = Vector((ex, ey, ez)) + look * (er - pr + 0.007)  # shows a 7 mm cap
+        sphere(f"Pupil.{side}", p.x, p.y, p.z, pr, "ink", c, segments=10, rings=6)
+        sphere(f"Lid.{side}", ex, ey - 0.002, ez + 0.018, er + 0.004, "goblin_dark", c, segments=12, rings=8,
                scale=(1.0, 1.0, 0.55))
-        box(f"Brow.{side}", side * 0.07, hy - 0.165, hz + 0.065, 0.1, 0.035, 0.025, "goblin_dark", c,
-            rot=(0, -side * 0.38, 0))
+        # Scowling brow: a stroke that follows the curve of the forehead, low at the nose and high at the temple.
+        for n in range(8):
+            t = n / 7
+            bx, bz = side * (0.025 + 0.09 * t), hz + 0.05 + 0.022 * t
+            sphere(f"Brow.{side}.{n}", bx, face_y(bx, bz, hy, hz) + 0.004, bz, 0.02, "goblin_dark", c,
+                   segments=8, rings=5, scale=(1.5, 1.0, 0.8 - 0.3 * t))
         sphere(f"Hair tuft.{side}", side * 0.15, hy + 0.04, hz + 0.08, 0.035, "goblin_dark", c, segments=6, rings=4,
                scale=(0.7, 0.7, 1.5))
     # Long pointy nose and a crooked smirk with one snaggle tooth.
     limb("Nose", (0, hy - 0.15, hz - 0.0), (0, hy - 0.29, hz - 0.05), 0.034, 0.006, "goblin_skin", c)
-    sphere("Smirk", 0.01, hy - 0.155, hz - 0.085, 0.075, "ink", c, segments=10, rings=5, scale=(1.3, 0.4, 0.22))
-    sphere("Smirk corner", 0.1, hy - 0.13, hz - 0.06, 0.035, "ink", c, segments=8, rings=4, scale=(1.0, 0.55, 0.45))
-    box("Tooth", -0.03, hy - 0.178, hz - 0.1, 0.024, 0.012, 0.026, "snow", c)
+    # The smirk is a line of small dark beads sunk into the skin along the face's surface, rising on the right side
+    # of the face (+X from the front), so it reads as a crooked grin painted on rather than a black blob in front.
+    for n in range(16):
+        t = n / 15
+        mx = -0.06 + 0.14 * t
+        mz = hz - 0.095 + 0.04 * t * t
+        sphere(f"Smirk.{n}", mx, face_y(mx, mz, hy, hz) + 0.008, mz, 0.0115, "ink", c, segments=8, rings=4,
+               scale=(1.8, 1.0, 0.9 - 0.35 * abs(t - 0.45)))
+    tx, tz = -0.025, hz - 0.104
+    box("Tooth", tx, face_y(tx, tz, hy, hz) + 0.002, tz - 0.022, 0.02, 0.012, 0.022, "snow", c)
     torus("Hat brim", 0, hy + 0.01, hz + 0.11, 0.155, 0.032, "snow", c, segments=(14, 6))
     rig.claim("head")
     add_bone("head", (0, -0.01, 0.64), (0, hy, hz + 0.12), "chest")
@@ -218,18 +245,47 @@ ELF_ACTIONS = {
     # One hammer swing with the right hand, 0.6 s. Frame 0 is the "ready" pose held between swings (hammer raised);
     # the left hand steadies the toy. The hammer points forward from the fist when the arm hangs down, so the sum of
     # the arm's three X angles is the hammer's tilt: 90 = straight up, 180+ = back over the shoulder, 0 = level.
+    # The upper arm is also swung out 45 degrees (Y), so the hammer comes down beside the head, where the shoulder
+    # camera can see it, onto the toy at the elf's right.
     # The strike levels it out at shoulder height, which is the low bench's top plus a toy, half a metre ahead.
     "Work": {
-        0: {"upper_arm.R": (100, 0, 0), "forearm.R": (40, 0, 0), "hand.R": (-60, 0, 0),
+        0: {"upper_arm.R": (100, 45, 0), "forearm.R": (40, 0, 0), "hand.R": (-60, 0, 0),
             "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (6, 0, 0), "head": (6, 0, 0)},
-        6: {"upper_arm.R": (160, 0, 0), "forearm.R": (30, 0, 0), "hand.R": (0, 0, 0),
+        6: {"upper_arm.R": (160, 45, 0), "forearm.R": (30, 0, 0), "hand.R": (0, 0, 0),
             "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (-6, 0, 0), "head": (-8, 0, 0), "hat": (12, 0, 0)},
-        10: {"upper_arm.R": (95, 0, 0), "forearm.R": (0, 0, 0), "hand.R": (-95, 0, 0),
+        10: {"upper_arm.R": (95, 45, 0), "forearm.R": (0, 0, 0), "hand.R": (-95, 0, 0),
              "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (14, 0, 0), "head": (10, 0, 0), "hat": (-16, 0, 0)},
-        13: {"upper_arm.R": (95, 0, 0), "forearm.R": (0, 0, 0), "hand.R": (-95, 0, 0),
+        13: {"upper_arm.R": (95, 45, 0), "forearm.R": (0, 0, 0), "hand.R": (-95, 0, 0),
              "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (12, 0, 0), "head": (8, 0, 0), "hat": (-8, 0, 0)},
-        18: {"upper_arm.R": (100, 0, 0), "forearm.R": (40, 0, 0), "hand.R": (-60, 0, 0),
+        18: {"upper_arm.R": (100, 45, 0), "forearm.R": (40, 0, 0), "hand.R": (-60, 0, 0),
              "upper_arm.L": (75, 0, 0), "forearm.L": (20, 0, 0), "chest": (6, 0, 0), "head": (6, 0, 0)},
+    },
+    # One scoop of coal with the shovel in the right hand, 0.8 s: hold it ready, bend and drive the blade down into
+    # the scuttle, then heave it up with the coal. The left hand helps on the shaft. The shovel points forward-down
+    # from the fist when the arm hangs, so lower arm angles dig and higher ones lift.
+    "Shovel": {
+        0: {"upper_arm.R": (25, 0, 0), "forearm.R": (35, 0, 0), "hand.R": (-10, 0, 0),
+            "upper_arm.L": (40, 0, -10), "forearm.L": (45, 0, 0), "chest": (8, 0, 0)},
+        8: {"upper_arm.R": (45, 0, 0), "forearm.R": (5, 0, 0), "hand.R": (5, 0, 0),
+            "upper_arm.L": (55, 0, -10), "forearm.L": (20, 0, 0), "chest": (28, 0, 0), "head": (12, 0, 0),
+            "hat": (-10, 0, 0), "leg.L": (-12, 0, 0), "leg.R": (18, 0, 0), "root.z": -0.03},
+        12: {"upper_arm.R": (40, 0, 0), "forearm.R": (5, 0, 0), "hand.R": (12, 0, 0),
+             "upper_arm.L": (50, 0, -10), "forearm.L": (20, 0, 0), "chest": (30, 0, 0), "head": (12, 0, 0),
+             "hat": (-14, 0, 0), "leg.L": (-12, 0, 0), "leg.R": (18, 0, 0), "root.z": -0.035},
+        19: {"upper_arm.R": (75, 0, 0), "forearm.R": (55, 0, 0), "hand.R": (-35, 0, 0),
+             "upper_arm.L": (60, 0, -10), "forearm.L": (60, 0, 0), "chest": (-4, 0, 0), "head": (-6, 0, 0),
+             "hat": (10, 0, 0)},
+        24: {"upper_arm.R": (60, 0, 0), "forearm.R": (60, 0, 0), "hand.R": (-40, 0, 0),
+             "upper_arm.L": (50, 0, -10), "forearm.L": (60, 0, 0), "chest": (2, 0, 0)},
+    },
+    # Holding an item up on the right hand beside the head, like a tray (held in front, the big head would hide it from
+    # the camera behind). Only the right arm is used: the game lays it over Walk or Idle, so the legs keep going.
+    # Z swings the right arm out to the side (negative = outwards); the forearm carries on up and the hand bends in flat
+    # under the item. A slow sway; loops every 2 s.
+    "Carry": {
+        0: {"upper_arm.R": (10, 0, -100), "forearm.R": (0, 0, -60), "hand.R": (0, 0, 75)},
+        30: {"upper_arm.R": (14, 0, -97), "forearm.R": (0, 0, -63), "hand.R": (0, 0, 75)},
+        60: {"upper_arm.R": (10, 0, -100), "forearm.R": (0, 0, -60), "hand.R": (0, 0, 75)},
     },
 }
 
@@ -423,6 +479,19 @@ def botched_toy(name):
     return build
 
 
+def shovel(c):
+    """Small coal shovel, 0.78 m, standing on its blade. The elf holds it 0.62 m up the shaft (just under the D-grip);
+    the blade's scoop opens towards -Y."""
+    box("Blade", 0, 0, 0.0, 0.17, 0.02, 0.2, "iron", c)
+    for side in (-1, 1):
+        box(f"Blade side.{side}", side * 0.085, -0.03, 0.0, 0.012, 0.07, 0.17, "iron", c)
+    box("Blade lip", 0, -0.035, 0.0, 0.17, 0.05, 0.012, "steel", c)
+    cone("Socket", 0, 0, 0.23, 0.028, 0.018, 0.07, "iron", c, verts=8)
+    cyl("Shaft", 0, 0, 0.45, 0.016, 0.42, "Z", "log_end", c, verts=8)
+    cyl("Grip wrap", 0, 0, 0.62, 0.02, 0.08, "Z", "berry", c, verts=8)
+    torus("D-grip", 0, 0, 0.72, 0.05, 0.012, "log_end", c, rot=(math.pi / 2, 0, 0), scale=(1, 1, 0.75), segments=(10, 4))
+
+
 def hammer(c):
     """Claw hammer, 0.34 m, standing on the end of its handle. The elf holds it by the grip (6 cm up the handle);
     the striking face points -Y and the claw +Y."""
@@ -432,6 +501,35 @@ def hammer(c):
     cyl("Face", 0, -0.085, 0.315, 0.027, 0.03, "Y", "steel", c, verts=10)
     for side in (-1, 1):
         limb(f"Claw.{side}", (side * 0.012, 0.07, 0.325), (side * 0.014, 0.135, 0.285), 0.013, 0.003, "iron", c, verts=6)
+
+
+def coal_lumps(c, x, y, z, count, spread, size, embers=0):
+    """A heap of chunky, faceted coal lumps (low-poly spheres squashed at random), some glowing as embers."""
+    for n in range(count):
+        a = n * 2.39996
+        r = spread * math.sqrt((n + 0.5) / count)
+        lx, ly = x + math.cos(a) * r, y + math.sin(a) * r
+        lz = z + (1 - r / max(spread, 1e-6)) * size * 1.2  # higher in the middle: a heap
+        s = size * random.uniform(0.75, 1.2)
+        mat = "ember" if n < embers else ("coal_shine" if n % 3 == 0 else "coal")
+        sphere(f"Coal.{n}", lx, ly, lz, s, mat, c, segments=6, rings=4,
+               scale=(random.uniform(0.8, 1.25), random.uniform(0.8, 1.25), random.uniform(0.6, 0.9)))
+
+
+def coal_lump(c):
+    """What the elf carries for a naughty child: a small heap of coal, about 0.25 m across."""
+    coal_lumps(c, 0, 0, 0.05, 7, 0.08, 0.055)
+    drop_to_floor(c)
+
+
+def station_coal(c):
+    """Iron coal scuttle on the hearth, 0.6 x 0.6, about 0.35 m high, heaped with coal and a few glowing embers."""
+    cone("Scuttle", 0, 0, 0.14, 0.2, 0.25, 0.28, "iron", c, verts=12)
+    torus("Rim", 0, 0, 0.28, 0.25, 0.018, "iron", c, segments=(14, 4))
+    cyl("Foot", 0, 0, 0.012, 0.21, 0.024, "Z", "iron", c, verts=12)
+    torus("Handle", 0, 0, 0.36, 0.17, 0.012, "steel", c, rot=(0, math.pi / 2, 0), scale=(1, 1, 0.7), segments=(12, 4))
+    coal_lumps(c, 0, 0, 0.27, 14, 0.19, 0.055, embers=3)
+    # The shovel is its own model (shovel.blend): the game leans it here and puts it in the elf's hands to dig.
 
 
 def kit_crate(c):
@@ -451,11 +549,36 @@ def kit_crate(c):
     box("Label", 0, -s / 2 - 0.022, 0.17, 0.2, 0.005, 0.1, "snow", c)
 
 
+def supply_crate(c):
+    """A crate of spare kits from the supply sled, about 0.44 x 0.38 x 0.36 m: dark wood, green straps, a gold star and
+    rope handles, so it never looks like a toy kit."""
+    w, d, h = 0.44, 0.38, 0.36
+    box("Supply body", 0, 0, 0, w, d, h, "plank_b", c)
+    box("Supply lid", 0, 0, h - 0.035, w + 0.02, d + 0.02, 0.045, "log_dark", c)
+    for x in (-1, 1):
+        box(f"Supply strap.{x}", x * 0.12, 0, -0.002, 0.05, d + 0.012, h + 0.006, "pine", c)
+        torus(f"Rope handle.{x}", x * (w / 2 + 0.01), 0, h * 0.62, 0.06, 0.012, "burlap", c, rot=(0, math.pi / 2, 0),
+              scale=(1, 1, 0.6), segments=(10, 4))
+    cone("Star", 0, -d / 2 - 0.006, h * 0.45, 0.085, 0.0, 0.012, "gold", c, verts=5, rot=(math.pi / 2, 0, 0))
+
+
 def ribbon_bow(c):
+    """Bow on a ribboned toy. Near-white: the game tints it with the ribbon's colour (gold when there is none)."""
     for side in (-1, 1):
-        torus(f"Loop.{side}", side * 0.065, 0, 0.08, 0.05, 0.015, "gold", c, rot=(math.pi / 2, 0, 0), scale=(1.2, 1, 0.8))
-        box(f"Tail.{side}", side * 0.04, -0.02, 0.01, 0.025, 0.01, 0.07, "gold", c, rot=(0, side * 0.4, 0))
-    sphere("Knot", 0, 0, 0.08, 0.025, "berry", c)
+        torus(f"Loop.{side}", side * 0.065, 0, 0.08, 0.05, 0.015, "ribbon_white", c, rot=(math.pi / 2, 0, 0), scale=(1.2, 1, 0.8))
+        box(f"Tail.{side}", side * 0.04, -0.02, 0.01, 0.025, 0.01, 0.07, "ribbon_white", c, rot=(0, side * 0.4, 0))
+    sphere("Knot", 0, 0, 0.08, 0.025, "ribbon_shade", c)
+
+
+def ribbon_spool(c):
+    """A spool of ribbon lying on its side, 0.12 m across. Near-white: the game tints it with each ribbon colour."""
+    r, w = 0.06, 0.09
+    for side in (-1, 1):
+        cyl(f"Flange.{side}", side * w / 2, 0, r, r, 0.012, "X", "ribbon_shade", c, verts=14)
+    cyl("Wound ribbon", 0, 0, r, r * 0.82, w - 0.012, "X", "ribbon_white", c, verts=14)
+    cyl("Hole", 0, 0, r, r * 0.22, w + 0.004, "X", "ribbon_shade", c, verts=8)
+    box("Loose end", 0, -r * 0.95, 0, w * 0.75, 0.004, r, "ribbon_white", c)
+    box("Loose tip", 0, -r * 1.25, 0, w * 0.75, r * 0.55, 0.004, "ribbon_white", c)
 
 
 # ================================================================ stations (footprints match stations.json)
@@ -481,9 +604,55 @@ def station_bin(c):
     box("Sign board", 0, -d / 2 - 0.02, 0.35, 0.9, 0.03, 0.25, "bench_top", c)
 
 
+def station_supply(c):
+    """The supply sled, 2.0 x 1.2 (front -Y): crates of spare kits stacked on a red sled with a gold-star sign. The elf
+    takes a crate here to restock an empty kit bin. Up against a wall, so the stack is tallest at the back."""
+    for side in (-1, 1):
+        box(f"Runner.{side}", 0, side * 0.5, 0, 1.9, 0.07, 0.07, "berry", c)
+        torus(f"Curl.{side}", -0.95, side * 0.5, 0.18, 0.15, 0.03, "berry", c, rot=(math.pi / 2, 0, 0))
+        for x in (-0.6, 0.0, 0.6):
+            box(f"Strut.{side}.{x}", x, side * 0.5, 0.06, 0.06, 0.06, 0.16, "plank_b", c)
+    box("Deck", 0, 0, 0.2, 1.85, 1.1, 0.06, "plank_a", c)
+    # Crates: a row of three at the front, two on top behind, one on top of those.
+    stack = [(-0.55, -0.22, 0.26, 0.1), (0.0, -0.25, 0.26, -0.06), (0.55, -0.2, 0.26, 0.05),
+             (-0.5, 0.25, 0.26, -0.04), (0.05, 0.27, 0.26, 0.08), (0.58, 0.24, 0.26, -0.1),
+             (-0.25, 0.22, 0.62, 0.12), (0.32, 0.24, 0.62, -0.05), (0.05, 0.25, 0.98, 0.2)]
+    for n, (x, y, z, turn) in enumerate(stack):
+        w, d, h = 0.44, 0.38, 0.36
+        box(f"Crate.{n}", x, y, z, w, d, h, "plank_b", c, rot=(0, 0, turn))
+        box(f"Crate lid.{n}", x, y, z + h - 0.03, w + 0.02, d + 0.02, 0.04, "log_dark", c, rot=(0, 0, turn))
+        box(f"Crate strap.{n}", x, y, z - 0.002, 0.05, d + 0.012, h + 0.006, "pine", c, rot=(0, 0, turn))
+    # A tarp folded back over the side and a rope.
+    box("Tarp", 0.82, 0.05, 0.26, 0.08, 1.0, 0.3, "burlap", c, rot=(0, 0.2, 0))
+    torus("Rope coil", -0.75, 0.32, 0.64, 0.12, 0.022, "burlap", c, segments=(12, 4))
+    # Sign on a post at the front corner: a gold star on green.
+    box("Sign post", -0.85, -0.5, 0.0, 0.06, 0.06, 1.25, "log_dark", c)
+    box("Sign board", -0.85, -0.53, 1.0, 0.5, 0.04, 0.36, "pine_dark", c)
+    box("Sign trim", -0.85, -0.535, 0.98, 0.54, 0.035, 0.4, "gold", c)
+    cone("Sign star", -0.85, -0.565, 1.18, 0.11, 0.0, 0.015, "gold", c, verts=5, rot=(math.pi / 2, 0, 0))
+
+
 def station_bench(c):
     """Low elf-height workbench, 3.0 x 1.0, top at 0.55 m (so the short elf can swing a hammer over it),
     worked from the -Y side. The hammer is its own model (hammer.blend); the game puts it on the bench."""
+    workbench(c)
+
+
+def prop_npc_bench(c):
+    """Another workbench where a workshop elf builds trains. The game draws the elf at an npc_<n> marker in room.blend,
+    standing on the mat on this bench's -Y side. A finished train and a half-built one sit on top; no pegboard, so the
+    elf's hammering can be seen from across the room."""
+    h = workbench(c, pegboard=False)
+    # The elf (at x -0.15 on the mat, facing +Y) hammers at its right: a low train chassis sits there so it never hides
+    # the elf from the room. A finished train waits further along, and a loose cab on the other side.
+    move_around_centre(built(c, train_wheels), (0.1, -0.3, h), (0, 0, 80))
+    move_around_centre(built(c, whole_toy("toy_train")), (0.95, 0.1, h), (0, 0, 25))
+    move_around_centre(built(c, train_cab), (-0.75, 0.0, h - 0.1), (0, 0, -20))
+    disc("Work mat", 0, -0.82, 0, 0.5, 0.32, 0.01, "rug_a", c)
+
+
+def workbench(c, pegboard=True):
+    """The bench shared by the assembly station and the elves' benches. Returns the top height."""
     w, d, h = 3.0, 1.0, 0.55
     box("Top", 0, 0, h - 0.1, w, d, 0.1, "bench_top", c)
     for x in (-1, 1):
@@ -502,10 +671,11 @@ def station_bench(c):
         cyl(f"Nail.{n}", -0.2 + n * 0.05, -0.3, h + 0.01, 0.006, 0.05, "Y", "steel", c, verts=4)
     box("Plank offcut", 0.75, 0.2, h, 0.5, 0.15, 0.04, "plank_c", c)
     cyl("Paint pot", -1.25, 0.25, h + 0.06, 0.07, 0.12, "Z", "train_red", c, verts=10)
-    # Pegboard of tools behind the bench.
-    box("Pegboard", 0, d / 2 - 0.03, h, 1.6, 0.04, 0.6, "plank_a", c)
-    for n, x in enumerate((-0.6, -0.2, 0.2, 0.6)):
-        box(f"Hung tool.{n}", x, d / 2 - 0.07, h + 0.15, 0.06, 0.03, 0.35, ("iron", "steel", "berry", "iron")[n], c)
+    if pegboard:  # board of tools behind the bench
+        box("Pegboard", 0, d / 2 - 0.03, h, 1.6, 0.04, 0.6, "plank_a", c)
+        for n, x in enumerate((-0.6, -0.2, 0.2, 0.6)):
+            box(f"Hung tool.{n}", x, d / 2 - 0.07, h + 0.15, 0.06, 0.03, 0.35, ("iron", "steel", "berry", "iron")[n], c)
+    return h
 
 
 def station_ribbon(c):
@@ -601,9 +771,6 @@ def prop_fireplace(c):
     box("Arch", 0, face - 0.06, 0.9, 1.4, 0.08, 0.12, "stone_c", c)
     cyl("Fire log.0", -0.1, face - 0.2, 0.1, 0.07, 0.8, "X", "log_dark", c)
     cyl("Fire log.1", 0.1, face - 0.3, 0.1, 0.07, 0.8, "X", "log", c)
-    for n, (fx, fh) in enumerate(((-0.25, 0.45), (0.0, 0.6), (0.25, 0.4))):
-        cone(f"Flame.{n}", fx, face - 0.25, 0.15 + fh / 2, 0.12, 0.0, fh, "flame", c, verts=6)
-        cone(f"Flame core.{n}", fx, face - 0.28, 0.15 + fh * 0.35, 0.06, 0.0, fh * 0.6, "flame_core", c, verts=6)
     box("Hearth", 0, face - 0.25, 0, width + 0.2, 0.55, 0.06, "stone_c", c)
     box("Mantel", 0, face - 0.12, 1.3, width + 0.3, 0.3, 0.12, "beam", c)
     for n, sx in enumerate((-0.8, 0.0, 0.8)):
@@ -613,7 +780,63 @@ def prop_fireplace(c):
     light("Fire light", 0, face - 0.6, 0.6, (1.0, 0.55, 0.25), 3.2, 8.0, 0.35, c)
     for n, sx in enumerate((-1.0, 1.0)):
         cyl(f"Candle.{n}", sx, face - 0.1, 1.5, 0.03, 0.14, "Z", "snow", c, verts=8)
+
+    # Everything so far stays still (the "root" bone); each flame gets its own bone so the Burn action can make
+    # it lick, stretch and sway. The game loops a prop's animation.
+    rig = Rig(c)
+    bones = [("root", (0, 0, 0), (0, 0, 0.3), None)]
+    rig.claim("root")
+    for n, (fx, fh) in enumerate(((-0.25, 0.45), (0.0, 0.6), (0.25, 0.4))):
+        cone(f"Flame.{n}", fx, face - 0.25, 0.15 + fh / 2, 0.12, 0.0, fh, "flame", c, verts=6)
+        cone(f"Flame core.{n}", fx, face - 0.28, 0.15 + fh * 0.35, 0.06, 0.0, fh * 0.6, "flame_core", c, verts=6)
+        rig.claim(f"flame.{n}")
+        bones.append((f"flame.{n}", (fx, face - 0.26, 0.15), (fx, face - 0.26, 0.15 + fh), "root"))
+    for n, sx in enumerate((-1.0, 1.0)):
         cone(f"Candle flame.{n}", sx, face - 0.1, 1.6, 0.015, 0.0, 0.05, "flame_core", c, verts=5)
+        rig.claim(f"candle.{n}")
+        bones.append((f"candle.{n}", (sx, face - 0.1, 1.575), (sx, face - 0.1, 1.625), "root"))
+    animate_fire(build_armature(c, bones, rig.bone_of))
+
+
+def animate_fire(arm):
+    """Burn: each flame stretches, squashes and sways on its own rhythm, looping every 2 s (60 frames at 30 fps).
+    Candle flames just flicker a little."""
+    bpy.context.scene.render.fps = 30
+    arm.animation_data_create()
+    action = bpy.data.actions.new("Burn")
+    action.use_fake_user = True
+    arm.animation_data.action = action
+    rng = random.Random(11)
+    for pb in arm.pose.bones:
+        if pb.name == "root":
+            continue
+        candle = pb.name.startswith("candle")
+        pb.rotation_mode = "XYZ"
+        step = rng.choice((5, 6, 7, 8, 10)) if not candle else 4
+        frames = list(range(0, 60, step))
+        first = None
+        for f in frames + [60]:
+            if f == 60 and first is not None:
+                rot, scl = first
+            else:
+                stretch = rng.uniform(0.75, 1.3) if not candle else rng.uniform(0.8, 1.2)
+                width = 1.0 + (1.0 - stretch) * 0.4  # taller flames get thinner
+                sway = 9 if not candle else 4
+                rot = (math.radians(rng.uniform(-sway, sway)), 0, math.radians(rng.uniform(-sway, sway)))
+                scl = (width, stretch, width)
+                if first is None:
+                    first = (rot, scl)
+            pb.rotation_euler = rot
+            pb.scale = scl
+            pb.keyframe_insert("rotation_euler", frame=f)
+            pb.keyframe_insert("scale", frame=f)
+    track = arm.animation_data.nla_tracks.new()
+    track.name = "Burn"
+    track.strips.new("Burn", 0, action)
+    arm.animation_data.action = None
+    for pb in arm.pose.bones:
+        pb.rotation_euler = (0, 0, 0)
+        pb.scale = (1, 1, 1)
 
 
 def prop_firewood(c):
@@ -722,8 +945,15 @@ MODELS = {
     **{f"{toy}_{pid}": (toy_part(fn), True, False) for toy, parts in TOY_PARTS.items() for pid, fn in parts},
     **{f"{toy}_botched": (botched_toy(toy), True, False) for toy in TOY_PARTS},
     "hammer": (hammer, True, False),
+    "coal_lump": (coal_lump, True, False),
+    "shovel": (shovel, True, False),
+    "prop_npc_bench": (prop_npc_bench, True, False),
+    "station_coal": (station_coal, True, False),
     "kit_crate": (kit_crate, True, False),
+    "supply_crate": (supply_crate, True, False),
+    "station_supply": (station_supply, True, False),
     "ribbon_bow": (ribbon_bow, True, False),
+    "ribbon_spool": (ribbon_spool, True, False),
     "station_bin": (station_bin, True, False),
     "station_bench": (station_bench, True, False),
     "station_ribbon": (station_ribbon, True, False),

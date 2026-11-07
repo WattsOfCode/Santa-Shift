@@ -20,7 +20,16 @@
     "mouseSensitivity": 0.15,  // degrees per pixel of mouse movement
     "invertY": false,
     "wallMargin": 0.25,        // keeps the camera this far inside the walls
-    "maxHeight": 3.0           // keeps the camera below the cabin ceiling beams
+    "maxHeight": 3.0,          // keeps the camera below the cabin ceiling beams
+    "autoFollowSeconds": 2.0,  // after facing one way this long (mouse untouched), swing round behind the elf; 0 = off
+    "autoFollowSpeed": 2.5     // how quickly it swings round
+  },
+
+  // How the elf turns and gets going (feel only).
+  "movement": {
+    "turnDegreesPerSecond": 720,
+    "accelerationSeconds": 0.12,  // time to reach full speed
+    "turningSpeedFloor": 0.2      // slows to this fraction of full speed while coming round a sharp turn
   },
 
   // While building a toy at the bench, the camera moves in over the elf's right shoulder (metres).

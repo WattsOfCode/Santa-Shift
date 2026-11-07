@@ -131,6 +131,25 @@ public class RoomLayoutTests : IDisposable
     }
 
     [Fact]
+    public void Workshop_elves_load_with_pixel_positions_and_facing()
+    {
+        WriteLayout("""{ "npcs": [ { "x": -4.75, "z": 3.75, "yaw": -180 } ] }""");
+        var npc = Assert.Single(ContentLoader.LoadFromDirectory(_dir).Npcs);
+        Assert.Equal(new Point2(290, 450), npc.Position);
+        Assert.Equal(-180, npc.Yaw);
+    }
+
+    [Fact]
+    public void Shipped_room_has_two_elves_at_their_benches_and_they_block_the_player()
+    {
+        var content = ContentLoader.LoadFromDirectory(Path.Combine(AppContext.BaseDirectory, "data"));
+        Assert.Equal(2, content.Npcs.Count);
+        Assert.Equal(2, content.Props.Count(p => p.Model == "prop_npc_bench"));
+        Assert.All(content.Npcs, n => Assert.Contains(content.Colliders, c =>
+            c.Left <= n.Position.X && n.Position.X <= c.Right && c.Top <= n.Position.Y && n.Position.Y <= c.Bottom));
+    }
+
+    [Fact]
     public void Placing_an_unknown_station_warns_instead_of_failing()
     {
         WriteLayout("""{ "stations": { "hot_cocoa": { "x": 0, "z": 0, "w": 1, "d": 1, "interactX": 0, "interactZ": 1 } } }""");
