@@ -51,7 +51,7 @@ public sealed class SettingsMenu(GameServices s)
     {
         SettingsTab.Sound => 4,
         SettingsTab.Controls => ControlBindings.Actions.Length + 1, // + reset
-        _ => 3,
+        _ => 7,
     };
 
     public void Update()
@@ -105,6 +105,15 @@ public sealed class SettingsMenu(GameServices s)
             case 1: if (step != 0 || confirm) st.ReducedMotion = !st.ReducedMotion; break;
             case 2: st.MouseSensitivity = Nudge(st.MouseSensitivity, step * 0.25f, 0.25f, 3); break;
             case 3: st.StickSensitivity = Nudge(st.StickSensitivity, step * 0.25f, 0.25f, 3); break;
+            case 4:
+                if (step != 0 || confirm)
+                    st.CameraFollow = (CameraFollow)(((int)st.CameraFollow + (step < 0 ? 2 : 1)) % 3);
+                break;
+            case 5: if (step != 0 || confirm) st.SmoothEdges = !st.SmoothEdges; break;
+            case 6: st.RenderScale = Nudge(st.RenderScale, step * 0.1f, 0.5f, 1.5f); break;
+            case 7:
+                if (step != 0 || confirm) st.Guide = (GuideMode)(((int)st.Guide + (step < 0 ? 2 : 1)) % 3);
+                break;
         }
         if (step != 0 || confirm) Beep();
     }

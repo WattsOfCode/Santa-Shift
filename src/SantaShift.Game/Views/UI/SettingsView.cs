@@ -16,6 +16,7 @@ public sealed class SettingsView
         [ControlBindings.MoveLeft] = "Move left", [ControlBindings.MoveRight] = "Move right",
         [ControlBindings.Interact] = "Use / pick up", [ControlBindings.Part1] = "Part 1",
         [ControlBindings.Part2] = "Part 2", [ControlBindings.Part3] = "Part 3",
+        [ControlBindings.CameraLeft] = "Turn camera left", [ControlBindings.CameraRight] = "Turn camera right",
     };
 
     public void Draw(UiCanvas ui, SettingsMenu m)
@@ -83,6 +84,14 @@ public sealed class SettingsView
         ui.Text(on ? "On" : "Off", X + W - 75, y + 1, 18, Palette.Snow, Align.Center);
     }
 
+    private static void Choice(UiCanvas ui, SettingsMenu m, int row, string label, string value)
+    {
+        Row(ui, m, row, label);
+        float y = RowsTop + (row - 1) * RowH;
+        bool on = m.Row == row;
+        ui.Text(on ? $"<  {value}  >" : value, X + W - 40, y, 18, on ? Palette.Gold : Palette.Snow, Align.Right);
+    }
+
     private static void DrawSound(UiCanvas ui, SettingsMenu m)
     {
         var st = m.Settings;
@@ -100,6 +109,20 @@ public sealed class SettingsView
         Toggle(ui, m, 1, "Reduced motion (no sway, flicker or falling snow)", st.ReducedMotion);
         Slider(ui, m, 2, "Mouse look speed", st.MouseSensitivity, 0.25f, 3, $"x{st.MouseSensitivity:0.00}");
         Slider(ui, m, 3, "Controller look speed", st.StickSensitivity, 0.25f, 3, $"x{st.StickSensitivity:0.00}");
+        Choice(ui, m, 4, "Camera follows the elf", st.CameraFollow switch
+        {
+            CameraFollow.Always => "Always (good on a trackpad)",
+            CameraFollow.Off => "Off",
+            _ => "After a moment",
+        });
+        Toggle(ui, m, 5, "Smooth jagged edges", st.SmoothEdges);
+        Slider(ui, m, 6, "3D resolution", st.RenderScale, 0.5f, 1.5f, $"{st.RenderScale * 100:0}%");
+        Choice(ui, m, 7, "Tutorial guide in round 1", st.Guide switch
+        {
+            GuideMode.EveryRun => "Every run",
+            GuideMode.Off => "Off",
+            _ => "Until you clear a round",
+        });
     }
 
     private static void DrawControls(UiCanvas ui, SettingsMenu m)
@@ -111,7 +134,7 @@ public sealed class SettingsView
         for (int i = 0; i < 3; i++) ui.Text(heads[i], colX[i] + cellW / 2, RowsTop - 22, 13, Palette.Ice, Align.Center);
 
         var actions = ControlBindings.Actions;
-        const float rowH = 26;
+        const float rowH = 23;
         for (int r = 0; r < actions.Length; r++)
         {
             int row = r + 1;

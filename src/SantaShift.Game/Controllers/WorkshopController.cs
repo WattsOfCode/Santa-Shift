@@ -27,7 +27,9 @@ public sealed class WorkshopController : IScreen
         _s = services;
         _run = run;
         _sim = new Simulation(services.Content, run.Mode, run.Round, seed: Random.Shared.Next(), naughty: run.List.NaughtyChildren,
-            modifiers: run.Modifiers, spirit: run.SpiritForNextRound(services.Content.Tuning.Spirit));
+            modifiers: run.Modifiers, spirit: run.SpiritForNextRound(services.Content.Tuning.Spirit),
+            tutorial: run.Round == 1 && GuideOn(services));
+        _guideWasActive = TutorialGuide.Active(_sim);
         _player = new PlayerController(services.Input, services.Settings, services.Render.Movement);
         _interaction = new InteractionController(services.Content, services.Input, services.Audio);
         _interaction.Attach(_sim);
@@ -72,6 +74,19 @@ public sealed class WorkshopController : IScreen
 
     /// <summary>Debug builds only (--at stationId): start standing at that station, facing it.</summary>
     public static string? DebugAt;
+
+    /// <summary>Debug builds only (--guide): guide round 1 whatever the settings and progress say.</summary>
+    public static bool DebugGuide;
+
+    private bool _guideWasActive;
+
+    /// <summary>Whether round 1 is guided: Settings > Game > Tutorial guide, and (by default) only until a round is cleared.</summary>
+    private static bool GuideOn(GameServices s) => DebugGuide || s.Settings.Guide switch
+    {
+        GuideMode.EveryRun => true,
+        GuideMode.Off => false,
+        _ => s.Progress.RoundsCleared == 0,
+    };
 
     /// <summary>Debug builds only (--hat #RRGGBB): wear this hat colour, for screenshots.</summary>
     public static string? DebugHat;
@@ -211,6 +226,9 @@ public sealed class WorkshopController : IScreen
         _sim.Step(new PlayerCommand(mx, my, interact, cancel, partKey));
 
         _interaction.Handle(_sim.DrainEvents());
+        if (_guideWasActive && !TutorialGuide.Active(_sim) && _sim.State.Phase == RunPhase.Playing)
+            _interaction.Feedback.ShowToast(_s.Content.Dialogue.Message("guide_done"), ToastKind.Success, 200);
+        _guideWasActive = TutorialGuide.Active(_sim);
         _interaction.Tick();
 
         if (_sim.State.Phase == RunPhase.Results) FinishRound();
@@ -223,9 +241,11 @@ public sealed class WorkshopController : IScreen
         bool playing = !_pause.Blocking || _pause.State == PauseState.Ready;
         bool picking = _sim.State.RibbonPick != null;
         _s.Input.SetMouseCaptured(playing && !picking && Raylib.IsWindowFocused());
+        _camera.Follow = _s.Settings.CameraFollow;
         _camera.Update(_pause.Blocking || picking ? System.Numerics.Vector2.Zero : _s.Input.Look(), _sim.State.PlayerPosition,
             CurrentWork(), Raylib.GetFrameTime(), _player.FacingDegrees);
         _world.HoveredSpool = picking ? SpoolUnderPointer() : -1;
+        _world.GuideTarget = _pause.Blocking ? null : TutorialGuide.Next(_sim)?.Station;
 
         _frames++;
         if (DebugSwingEvery is { } every && every > 0 && _frames % every == 0) _swings++;

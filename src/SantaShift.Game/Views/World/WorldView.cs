@@ -34,7 +34,16 @@ public sealed class WorldView
         _player = new PlayerView(assets, world, _items);
     }
 
+    /// <summary>Glows and window snow, shared by every screen's view (one small texture).</summary>
+    private static WorldEffects? _effects;
+    private WorldEffects Effects => _effects ??= new WorldEffects(_content);
+
     public WorldSpace Space => _world;
+
+    /// <summary>The next station in the guided first round (the arrows lead there), or null for no arrows.</summary>
+    public Station? GuideTarget { get; set; }
+
+    private GuideArrowView? _guide;
 
     /// <summary>The player elf's hat colour (an unlock), or null for red. The workshop elves always wear red.</summary>
     public Color? PlayerHat { get => _player.Hat; set => _player.Hat = value; }
@@ -57,6 +66,7 @@ public sealed class WorldView
             if (s.Type == StationType.Ribbon) DrawRibbonTop(s, null);
         }
         DrawNpcs();
+        Effects.Draw(_world, Raylib.GetTime());
         Raylib.EndMode3D();
     }
 
@@ -79,6 +89,9 @@ public sealed class WorldView
 
         using (App.FrameProfiler.Time("npcs")) DrawNpcs();
         using (App.FrameProfiler.Time("player")) _player.Draw(state, facingDegrees, bob, pose);
+        if (GuideTarget != null)
+            (_guide ??= new GuideArrowView(_content, _assets, _world)).Draw(state.PlayerPosition, GuideTarget, Raylib.GetTime(), WorldEffects.ReducedMotion);
+        using (App.FrameProfiler.Time("effects")) Effects.Draw(_world, Raylib.GetTime());
         Raylib.EndMode3D();
     }
 

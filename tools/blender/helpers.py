@@ -44,11 +44,35 @@ PALETTE = {
     "bear_fur": (0.55, 0.36, 0.20, 1), "bear_light": (0.80, 0.64, 0.45, 1),
     "robot_body": (0.56, 0.79, 0.81, 1), "robot_dark": (0.38, 0.58, 0.62, 1),
     "train_red": (0.73, 0.25, 0.27, 1),
+    # Christmas tree: big old-fashioned (C9) incandescent bulbs, tinsel, glass baubles.
+    "bulb_pink": (1.0, 0.45, 0.68, 1), "bulb_orange": (1.0, 0.55, 0.18, 1), "bulb_blue": (0.35, 0.55, 1.0, 1),
+    "bulb_green": (0.35, 0.9, 0.45, 1), "bulb_yellow": (1.0, 0.85, 0.35, 1), "bulb_base": (0.55, 0.5, 0.42, 1),
+    "light_wire": (0.06, 0.18, 0.1, 1), "tinsel": (0.92, 0.78, 0.42, 1), "silver": (0.8, 0.82, 0.86, 1),
+    "star_glow": (1.0, 0.86, 0.45, 1), "pine_light": (0.18, 0.5, 0.3, 1),
+    "guide": (1.0, 0.84, 0.4, 1), "guide_edge": (1.0, 0.95, 0.75, 1),  # the tutorial arrows (drawn see-through)
 }
 
 
 # Materials that glow (exported as glTF emission, so the game lights them from inside). Value = glow strength 0..1.
-EMISSIVE = {"flame": 1.0, "flame_core": 1.0, "lamp_glow": 0.9, "glass": 0.35, "ember": 0.9}
+EMISSIVE = {"flame": 1.0, "flame_core": 1.0, "lamp_glow": 0.9, "glass": 0.35, "ember": 0.9,
+            "bulb_pink": 0.85, "bulb_orange": 0.85, "bulb_blue": 0.8, "bulb_green": 0.8, "bulb_yellow": 0.85,
+            "star_glow": 0.8, "guide": 1.0, "guide_edge": 1.0}
+
+
+def glow(name, x, y, z, color, size, twinkle, col):
+    """
+    A soft halo the game draws around a light source (a tree bulb, the star): an empty with custom properties, exported
+    to room_layout.json > glows. size is the halo's width in metres; twinkle 0..1 makes it pulse. Costs no light slot.
+    """
+    ob = bpy.data.objects.new(name, None)
+    ob.empty_display_type = "SPHERE"
+    ob.empty_display_size = size / 2
+    ob.location = (x, y, z)
+    ob["glow"] = True
+    ob["color"] = list(color[:3])
+    ob["size"], ob["twinkle"] = size, twinkle
+    col.objects.link(ob)
+    return ob
 
 
 def read_json(path):

@@ -53,7 +53,8 @@ public sealed class CameraController
     {
         float step = _shoulder.BlendSeconds > 0 ? dt / _shoulder.BlendSeconds : 1;
         ShoulderBlend = Math.Clamp(ShoulderBlend + (work != null ? step : -step), 0, 1);
-        bool mouseMoved = mouseDelta != Vector2.Zero;
+        // A trackpad resting under a finger twitches by a pixel or so: that is not the player taking the camera.
+        bool mouseMoved = mouseDelta.LengthSquared() > JitterPixels * JitterPixels;
         if (mouseMoved) _mouseMovedSinceInput = true;
 
         if (work is { } w)
@@ -62,6 +63,7 @@ public sealed class CameraController
             YawDegrees = MathF.Atan2(-w.Direction.X, -w.Direction.Z) * 180f / MathF.PI;
             _lastWork = w;
             _steadyTime = 0;
+            _followVelocity = 0;
         }
         else
         {
@@ -121,22 +123,68 @@ public sealed class CameraController
     private float _inputYaw;
     private bool _mouseMovedSinceInput = true;
 
+    /// <summary>Pointer movement below this many pixels in a frame is ignored (trackpad jitter).</summary>
+    private const float JitterPixels = 1.5f;
+
+    /// <summary>How the camera comes round behind the elf (Settings > Game > Camera follow).</summary>
+    public CameraFollow Follow { get; set; } = CameraFollow.AfterAMoment;
+
+    /// <summary>"Always": the camera starts following this soon after the elf settles on a direction.</summary>
+    private const float AlwaysDelaySeconds = 0.35f;
+
+    private float _followVelocity; // degrees per second, for the smooth swing
+
+    /// <summary>
+    /// Once the elf has faced one way for a while (2 s, or a moment with "Always") with the camera left alone, it swings
+    /// round behind the elf on a damped spring: it eases in, glides, and settles without overshooting or jerking.
+    /// Taking the camera (mouse, stick, keys) or turning the elf stops the swing smoothly too.
+    /// </summary>
     private void AutoFollow(float facing, bool mouseMoved, float dt)
     {
-        if (_cfg.AutoFollowSeconds <= 0) return;
+        float delay = Follow switch
+        {
+            CameraFollow.Off => -1,
+            CameraFollow.Always => AlwaysDelaySeconds,
+            _ => _cfg.AutoFollowSeconds,
+        };
+        bool following = delay >= 0;
         if (mouseMoved || MathF.Abs(DeltaDegrees(facing, _steadyFacing)) > SteadyToleranceDegrees)
         {
             _steadyFacing = facing;
             _steadyTime = 0;
+            following = false;
+        }
+        else
+        {
+            _steadyTime += dt;
+            following &= _steadyTime >= delay;
+        }
+
+        if (!following)
+        {
+            // Let any swing in progress glide to a stop rather than freeze.
+            _followVelocity *= MathF.Exp(-10f * dt);
+            if (!mouseMoved) YawDegrees += _followVelocity * dt;
             return;
         }
-        _steadyTime += dt;
-        if (_steadyTime < _cfg.AutoFollowSeconds) return;
 
         // Behind the elf: the camera looks the way it faces (camera forward = (-sin yaw, -cos yaw)).
         float behind = facing + 180;
-        float ease = 1 - MathF.Exp(-_cfg.AutoFollowSpeed * dt);
-        YawDegrees += DeltaDegrees(behind, YawDegrees) * ease;
+        float smoothTime = 1.6f / MathF.Max(0.5f, _cfg.AutoFollowSpeed); // about 0.65 s to come round
+        YawDegrees = SmoothDampAngle(YawDegrees, behind, ref _followVelocity, smoothTime, dt);
+    }
+
+    /// <summary>A critically damped spring towards an angle (the usual "smooth damp"): no overshoot, no sudden start.</summary>
+    private static float SmoothDampAngle(float current, float target, ref float velocity, float smoothTime, float dt)
+    {
+        target = current + DeltaDegrees(target, current);
+        float omega = 2f / smoothTime;
+        float x = omega * dt;
+        float exp = 1f / (1f + x + 0.48f * x * x + 0.235f * x * x * x);
+        float change = current - target;
+        float temp = (velocity + omega * change) * dt;
+        velocity = (velocity - omega * temp) * exp;
+        return target + (change + temp) * exp;
     }
 
     private static float DeltaDegrees(float to, float from)

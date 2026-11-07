@@ -26,6 +26,7 @@ public sealed class HudView(GameContent content, IInputService input)
         DrawProgressBar(ui, sim, world);
         _assembly.Draw(ui, sim, input, (UiCanvas.Width - AssemblyPanelView.Width) / 2, 486 - AssemblyPanelView.Height - 8);
         DrawRibbonPick(ui, sim);
+        DrawGuide(ui, sim);
 
         // Top band
         // No full-width band: in third person the room shows between the panels.
@@ -97,6 +98,22 @@ public sealed class HudView(GameContent content, IInputService input)
             ui.Text(text, tx + 21, y + 32, 16, Palette.Snow);
             tx += tw + 8;
         }
+    }
+
+    /// <summary>The guided first round: which lesson this is and what to do now, under the Santa strip.</summary>
+    private void DrawGuide(UiCanvas ui, Simulation sim)
+    {
+        if (!TutorialGuide.Active(sim) || sim.State.IsWorking) return;
+        var d = content.Dialogue;
+        int done = TutorialGuide.Done(sim.State), total = sim.Tuning.Tutorial.Orders;
+        string hint = d.Message(TutorialGuide.Next(sim)?.HintKey ?? "guide_wait");
+        string title = d.Message("guide_title", Math.Min(done + 1, total), total);
+        float tw = ui.MeasureText(title, 14), hw = ui.MeasureText(hint, 17);
+        float w = tw + hw + 40, x = 10, y = 116;
+        ui.FillRounded(x, y, w, 28, Palette.WithAlpha(Palette.Ink, 215), 0.4f);
+        ui.FillRounded(x + 4, y + 4, tw + 14, 20, Palette.Gold, 0.5f);
+        ui.Text(title, x + 11, y + 7, 14, Palette.Ink);
+        ui.Text(hint, x + tw + 28, y + 5, 17, Palette.Snow);
     }
 
     /// <summary>

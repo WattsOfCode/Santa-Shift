@@ -23,7 +23,7 @@ public sealed class Simulation
     /// <param name="naughty">Children on the run's naughty list: their orders want coal from the fireplace.</param>
     /// <param name="modifiers">The run's perks, combined (see <see cref="RunProgress.Modifiers"/>).</param>
     public Simulation(GameContent content, GameMode mode, int round = 1, int? seed = null, IEnumerable<string>? naughty = null,
-        RunModifiers? modifiers = null, double? spirit = null)
+        RunModifiers? modifiers = null, double? spirit = null, bool tutorial = false)
     {
         Content = content;
         State = new RunState
@@ -32,6 +32,7 @@ public sealed class Simulation
             NaughtyChildren = (naughty ?? []).ToHashSet(),
             LimitedKits = content.HasSupply,
             Modifiers = modifiers ?? RunModifiers.None,
+            Tutorial = tutorial,
             Spirit = Math.Clamp(spirit ?? content.Tuning.Spirit.Start, 0, content.Tuning.Spirit.Max),
         };
         _motion = new PlayerMotion(content);

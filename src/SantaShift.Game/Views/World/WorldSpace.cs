@@ -20,8 +20,11 @@ public sealed class WorldSpace
     /// <summary>The camera views draw with. The workshop's camera controller updates it every frame.</summary>
     public Camera3D Camera { get; set; }
 
-    public int TargetWidth { get; }
-    public int TargetHeight { get; }
+    public int TargetWidth { get; private set; }
+    public int TargetHeight { get; private set; }
+
+    /// <summary>The 3D picture changed size (it follows the window).</summary>
+    public void Resize(int width, int height) => (TargetWidth, TargetHeight) = (width, height);
 
     public WorldSpace(RenderSettings render, Tuning tuning)
     {

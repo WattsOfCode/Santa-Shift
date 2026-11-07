@@ -33,6 +33,20 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
     private const double StepSeconds = 1.0 / 60.0;
     private const double MaxCatchUpSeconds = 0.25; // after a long stall, don't burn the player's time
 
+    /// <summary>
+    /// The 3D picture's size: the game area of the window (16:9) times the player's resolution setting, within limits.
+    /// With render.json > followWindow off, the fixed internalWidth x internalHeight instead (for very weak devices).
+    /// </summary>
+    private static (int W, int H) TargetSize(RenderSettings render, Core.Models.Settings settings)
+    {
+        if (!render.FollowWindow) return (render.InternalWidth, render.InternalHeight);
+        int sw = Raylib.GetScreenWidth(), sh = Raylib.GetScreenHeight();
+        if (sw <= 0 || sh <= 0) return (render.InternalWidth, render.InternalHeight); // minimised
+        float scale = MathF.Min(sw / UiCanvas.Width, sh / UiCanvas.Height) * settings.RenderScale;
+        int w = Math.Clamp((int)(UiCanvas.Width * scale), 480, render.MaxRenderWidth);
+        return (w, w * 9 / 16);
+    }
+
     private static IScreen DebugPerkPick(GameServices services, Core.Models.GameMode mode)
     {
         var run = WorkshopController.NewRunProgress(services, mode);
@@ -118,6 +132,17 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
             }
             audio.UpdateMusic(screen.Music, Raylib.GetFrameTime());
 
+            WorldEffects.ReducedMotion = services.Settings.ReducedMotion;
+            // The 3D picture follows the window's size (times the resolution setting), so edges stay crisp instead of
+            // being stretched up from a small picture.
+            var (tw, th) = TargetSize(render, services.Settings);
+            if (tw != target.Texture.Width || th != target.Texture.Height)
+            {
+                Raylib.UnloadRenderTexture(target);
+                target = Raylib.LoadRenderTexture(tw, th);
+                Raylib.SetTextureFilter(target.Texture, TextureFilter.Bilinear);
+                services.World.Resize(tw, th);
+            }
             lighting.Update(Raylib.GetTime(), services.World.Camera.Position, services.World.Camera.Target, services.Settings.ReducedMotion);
             using (FrameProfiler.Time("world"))
             {
@@ -130,7 +155,8 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
             Raylib.ClearBackground(Color.Black);
             var ui = new UiCanvas(Raylib.GetScreenWidth(), Raylib.GetScreenHeight(), font);
             var source = new Rectangle(0, 0, target.Texture.Width, -target.Texture.Height); // render textures are upside down
-            if (lighting.UsePost) Raylib.BeginShaderMode(lighting.Post); // vignette and colour grade
+            lighting.SetPostFrame(target.Texture.Width, target.Texture.Height, services.Settings.SmoothEdges);
+            if (lighting.UsePost) Raylib.BeginShaderMode(lighting.Post); // edge smoothing, vignette and colour grade
             Raylib.DrawTexturePro(target.Texture, source, ui.ScreenArea, Vector2.Zero, 0, Color.White);
             if (lighting.UsePost) Raylib.EndShaderMode();
             using (FrameProfiler.Time("ui")) screen.DrawUi(ui);

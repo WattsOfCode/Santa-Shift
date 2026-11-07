@@ -228,3 +228,25 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - **Optimisation:** the profiler now reports allocations per frame (about 4 KB, one small GC every couple of seconds:
   fine). The title's UI cost halved (2.0 to 1.1 ms) by drawing each 2D triangle once in the right winding instead of in
   both orders, and coarser candy-cane segments. Gameplay frames are about 1.8 ms uncapped.
+
+## 2026-11-07: Guided first round, smoother camera, sharper picture, a proper tree
+- **Guided first round (user request):** round 1 is a lesson until the player clears a round (Settings > Game >
+  Tutorial guide: until then / every run / off). The first six orders are arranged (`tuning.json > tutorial`): the
+  3rd is coal for a naughty child, the 5th needs a ribbon, none are rush, and no other one turns into coal.
+  `TutorialGuide` works out the next station from what the elf holds and the soonest order; `FloorPath` (A* on a 0.4 m
+  grid, kept clear by the elf's width, then straightened) routes around the furniture. The arrows are low (4 cm)
+  gold chevrons, drawn unlit and see-through, flowing towards the goal, with a ring where to stand. No arrows while
+  working at a station. A hint and "GUIDE n / 6" sit under Santa's strip; a toast marks the end.
+- **Camera (user request: smoother, and trackpads):** the 2-second follow now swings on a critically damped spring
+  (eases in and out, never jerks) and glides to a stop when interrupted. Pointer movement under 1.5 px a frame is
+  ignored, so a resting finger on a trackpad no longer keeps cancelling it. New: Camera follows the elf = after a
+  moment / always (0.35 s) / off, and rebindable camera-turn keys (Z / C, triggers on a controller).
+- **Grainy edges (user report):** the 3D picture was 960 x 540 stretched to the window. It now renders at the window's
+  resolution (Settings > Game > 3D resolution 50 to 150%, capped at 2560 wide; render.json > followWindow off for the
+  old fixed size), and an FXAA pass in the post shader smooths stair-stepped edges (Settings > Game > Smooth jagged
+  edges). Frames stay about 2 ms uncapped.
+- **Christmas tree (user request):** rebuilt: layered boughs, a gold tinsel garland, a string of 48 C9 bulbs in pink,
+  orange, blue, green and yellow, 15 baubles and teardrops spread thinly, a glowing star, and two coloured point
+  lights (16 room lights in all). New glow markers (`glow()` in helpers.py, `room_layout.json > glows`) draw soft
+  additive halos on each bulb and the star, each breathing on its own rhythm. Snow flurries drift past the windows
+  in gusts. All of it holds still under Reduced Motion.

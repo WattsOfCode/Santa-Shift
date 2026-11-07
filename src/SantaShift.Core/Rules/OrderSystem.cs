@@ -31,6 +31,25 @@ public sealed class OrderSystem(GameContent content)
         // A child on the naughty list gets coal instead (only if there is a coal station to get it from). Coal never
         // needs a ribbon.
         bool naughty = letter != null && content.HasCoal && state.NaughtyChildren.Contains(letter.Child);
+
+        // The guided first orders show every job once: one is coal, one needs a ribbon, the rest are plain toys.
+        bool guided = state.Tutorial && state.TutorialOrderIds.Count < _t.Tutorial.Orders;
+        if (guided)
+        {
+            int n = state.TutorialOrderIds.Count + 1;
+            var naughtyLetter = content.Letters.FirstOrDefault(l => state.NaughtyChildren.Contains(l.Child));
+            if (n == _t.Tutorial.CoalOrder && content.HasCoal && naughtyLetter != null)
+            {
+                (letter, toyId, naughty) = (naughtyLetter, naughtyLetter.ToyId, true);
+            }
+            else if (naughty) // a naughty child would turn this lesson into coal: write it from a nice child instead
+            {
+                letter = content.Letters.FirstOrDefault(l => l.ToyId == toyId && !state.NaughtyChildren.Contains(l.Child));
+                naughty = false;
+            }
+            ribbon = !naughty && n == _t.Tutorial.RibbonOrder;
+            rush = false;
+        }
         if (naughty) ribbon = false;
 
         double seconds = rush ? _t.RushDeadlineSeconds : ribbon ? _t.RibbonDeadlineSeconds : _t.DeadlineSeconds;
@@ -54,6 +73,7 @@ public sealed class OrderSystem(GameContent content)
         };
         state.OrdersCreated++;
         state.LiveOrders.Add(order);
+        if (guided) state.TutorialOrderIds.Add(order.Id);
         // Santa sends one kit per toy asked for, so the bins hold exactly what the letters need (see Tuning.ResupplyKits).
         if (state.LimitedKits && !naughty) state.KitStock[toyId] = state.KitStock.GetValueOrDefault(toyId) + 1;
         return order;

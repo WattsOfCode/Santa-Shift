@@ -26,7 +26,9 @@ Building gets harder each round: less time, then the parts go on in a random ord
 Each run starts with **Santa's naughty and nice list**. A few children are naughty: their orders want a lump of coal
 instead of a toy. Shovel coal from the scuttle at the fireplace (E, hold still for a moment) and ship it like a toy.
 
-The camera swings round behind the elf once it has faced one way for 2 seconds with the mouse left alone.
+The camera swings round behind the elf once it has faced one way for 2 seconds with the mouse left alone (smoothly,
+and trackpad jitter doesn't count). On a trackpad, set Settings > Game > Camera follows the elf to Always, or turn it
+with Z / C (the triggers on a controller).
 
 The elf holds whatever it carries up on its right hand, beside its head, so you can always see it from behind.
 
@@ -37,6 +39,11 @@ then hold still while it is tied. A toy with the wrong colour won't ship to that
 **Perks between rounds.** After each round you pass, Santa offers three perk cards (four if you beat the quota by 2 or
 more) and you keep one for the rest of the run: walk faster, more time at the bench, quicker ribbons and shovelling,
 bigger supply crates, longer deadlines, more points. Each can stack a few times. They are listed in `perks.json`.
+
+**Guided first round.** Until you clear a round, round 1 is a lesson: glowing arrows on the floor lead from the
+elf to the next station (around the furniture), with a hint under Santa's strip. The first six orders show every job:
+plain toys, one lump of coal for a naughty child and one ribbon. Settings > Game > Tutorial guide turns it on for
+every run or off.
 
 **Christmas Spirit.** The star bar under the clock lasts the whole run. Deliveries raise it; missed orders and botched
 toys lower it, and it recovers a little between rounds. Keep it above 75% for JOLLY: 10% more points. If it runs out,

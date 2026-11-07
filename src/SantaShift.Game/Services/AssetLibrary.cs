@@ -27,6 +27,7 @@ public sealed class AssetLibrary : IAssetLibrary
     public const string ShovelModel = "shovel.glb";
     public const string SupplyCrateModel = "supply_crate.glb";
     public const string SpoolModel = "ribbon_spool.glb";
+    public const string GuideArrowModel = "guide_arrow.glb";
 
     private readonly string _modelDirectory;
     private readonly Dictionary<string, Model> _models = new();
@@ -37,7 +38,7 @@ public sealed class AssetLibrary : IAssetLibrary
     /// <summary>Loads every model the content mentions, once, at startup (no loading during play).</summary>
     public unsafe void Preload(GameContent content, Action<Model>? prepare = null)
     {
-        var names = new HashSet<string> { ElfModel, KitModel, RibbonModel, RoomModel, HammerModel, CoalModel, ShovelModel, SupplyCrateModel, SpoolModel };
+        var names = new HashSet<string> { ElfModel, KitModel, RibbonModel, RoomModel, HammerModel, CoalModel, ShovelModel, SupplyCrateModel, SpoolModel, GuideArrowModel };
         foreach (var toy in content.Toys)
         {
             if (toy.Model != null) names.Add(toy.Model);

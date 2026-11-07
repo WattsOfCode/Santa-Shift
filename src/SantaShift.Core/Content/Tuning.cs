@@ -62,6 +62,8 @@ public sealed class Tuning
 
     public SpiritTuning Spirit { get; init; } = new();
 
+    public TutorialTuning Tutorial { get; init; } = new();
+
     public RibbonColor? FindRibbon(string? id) => id == null ? null : RibbonColors.FirstOrDefault(r => r.Id == id);
 
     // Scoring and review (GDD section 12)
@@ -183,4 +185,18 @@ public sealed class SpiritTuning
     /// <summary>At or above this, deliveries earn <see cref="JollyBonus"/> more points.</summary>
     public double JollyAt { get; init; } = 75;
     public double JollyBonus { get; init; } = 0.1;
+}
+
+/// <summary>
+/// The guided first round: arrows on the floor lead the elf through the first few orders, which are arranged to show
+/// every job once (one is coal for a naughty child, one needs a ribbon).
+/// </summary>
+public sealed class TutorialTuning
+{
+    /// <summary>How many orders are guided.</summary>
+    public int Orders { get; init; } = 6;
+
+    /// <summary>Which of them (1-based) is coal for a naughty child, and which needs a ribbon.</summary>
+    public int CoalOrder { get; init; } = 3;
+    public int RibbonOrder { get; init; } = 5;
 }

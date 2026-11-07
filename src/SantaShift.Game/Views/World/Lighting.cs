@@ -137,10 +137,38 @@ public sealed class Lighting : IDisposable
         uniform vec4 colDiffuse;
         uniform float vignette;
         uniform float saturation;
+        uniform vec2 texel;     // one pixel of the 3D picture, in texture coordinates
+        uniform float fxaa;     // 1 = smooth jagged edges
         out vec4 finalColor;
+
+        // FXAA (fast approximate anti-aliasing): where the brightness changes sharply, blend along the edge instead
+        // of across it, so stair-stepped edges and corners stop crawling as the camera moves.
+        vec3 smoothEdges(vec2 uv)
+        {
+            const vec3 L = vec3(0.299, 0.587, 0.114);
+            vec3 m = texture(texture0, uv).rgb;
+            float lNW = dot(texture(texture0, uv + vec2(-1.0, -1.0) * texel).rgb, L);
+            float lNE = dot(texture(texture0, uv + vec2( 1.0, -1.0) * texel).rgb, L);
+            float lSW = dot(texture(texture0, uv + vec2(-1.0,  1.0) * texel).rgb, L);
+            float lSE = dot(texture(texture0, uv + vec2( 1.0,  1.0) * texel).rgb, L);
+            float lM = dot(m, L);
+            float lMin = min(lM, min(min(lNW, lNE), min(lSW, lSE)));
+            float lMax = max(lM, max(max(lNW, lNE), max(lSW, lSE)));
+            if (lMax - lMin < max(0.03, lMax * 0.125)) return m; // no edge here
+            vec2 dir = vec2(-((lNW + lNE) - (lSW + lSE)), (lNW + lSW) - (lNE + lSE));
+            float reduce = max((lNW + lNE + lSW + lSE) * 0.03125, 1.0 / 128.0);
+            float scale = 1.0 / (min(abs(dir.x), abs(dir.y)) + reduce);
+            dir = clamp(dir * scale, vec2(-8.0), vec2(8.0)) * texel;
+            vec3 a = 0.5 * (texture(texture0, uv + dir * (1.0 / 3.0 - 0.5)).rgb + texture(texture0, uv + dir * (2.0 / 3.0 - 0.5)).rgb);
+            vec3 b = a * 0.5 + 0.25 * (texture(texture0, uv - dir * 0.5).rgb + texture(texture0, uv + dir * 0.5).rgb);
+            float lB = dot(b, L);
+            return (lB < lMin || lB > lMax) ? a : b;
+        }
+
         void main()
         {
             vec4 c = texture(texture0, fragTexCoord) * colDiffuse * fragColor;
+            if (fxaa > 0.5) c.rgb = smoothEdges(fragTexCoord) * colDiffuse.rgb * fragColor.rgb;
             vec2 uv = fragTexCoord - 0.5;
             float v = clamp(1.0 - vignette * dot(uv, uv) * 2.2, 0.0, 1.0);
             float luma = dot(c.rgb, vec3(0.299, 0.587, 0.114));
@@ -184,7 +212,15 @@ public sealed class Lighting : IDisposable
         Skinned = IsValid ? Raylib.LoadShaderFromMemory(SkinnedVertexShader, FragmentShader) : default;
         SkinsOnGpu = IsValid && Raylib.IsShaderValid(Skinned);
         Post = Raylib.LoadShaderFromMemory(null!, PostShader);
-        UsePost = cfg.PostEffectsForQuality() && Raylib.IsShaderValid(Post);
+        UsePost = Raylib.IsShaderValid(Post); // always: it also smooths edges; vignette and grading follow the quality
+        if (UsePost)
+        {
+            bool grade = cfg.PostEffectsForQuality();
+            Raylib.SetShaderValue(Post, Raylib.GetShaderLocation(Post, "vignette"), grade ? cfg.Vignette : 0f, ShaderUniformDataType.Float);
+            Raylib.SetShaderValue(Post, Raylib.GetShaderLocation(Post, "saturation"), grade ? cfg.Saturation : 1f, ShaderUniformDataType.Float);
+            _locTexel = Raylib.GetShaderLocation(Post, "texel");
+            _locFxaa = Raylib.GetShaderLocation(Post, "fxaa");
+        }
         if (!IsValid) { _shaders = []; return; }
 
         _shaders = SkinsOnGpu ? [Slots(Shader), Slots(Skinned)] : [Slots(Shader)];
@@ -201,11 +237,16 @@ public sealed class Lighting : IDisposable
             SetFloat(s.Shader, "emissiveBoost", cfg.EmissiveBoost);
         }
 
-        if (UsePost)
-        {
-            Raylib.SetShaderValue(Post, Raylib.GetShaderLocation(Post, "vignette"), cfg.Vignette, ShaderUniformDataType.Float);
-            Raylib.SetShaderValue(Post, Raylib.GetShaderLocation(Post, "saturation"), cfg.Saturation, ShaderUniformDataType.Float);
-        }
+    }
+
+    private readonly int _locTexel = -1, _locFxaa = -1;
+
+    /// <summary>Before drawing the 3D picture to the screen: its size (for edge smoothing) and whether to smooth edges.</summary>
+    public void SetPostFrame(int width, int height, bool smoothEdges)
+    {
+        if (!UsePost) return;
+        Raylib.SetShaderValue(Post, _locTexel, new Vector2(1f / width, 1f / height), ShaderUniformDataType.Vec2);
+        Raylib.SetShaderValue(Post, _locFxaa, smoothEdges ? 1f : 0f, ShaderUniformDataType.Float);
     }
 
     private static unsafe ShaderSlots Slots(Shader s)

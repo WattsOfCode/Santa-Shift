@@ -84,6 +84,8 @@ public sealed class PlayerInputService : IInputService
     /// <summary>Right stick at full tilt turns the camera like this many mouse pixels per second.</summary>
     private const float StickLookPixelsPerSecond = 1200f;
     private const float StickDeadZone = 0.2f;
+    /// <summary>The camera-turn keys turn it like this many mouse pixels per second (about 120 degrees a second).</summary>
+    private const float KeyLookPixelsPerSecond = 800f;
     private const double LatchSeconds = 0.25;
 
     // Fixed controls that always work, whatever the bindings say.
@@ -136,6 +138,8 @@ public sealed class PlayerInputService : IInputService
         (ControlBindings.Part1, [InputAction.Part1]),
         (ControlBindings.Part2, [InputAction.Part2]),
         (ControlBindings.Part3, [InputAction.Part3]),
+        (ControlBindings.CameraLeft, []), // held, read by Look()
+        (ControlBindings.CameraRight, []),
     ];
 
     private readonly Dictionary<string, KeyboardKey[]> _keys = new();
@@ -211,6 +215,9 @@ public sealed class PlayerInputService : IInputService
             if (first) { (_capturedKey, _capturedKeyAt) = (key, now); first = false; } // first key this frame; the rest is dropped
     }
 
+    private bool Held(string bind) =>
+        _keys[bind].Any(k => Raylib.IsKeyDown(k)) || (_pad >= 0 && _buttons[bind] is { } b && Raylib.IsGamepadButtonDown(_pad, b));
+
     public Vector2 Move()
     {
         float x = 0, y = 0;
@@ -248,7 +255,11 @@ public sealed class PlayerInputService : IInputService
         var look = Vector2.Zero;
         if (_skipNextDelta) _skipNextDelta = false; // the cursor jump when locking is not a turn
         else look = Raylib.GetMouseDelta() * (_settings?.MouseSensitivity ?? 1f);
-        look += RightStick() * StickLookPixelsPerSecond * Raylib.GetFrameTime() * (_settings?.StickSensitivity ?? 1f);
+        float dt = Raylib.GetFrameTime();
+        look += RightStick() * StickLookPixelsPerSecond * dt * (_settings?.StickSensitivity ?? 1f);
+        // Turning the camera with keys or the triggers: for trackpads, or anyone who prefers it.
+        float turn = (Held(ControlBindings.CameraRight) ? 1 : 0) - (Held(ControlBindings.CameraLeft) ? 1 : 0);
+        look.X += turn * KeyLookPixelsPerSecond * dt * (_settings?.StickSensitivity ?? 1f);
         return look;
     }
 

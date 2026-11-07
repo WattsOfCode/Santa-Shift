@@ -1,6 +1,10 @@
-// Display settings for the Raylib window (not gameplay). Lower internalWidth/Height for very weak devices;
-// the picture is drawn at this size and scaled to the window, so cost stays flat on big screens.
+// Display settings for the Raylib window (not gameplay).
+// The 3D picture is drawn at the window's resolution times Settings > Game > 3D resolution (50-150%), never wider
+// than maxRenderWidth, then edge-smoothed (FXAA) and scaled to the window. The UI always uses the 960 x 540 canvas.
+// With followWindow false, the picture is always internalWidth x internalHeight (cost stays flat on big screens).
 {
+  "followWindow": true,
+  "maxRenderWidth": 2560,
   "internalWidth": 960,
   "internalHeight": 540,
   "windowWidth": 1280,

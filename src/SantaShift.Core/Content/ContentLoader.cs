@@ -113,6 +113,7 @@ public static class ContentLoader
             Dialogue = dialogue, Letters = goodLetters, Warnings = warnings,
             Floor = floor, Colliders = colliders, HasRoomLayout = room != null, PlayerStart = start,
             Lights = room?.Lights.Where(l => l.Radius > 0 && l.Intensity > 0 && l.Color.Length >= 3).ToList() ?? [],
+            Glows = room?.Glows.Where(g => g.Size > 0 && g.Color.Length >= 3).ToList() ?? [],
             Props = room?.Props
                 .Where(p => !string.IsNullOrWhiteSpace(p.Model))
                 .Select(p => new Prop(p.Model, tuning.MetresToPixels(p.X, p.Z), p.Yaw, p.Scale > 0 ? p.Scale : 1))

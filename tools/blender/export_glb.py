@@ -144,6 +144,7 @@ def build_layout(source_name, warnings):
         layout["colliders"].append({"name": ob.name, "x": cx, "z": cz,
                                     "w": round(hi.x - lo.x, 4), "d": round(hi.y - lo.y, 4)})
     layout["lights"] = collect_lights(objects)
+    layout["glows"] = collect_glows(objects)
 
     # Workshop elves: drawn by the game with the elf model, hammering. Each also blocks the player.
     layout["npcs"] = []
@@ -185,6 +186,29 @@ def collect_lights(objects):
                     entry["name"] = f"{ob.name}/{inner.name}"
                     lights.append(entry)
     return lights
+
+
+def glow_entry(ob, matrix):
+    """A halo the game draws (a tree bulb, the star): position in game metres (y = height), colour, size, twinkle."""
+    p = matrix.translation
+    x, z = to_game(p.x, p.y)
+    return {"x": x, "y": round(p.z, 4), "z": z, "color": [round(float(c), 4) for c in ob.get("color", (1, 1, 1))],
+            "size": round(float(ob.get("size", 0.2)), 4), "twinkle": round(float(ob.get("twinkle", 0.0)), 4)}
+
+
+def collect_glows(objects):
+    """Glow markers (empties with a 'glow' property) placed in room.blend or inside linked props."""
+    glows = []
+    for ob in objects:
+        if ob.type == "EMPTY" and ob.get("glow"):
+            glows.append(glow_entry(ob, ob.matrix_world))
+        if ob.name.startswith("pr_") and ob.instance_type == "COLLECTION" and ob.instance_collection:
+            coll = ob.instance_collection
+            base = ob.matrix_world @ Matrix.Translation(-coll.instance_offset)
+            for inner in coll.all_objects:
+                if inner.type == "EMPTY" and inner.get("glow"):
+                    glows.append(glow_entry(inner, base @ inner.matrix_world))
+    return glows
 
 
 def instance_bbox(empty, coll):
@@ -288,7 +312,8 @@ def main() -> int:
             with open(layout_path, "w", encoding="utf-8") as f:
                 json.dump(layout, f, indent=2)
             print(f"RESULT room layout: {len(layout['stations'])} stations, {len(layout['colliders'])} obstacles, "
-                  f"{len(layout['props'])} props, {len(layout['lights'])} lights, {len(layout['npcs'])} elves -> {layout_path}")
+                  f"{len(layout['props'])} props, {len(layout['lights'])} lights, {len(layout['glows'])} glows, "
+                  f"{len(layout['npcs'])} elves -> {layout_path}")
         else:
             warnings.append("no data folder given; room_layout.json was not written")
 

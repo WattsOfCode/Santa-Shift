@@ -41,6 +41,12 @@ public sealed class RunState
     /// <summary>Lumps of coal delivered to naughty children this shift.</summary>
     public int CoalDelivered { get; set; }
 
+    /// <summary>The guided first round: arrows lead the way and the first orders are arranged as a lesson.</summary>
+    public bool Tutorial { get; init; }
+
+    /// <summary>The guided orders so far (ids), up to <see cref="Content.TutorialTuning.Orders"/>.</summary>
+    public HashSet<int> TutorialOrderIds { get; } = [];
+
     /// <summary>The perks picked so far this run, combined.</summary>
     public RunModifiers Modifiers { get; init; } = RunModifiers.None;
     public bool RecyclePromptOpen { get; set; }

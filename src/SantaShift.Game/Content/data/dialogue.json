@@ -63,6 +63,18 @@
     "unlocked": "Unlocked: {0}!",
     "head_start": "Head start: pick a perk for round 1",
 
+    "guide_title": "GUIDE  {0} / {1}",
+    "guide_kit": "Follow the arrows: collect a kit for the first order",
+    "guide_build": "Build it at the assembly bench",
+    "guide_ribbon": "This one wants a ribbon: tie it on at the ribbon station",
+    "guide_ship": "Send it down the shipping chute",
+    "guide_coal": "A naughty child! Shovel coal at the fireplace",
+    "guide_scrap": "Drop it in the scrap barrel",
+    "guide_supply": "That bin is empty: grab a supply crate from the sled",
+    "guide_restock": "Restock the empty kit bin",
+    "guide_wait": "Wait for the next letter...",
+    "guide_done": "Guide complete! You know the whole job now.",
+
     "prompt_supply": "[use]  Take a supply crate",
     "prompt_restock": "[use]  Restock {0} kits",
     "bin_empty": "Out of {0} kits! Fetch a supply crate from the sled",

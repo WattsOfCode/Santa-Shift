@@ -23,6 +23,9 @@ public sealed class RoomLayout
     /// <summary>Point lights: placed in room.blend or carried by props (fireplace, lanterns, windows).</summary>
     public List<RoomLight> Lights { get; init; } = [];
 
+    /// <summary>Soft halos around light sources (tree bulbs, the star), drawn by the game; they light nothing.</summary>
+    public List<RoomGlow> Glows { get; init; } = [];
+
     /// <summary>Workshop elves at their own benches (scenery).</summary>
     public List<NpcPlacement> Npcs { get; init; } = [];
 }
@@ -31,6 +34,17 @@ public sealed class RoomLayout
 /// A point light in game-world metres (Y is height). Drawing only: it never affects the rules.
 /// Intensity ~1 is a lantern, ~3 a fireplace; Radius is how far it reaches; Flicker 0..1 makes it waver like fire.
 /// </summary>
+/// <summary>A halo at a light source: position in metres (Y = height), colour 0..1, width in metres, twinkle 0..1.</summary>
+public sealed class RoomGlow
+{
+    public double X { get; init; }
+    public double Y { get; init; }
+    public double Z { get; init; }
+    public double[] Color { get; init; } = [1, 1, 1];
+    public double Size { get; init; } = 0.2;
+    public double Twinkle { get; init; }
+}
+
 public sealed class RoomLight
 {
     public string Name { get; init; } = "";

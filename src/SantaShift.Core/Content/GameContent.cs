@@ -27,6 +27,9 @@ public sealed class GameContent
     /// <summary>Point lights from the Blender room (drawing only).</summary>
     public IReadOnlyList<RoomLight> Lights { get; init; } = [];
 
+    /// <summary>Halos around light sources from the room (tree bulbs, the star).</summary>
+    public IReadOnlyList<RoomGlow> Glows { get; init; } = [];
+
     /// <summary>Workshop elves working at their own benches (scenery, from the Blender room).</summary>
     public IReadOnlyList<Npc> Npcs { get; init; } = [];
 

@@ -13,6 +13,12 @@ public sealed class RenderSettings
     public bool Vsync { get; init; } = true;
     public int TargetFps { get; init; } = 60;
     public bool Msaa { get; init; }
+
+    /// <summary>Draw the 3D picture at the window's resolution (times Settings > Resolution). Off: always internalWidth x internalHeight.</summary>
+    public bool FollowWindow { get; init; } = true;
+
+    /// <summary>The widest the 3D picture gets, however big the window (keeps 4K screens affordable).</summary>
+    public int MaxRenderWidth { get; init; } = 2560;
     public ChaseCameraSettings ChaseCamera { get; init; } = new();
     public ShoulderCameraSettings ShoulderCamera { get; init; } = new();
     public MovementSettings Movement { get; init; } = new();

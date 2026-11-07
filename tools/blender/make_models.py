@@ -19,7 +19,7 @@ import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from helpers import box, cone, cyl, disc, light, new_file, save, sphere, torus  # noqa: E402
+from helpers import box, cone, cyl, disc, glow, light, new_file, save, sphere, torus  # noqa: E402
 
 import bpy  # noqa: E402
 from mathutils import Vector  # noqa: E402
@@ -570,6 +570,23 @@ def ribbon_bow(c):
     sphere("Knot", 0, 0, 0.08, 0.025, "ribbon_shade", c)
 
 
+def guide_arrow(c):
+    """
+    One tutorial arrow on the floor: a wide chevron pointing forward (-Y), about 0.45 m across and only 4 cm tall, with
+    a raised bright ridge along each arm so it reads as 3D. The game draws a trail of them, see-through and unlit (they
+    glow gold), from the elf to where it should go next.
+    """
+    w, t, h = 0.32, 0.1, 0.03  # arm length, arm width, height
+    a = math.radians(50)       # each arm runs back and out, 50 degrees off straight back
+    for side in (-1, 1):
+        # The arm's front end overlaps the other's at the tip (x = 0), so the point is solid.
+        cx = side * (math.sin(a) * w / 2 - t * 0.25)
+        cy = -0.12 + math.cos(a) * w / 2
+        rot = (0, 0, -side * a)
+        box(f"Arm.{side}", cx, cy, 0, t, w, h, "guide", c, rot=rot)
+        box(f"Ridge.{side}", cx, cy, h, t * 0.45, w * 0.88, 0.014, "guide_edge", c, rot=rot)
+
+
 def ribbon_spool(c):
     """A spool of ribbon lying on its side, 0.12 m across. Near-white: the game tints it with each ribbon colour."""
     r, w = 0.06, 0.09
@@ -732,19 +749,103 @@ def station_recycle(c):
 
 # ================================================================ room props
 
+TREE_TOP = 2.5  # the tip under the star
+
+
+def tree_radius(z):
+    """How far the tree's boughs reach at height z (a cone from 1.0 m at the bottom to nothing at the tip)."""
+    return max(0.06, 1.0 * (TREE_TOP - z) / (TREE_TOP - 0.3))
+
+
+def tree_point(z, angle, out=0.0):
+    """A point on the tree's surface at height z, around it by angle (radians), pushed out by `out` metres."""
+    r = tree_radius(z) * 0.93 + out
+    return (math.cos(angle) * r, math.sin(angle) * r, z)
+
+
 def prop_tree(c):
-    cyl("Trunk", 0, 0, 0.2, 0.12, 0.4, "Z", "log_dark", c)
-    tiers = ((0.95, 0.35, 0.9), (0.75, 0.95, 0.8), (0.55, 1.5, 0.7), (0.35, 1.95, 0.55))
-    for n, (r, z, h) in enumerate(tiers):
-        cone(f"Tier.{n}", 0, 0, z + h / 2, r, 0.0, h, "pine" if n % 2 else "pine_dark", c, verts=10)
-    box("Star", 0, 0, 2.48, 0.2, 0.06, 0.2, "gold", c, rot=(0, math.radians(45), 0))
-    light("Tree lights", 0, -0.2, 1.3, (1.0, 0.82, 0.55), 0.6, 3.0, 0.15, c)  # warm twinkle from the decorations
-    for n in range(16):
-        a = n * 2.4
-        z = 0.45 + (n % 8) * 0.24
-        r = 0.97 - (z - 0.35) * 0.43
-        sphere(f"Ornament.{n}", math.cos(a) * r, math.sin(a) * r, z, 0.06,
-               ("berry", "gold", "gift_a", "snow")[n % 4], c, segments=6, rings=4)
+    """
+    A full Christmas tree, 2.6 m: layered boughs, a gold tinsel garland spiralling down, a string of big old-fashioned
+    (C9) incandescent bulbs in pink, orange, blue, green and yellow, a modest scatter of glass baubles (not covering
+    it), a glowing star and presents. Each bulb and the star carry a glow marker: the game draws a soft twinkling halo
+    there. Coloured point lights spill pink and orange onto the room.
+    """
+    rnd = random.Random(1225)
+    cyl("Trunk", 0, 0, 0.18, 0.1, 0.36, "Z", "log_dark", c)
+    cyl("Tree stand", 0, 0, 0.05, 0.28, 0.1, "Z", "berry", c, verts=12)
+
+    # Boughs: overlapping tiers, each a drooping skirt (a wide flat cone) under a taller cone, turned at random so the
+    # silhouette isn't too regular.
+    tiers = [(0.3, 1.0), (0.62, 0.86), (0.92, 0.72), (1.2, 0.6), (1.48, 0.48), (1.75, 0.37), (2.0, 0.26), (2.22, 0.16)]
+    shades = ("pine_dark", "pine", "pine_light")
+    for n, (z, r) in enumerate(tiers):
+        h = 0.5 if n < len(tiers) - 1 else 0.38
+        turn = (0, 0, rnd.uniform(0, math.tau))
+        cone(f"Bough skirt.{n}", 0, 0, z + 0.07, r * 1.04, r * 0.72, 0.14, shades[n % 3], c, verts=12, rot=turn)
+        cone(f"Bough.{n}", 0, 0, z + h / 2 + 0.05, r * 0.92, r * 0.15 if n < len(tiers) - 1 else 0.0, h,
+             shades[(n + 1) % 3], c, verts=12, rot=turn)
+    cone("Tip", 0, 0, 2.47, 0.09, 0.0, 0.2, "pine_light", c, verts=10)
+
+    # Gold tinsel garland: a thick, slightly twisting tube spiralling three and a half times down the tree.
+    turns, z0, z1, segs = 3.5, 2.2, 0.45, 56
+    prev = None
+    for i in range(segs + 1):
+        t = i / segs
+        z = z0 + (z1 - z0) * t
+        p = tree_point(z, t * turns * math.tau, out=0.04 + 0.015 * math.sin(t * 40))
+        if prev:
+            limb(f"Tinsel.{i}", prev, p, 0.022, 0.022, "tinsel", c, verts=5)
+        prev = p
+
+    # A string of C9 bulbs on a dark wire, the other way round the tree. Each bulb is a fat teardrop pointing outwards
+    # and a little down, on a brass base; colours cycle so no two neighbours match.
+    colours = (("bulb_pink", (1.0, 0.45, 0.68)), ("bulb_orange", (1.0, 0.55, 0.18)), ("bulb_blue", (0.35, 0.55, 1.0)),
+               ("bulb_green", (0.35, 0.9, 0.45)), ("bulb_yellow", (1.0, 0.85, 0.35)))
+    turns, z0, z1, segs = 4.5, 2.3, 0.4, 48
+    prev = None
+    bulb = 0
+    for i in range(segs + 1):
+        t = i / segs
+        z = z0 + (z1 - z0) * t
+        a = -t * turns * math.tau + 1.3
+        p = tree_point(z, a, out=0.02)
+        if prev:
+            limb(f"Light wire.{i}", prev, p, 0.006, 0.006, "light_wire", c, verts=4)
+        prev = p
+        if i < segs:  # a bulb at every joint of the wire
+            mat, rgb = colours[bulb % len(colours)]
+            out = Vector((math.cos(a), math.sin(a), -0.35)).normalized()
+            base = Vector(p)
+            tip = base + out * 0.075
+            limb(f"Bulb base.{i}", base, base + out * 0.018, 0.013, 0.013, "bulb_base", c, verts=4)
+            limb(f"Bulb.{i}", base + out * 0.012, tip, 0.024, 0.004, mat, c, verts=6)
+            glow(f"Bulb glow.{i}", *(base + out * 0.04), rgb, 0.26, 0.55, c)
+            bulb += 1
+
+    # Baubles, sprinkled sparingly: a mix of colours and sizes, a few teardrops, kept off the very top.
+    picks = ("berry", "gold", "silver", "gift_a", "berry", "gold", "silver", "snow")
+    for n in range(15):
+        z = rnd.uniform(0.5, 2.05)
+        a = n * 2.399 + rnd.uniform(-0.3, 0.3)  # golden angle: evenly spread, never in a column
+        x, y, zz = tree_point(z, a, out=0.035)
+        mat = picks[n % len(picks)]
+        if n % 5 == 4:  # a glass teardrop
+            cone(f"Teardrop.{n}", x, y, zz - 0.05, 0.045, 0.0, 0.13, mat, c, verts=8, rot=(math.pi, 0, 0))
+        else:
+            sphere(f"Bauble.{n}", x, y, zz - 0.04, rnd.uniform(0.045, 0.07), mat, c, segments=7, rings=4)
+        cyl(f"Bauble cap.{n}", x, y, zz + 0.02, 0.012, 0.02, "Z", "gold", c, verts=5)
+
+    # The star: five gold points and a glowing heart, facing the front (-Y).
+    for k in range(5):
+        a = math.pi / 2 + k * math.tau / 5
+        d = Vector((math.cos(a), 0, math.sin(a)))
+        limb(f"Star point.{k}", Vector((0, -0.02, 2.62)), Vector((0, -0.02, 2.62)) + d * 0.16, 0.05, 0.0, "star_glow", c, verts=4)
+    sphere("Star heart", 0, -0.02, 2.62, 0.055, "star_glow", c, segments=8, rings=5)
+    glow("Star glow", 0, -0.06, 2.62, (1.0, 0.86, 0.45), 0.75, 0.15, c)
+
+    light("Tree lights", 0, -0.2, 1.3, (1.0, 0.82, 0.55), 0.6, 3.0, 0.15, c)    # warm twinkle from the decorations
+    light("Tree pink", 0.5, -0.5, 1.0, (1.0, 0.45, 0.7), 0.35, 2.4, 0.12, c)      # the old bulbs' coloured spill
+    light("Tree orange", -0.5, -0.5, 1.6, (1.0, 0.55, 0.2), 0.35, 2.4, 0.12, c)
     for n, (gx, gy, s, m) in enumerate(((-0.6, -0.55, 0.35, "gift_a"), (0.1, -0.8, 0.3, "berry"),
                                         (-0.85, 0.15, 0.28, "gift_b"), (0.55, -0.45, 0.22, "pine"))):
         box(f"Gift.{n}", gx, gy, 0, s, s, s * 0.8, m, c)
@@ -954,6 +1055,7 @@ MODELS = {
     "station_supply": (station_supply, True, False),
     "ribbon_bow": (ribbon_bow, True, False),
     "ribbon_spool": (ribbon_spool, True, False),
+    "guide_arrow": (guide_arrow, False, False),
     "station_bin": (station_bin, True, False),
     "station_bench": (station_bench, True, False),
     "station_ribbon": (station_ribbon, True, False),

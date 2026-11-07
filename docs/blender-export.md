@@ -53,6 +53,13 @@ number key pressed at the bench, and plays them at their Blender length (it samp
 works: it is drawn in its rest pose and bobs while walking. The workshop elves at their benches use the same model
 and actions.
 
+## Glows (soft halos)
+
+An empty with a custom property `glow = True` (plus `color`, `size` in metres and `twinkle` 0..1) becomes a soft halo
+the game draws there, twinkling like an old incandescent bulb. They cost no light slot. `glow()` in helpers.py makes
+one; the tree has one on every bulb and on the star. Put them in a prop file (they follow the prop) or in room.blend.
+The room export writes them to `room_layout.json > glows`.
+
 ## Animated props
 
 A prop whose `.glb` has an animation loops its first one in the game. The fireplace does this: its flames each follow
@@ -82,6 +89,7 @@ the fireplace follows a still `root` bone. Use the same trick for any prop (a cl
 | `station_recycle` | Scrap barrel | 1.25 x 1.25 m |
 | `prop_tree`, `prop_fireplace`, `prop_firewood`, `prop_barrels`, `prop_sled` | Furniture | Solid: the elf walks around them |
 | `prop_rug` | Braided rug | Not solid |
+| `guide_arrow` | One tutorial arrow (the guided first round) | Flat chevron pointing -Y, 4 cm tall, glowing gold; not solid |
 | `prop_npc_bench` | A workshop elf's bench, with trains | Solid; the elf stands on the mat on its -Y side (placed with an `npc_<n>` marker) |
 | `shovel` | The elf's coal shovel | Stands on its blade; grip 0.62 m up the shaft. Leans on the scuttle when not in use |
 | `prop_window`, `prop_lantern`, `prop_wreath`, `prop_shelf`, `prop_clock` | Wall decorations | Not solid, wall-mounted |
