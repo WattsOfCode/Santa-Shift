@@ -71,9 +71,10 @@ Battery Boost can hold games to 30 fps: plug in or turn it off.
 ## Build and run
 
 Requires the .NET 10 SDK. Double-click **`Play Santa Shift.cmd`** (Windows) or **`Play Santa Shift.command`** (Mac) to
-build the latest code and play. On a Mac, the first time, right-click the launcher and choose Open (macOS asks before
-running a downloaded script); if it still won't start, run `chmod +x "Play Santa Shift.command"` in Terminal once.
-The Mac build is untested so far. Or, on any system:
+build the latest code and play. On a Mac, macOS blocks a downloaded script the first time: open System Settings >
+Privacy & Security and click Open Anyway, or run `bash "Play Santa Shift.command"` in Terminal from the game folder.
+If double-clicking says it can't be run, run `chmod +x "Play Santa Shift.command"` once. Tested on an Intel Mac
+(macOS 15). Or, on any system:
 
 ```
 dotnet build
