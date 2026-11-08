@@ -13,6 +13,7 @@ if ! command -v dotnet >/dev/null 2>&1; then
   exit 1
 fi
 
+echo "Building Santa Shift (the first time takes a minute)..."
 if ! dotnet build src/SantaShift.Game -c Release --nologo -v quiet; then
   echo
   echo "Build failed - see the errors above."
@@ -20,6 +21,12 @@ if ! dotnet build src/SantaShift.Game -c Release --nologo -v quiet; then
   exit 1
 fi
 
-# Run the DLL through dotnet: it works on Apple Silicon and Intel Macs alike.
-dotnet "src/SantaShift.Game/bin/Release/net10.0/SantaShift.dll" &
-disown
+# Run the DLL through dotnet: it works on Apple Silicon and Intel Macs alike. It runs in this window, so if anything
+# goes wrong the message stays here to read.
+echo "Starting Santa Shift..."
+if ! dotnet "src/SantaShift.Game/bin/Release/net10.0/SantaShift.dll"; then
+  echo
+  echo "Santa Shift stopped with an error - see above (and santashift-error.log next to the game, if there is one)."
+  read -r -p "Press Enter to close."
+  exit 1
+fi

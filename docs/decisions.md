@@ -350,3 +350,13 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - **Mac launcher:** `Play Santa Shift.command` builds and runs the DLL through `dotnet` (Apple Silicon and Intel).
   `.gitattributes` keeps it LF and git records it executable.
 - **Not done:** Retina (high-DPI) drawing; untested on a real Mac so far.
+## 2026-11-08: Mac crash fixed (heap corruption from GPU skinning)
+- **Symptom:** on macOS (Intel MacBook Pro, macOS 15.8.1, .NET 10.0.14) the game aborted at start with "malloc: Heap
+  corruption detected, free list is damaged". Windows never showed it.
+- **Cause:** `Lighting.UploadBoneBuffers` stored the bone index and weight buffer ids in `mesh.VboId[7]` and `[8]`.
+  The standard Raylib 6.0 build has `SUPPORT_GPU_SKINNING` off, so `MAX_MESH_VERTEX_BUFFERS` is 7 and `vboId` has
+  slots 0-6 only: two writes past the end of a 28-byte heap block. macOS's allocator checks block guards and aborts;
+  the Windows heap's padding hid it.
+- **Fix:** the buffer ids are kept in `Lighting` (`_boneBuffers`, `_skinnedVaos`) and freed in `Lighting.Dispose`.
+  No other code writes into Raylib-owned arrays. The Mac launcher now runs the game in its Terminal window and keeps
+  any error on screen.

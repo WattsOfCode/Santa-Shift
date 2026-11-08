@@ -277,7 +277,11 @@ public sealed class Lighting : IDisposable
     /// <summary>
     /// Raylib's glTF loader keeps each vertex's bone indices and weights on the CPU only (it skins there). GPU skinning
     /// needs them on the GPU too: upload them into each mesh's vertex array at the skinned shader's attribute slots.
-    /// The buffers go in the mesh's own VBO slots, so unloading the model frees them. False if a mesh lacks bone data.
+    /// False if a mesh lacks bone data.
+    ///
+    /// The buffer ids are kept here, NOT in the mesh's VboId array: the standard Raylib 6 build has GPU skinning off,
+    /// so that array has only 7 slots (0-6) and slots 7 and 8 lie past its end. Writing them corrupted the heap, which
+    /// macOS's allocator caught and aborted on (Windows let it slide). They are freed in <see cref="Dispose"/>.
     /// </summary>
     private unsafe bool UploadBoneBuffers(Model model)
     {
@@ -290,12 +294,12 @@ public sealed class Lighting : IDisposable
         for (int m = 0; m < model.MeshCount; m++)
         {
             ref var mesh = ref model.Meshes[m];
-            if (mesh.VboId[BoneIdsVbo] != 0) continue; // already there (shared mesh, or a newer Raylib uploads them)
+            if (!_skinnedVaos.Add(mesh.VaoId)) continue; // already uploaded (a shared mesh)
             Rlgl.EnableVertexArray(mesh.VaoId);
-            mesh.VboId[BoneIdsVbo] = Rlgl.LoadVertexBuffer(mesh.BoneIndices, mesh.VertexCount * 4 * ElementSize(mesh.BoneIndices), false);
+            _boneBuffers.Add(Rlgl.LoadVertexBuffer(mesh.BoneIndices, mesh.VertexCount * 4 * ElementSize(mesh.BoneIndices), false));
             Rlgl.SetVertexAttribute((uint)idsAt, 4, GlTypeOf(mesh.BoneIndices), false, 0, 0);
             Rlgl.EnableVertexAttribute((uint)idsAt);
-            mesh.VboId[BoneWeightsVbo] = Rlgl.LoadVertexBuffer(mesh.BoneWeights, mesh.VertexCount * 4 * sizeof(float), false);
+            _boneBuffers.Add(Rlgl.LoadVertexBuffer(mesh.BoneWeights, mesh.VertexCount * 4 * sizeof(float), false));
             Rlgl.SetVertexAttribute((uint)weightsAt, 4, GlFloat, false, 0, 0);
             Rlgl.EnableVertexAttribute((uint)weightsAt);
             Rlgl.DisableVertexArray();
@@ -303,8 +307,9 @@ public sealed class Lighting : IDisposable
         return true;
     }
 
-    // Mesh VBO slots Raylib reserves for bone indices and weights (it frees every slot on unload).
-    private const int BoneIdsVbo = 7, BoneWeightsVbo = 8;
+    // Bone index and weight buffers this class uploaded, and the vertex arrays that have them.
+    private readonly List<uint> _boneBuffers = [];
+    private readonly HashSet<uint> _skinnedVaos = [];
     private const int GlUnsignedByte = 0x1401, GlUnsignedShort = 0x1403, GlFloat = 0x1406;
 
     private static unsafe int ElementSize<T>(T* _) where T : unmanaged => sizeof(T);
@@ -382,6 +387,8 @@ public sealed class Lighting : IDisposable
 
     public void Dispose()
     {
+        foreach (uint vbo in _boneBuffers) Rlgl.UnloadVertexBuffer(vbo);
+        _boneBuffers.Clear();
         if (IsValid) Raylib.UnloadShader(Shader);
         if (SkinsOnGpu) Raylib.UnloadShader(Skinned);
         if (Raylib.IsShaderValid(Post)) Raylib.UnloadShader(Post);
