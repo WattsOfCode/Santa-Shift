@@ -18,5 +18,7 @@
   <ItemGroup>
     <!-- Data, models, textures and audio are copied next to the executable. -->
     <None Update="Content\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The licence, credits and notices ship with every build, next to the executable. -->
+    <None Include="..\..\LICENSE.txt;..\..\THIRD_PARTY_NOTICES.md;..\..\ASSET_CREDITS.md" CopyToOutputDirectory="PreserveNewest" Link="%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

@@ -3,7 +3,10 @@ using SantaShift.Core.Models;
 
 namespace SantaShift.Game.Services;
 
-/// <summary>Sound IDs from GDD section 17. Each plays Content/audio/&lt;id&gt;.wav if that file exists.</summary>
+/// <summary>
+/// Sound IDs from GDD section 17. Each plays Content/audio/&lt;id&gt;.wav if that file exists. The shipped files are
+/// synthesised by tools/audio/make_sfx.py; replace any of them with your own of the same name.
+/// </summary>
 public static class SoundIds
 {
     public const string UiConfirm = "ui_confirm";
@@ -18,10 +21,29 @@ public static class SoundIds
     public const string HammerHit = "hammer_hit";
     public const string AssemblyBotched = "assembly_botched";
     public const string PunchClock = "punch_clock";
+    public const string UiMove = "ui_move";
+    public const string RibbonPick = "ribbon_pick";
+    public const string CoalShovel = "coal_shovel";
+    public const string CratePickup = "crate_pickup";
+    public const string BinRestock = "bin_restock";
+    public const string CoalDelivered = "coal_delivered";
+    public const string Recycle = "recycle";
+    public const string OrderNew = "order_new";
+    public const string ClockTick = "clock_tick";
+    public const string RoundClear = "round_clear";
+    public const string RunOver = "run_over";
+    public const string PerkPick = "perk_pick";
+    public const string Unlock = "unlock";
+    public const string JollyOn = "jolly_on";
+    public const string SpiritLow = "spirit_low";
+
+    /// <summary>Footstep variants, picked at random so walking doesn't sound like a loop.</summary>
+    public static readonly string[] Footsteps = ["footstep_1", "footstep_2", "footstep_3", "footstep_4"];
 
     public static readonly string[] All =
         [UiConfirm, KitPickup, AssemblyComplete, RibbonComplete, DeliverySuccess, ActionRejected, PolicyChime, OrderExpired, ShiftEnd,
-         HammerHit, AssemblyBotched, PunchClock];
+         HammerHit, AssemblyBotched, PunchClock, UiMove, RibbonPick, CoalShovel, CratePickup, BinRestock, CoalDelivered, Recycle,
+         OrderNew, ClockTick, RoundClear, RunOver, PerkPick, Unlock, JollyOn, SpiritLow, .. Footsteps];
 }
 
 /// <summary>Music tracks. Each streams Content/audio/&lt;id&gt;.mp3 (or .ogg / .wav) if that file exists, looping.</summary>
@@ -39,7 +61,8 @@ public static class MusicIds
 /// <summary>Plays sound effects. Swappable; the game never depends on sound working (GDD section 14).</summary>
 public interface IAudioService : IDisposable
 {
-    void Play(string soundId);
+    /// <param name="pitch">1 = as recorded; 1.1 plays 10% higher (and shorter).</param>
+    void Play(string soundId, float pitch = 1f);
     void ApplySettings(Settings settings);
 
     /// <summary>Call once per frame: fades towards <paramref name="musicId"/> (null = silence) and keeps the stream fed.</summary>
@@ -49,7 +72,7 @@ public interface IAudioService : IDisposable
 /// <summary>Used when there is no audio device. Does nothing, safely.</summary>
 public sealed class SilentAudioService : IAudioService
 {
-    public void Play(string soundId) { }
+    public void Play(string soundId, float pitch = 1f) { }
     public void ApplySettings(Settings settings) { }
     public void UpdateMusic(string? musicId, float dt) { }
     public void Dispose() { }
@@ -104,13 +127,14 @@ public sealed class RaylibAudioService : IAudioService
         return service;
     }
 
-    public void Play(string soundId)
+    public void Play(string soundId, float pitch = 1f)
     {
         if (!_sounds.TryGetValue(soundId, out var sound)) return;
         double now = Raylib.GetTime();
         if (_lastPlayed.TryGetValue(soundId, out double last) && now - last < MinSecondsBetweenRepeats) return;
         _lastPlayed[soundId] = now;
         Raylib.SetSoundVolume(sound, _effectsVolume);
+        Raylib.SetSoundPitch(sound, pitch);
         Raylib.PlaySound(sound);
     }
 

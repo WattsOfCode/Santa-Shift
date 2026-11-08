@@ -37,8 +37,8 @@ public sealed class UnlocksMenu(GameServices s)
             s.Input.Clear();
             return;
         }
-        if (input.ConsumePressed(InputAction.MenuUp)) { Row = (Row + rows - 1) % rows; s.Audio.Play(SoundIds.UiConfirm); }
-        if (input.ConsumePressed(InputAction.MenuDown)) { Row = (Row + 1) % rows; s.Audio.Play(SoundIds.UiConfirm); }
+        if (input.ConsumePressed(InputAction.MenuUp)) { Row = (Row + rows - 1) % rows; s.Audio.Play(SoundIds.UiMove); }
+        if (input.ConsumePressed(InputAction.MenuDown)) { Row = (Row + 1) % rows; s.Audio.Play(SoundIds.UiMove); }
         if (!input.ConsumePressed(InputAction.Confirm)) return;
 
         if (Row == 0) { s.Progress.Hat = ""; s.Audio.Play(SoundIds.UiConfirm); return; }

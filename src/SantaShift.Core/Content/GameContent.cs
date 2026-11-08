@@ -48,6 +48,9 @@ public sealed class GameContent
     /// <summary>Things earned across runs (unlocks.json): extra perks, hat colours, a head start.</summary>
     public IReadOnlyList<Unlock> Unlocks { get; init; } = [];
 
+    /// <summary>Who made the game and what it is built with (credits.json), shown in Settings > Credits.</summary>
+    public CreditsBook Credits { get; init; } = new();
+
     /// <summary>Non-fatal problems found while loading (for example a letter naming an unknown toy).</summary>
     public IReadOnlyList<string> Warnings { get; init; } = [];
 

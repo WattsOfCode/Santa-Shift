@@ -1,4 +1,5 @@
 using SantaShift.Core.Content;
+using SantaShift.Core.Models;
 using SantaShift.Core.Rules;
 using SantaShift.Game.Services;
 using SantaShift.Game.Views.UI;
@@ -23,15 +24,23 @@ public sealed class InteractionController(GameContent content, IInputService inp
             {
                 case SimEventType.Collected:
                 case SimEventType.CoalCollected:
-                case SimEventType.SupplyTaken:
                     audio.Play(SoundIds.KitPickup);
                     break;
+                case SimEventType.SupplyTaken:
+                    audio.Play(SoundIds.CratePickup);
+                    break;
+                case SimEventType.ShovelStarted:
+                    audio.Play(SoundIds.CoalShovel);
+                    break;
+                case SimEventType.RibbonStarted:
+                    audio.Play(SoundIds.RibbonPick);
+                    break;
                 case SimEventType.Restocked:
-                    audio.Play(SoundIds.KitPickup);
+                    audio.Play(SoundIds.BinRestock);
                     if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Success, 90);
                     break;
                 case SimEventType.PartAdded:
-                    audio.Play(SoundIds.HammerHit);
+                    audio.Play(SoundIds.HammerHit, pitch: 1f + 0.07f * Math.Max(0, e.Points - 1)); // rises per part
                     break;
                 case SimEventType.AssemblyComplete:
                     audio.Play(SoundIds.AssemblyComplete);
@@ -44,7 +53,7 @@ public sealed class InteractionController(GameContent content, IInputService inp
                     audio.Play(SoundIds.RibbonComplete);
                     break;
                 case SimEventType.Delivered:
-                    audio.Play(SoundIds.DeliverySuccess);
+                    audio.Play(e.ToyId == Item.CoalId ? SoundIds.CoalDelivered : SoundIds.DeliverySuccess);
                     if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Success);
                     break;
                 case SimEventType.Rejected:
@@ -57,6 +66,7 @@ public sealed class InteractionController(GameContent content, IInputService inp
                     Feedback.ShowToast(content.Dialogue.Message("punch_prompt"), ToastKind.Info, 120);
                     break;
                 case SimEventType.Recycled:
+                    audio.Play(SoundIds.Recycle);
                     if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Info, 60);
                     break;
                 case SimEventType.OrderExpired:
@@ -64,6 +74,7 @@ public sealed class InteractionController(GameContent content, IInputService inp
                     if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Rejected, 90);
                     break;
                 case SimEventType.OrderCreated:
+                    audio.Play(SoundIds.OrderNew);
                     ShowLetterFor(e.OrderId);
                     break;
                 case SimEventType.PolicyWarning:

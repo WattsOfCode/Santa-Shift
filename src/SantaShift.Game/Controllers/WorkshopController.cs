@@ -258,6 +258,7 @@ public sealed class WorkshopController : IScreen
         _sim.Step(new PlayerCommand(mx, my, interact, cancel, partKey));
 
         _interaction.Handle(_sim.DrainEvents());
+        PlayShiftSounds();
         if (_guideWasActive && !TutorialGuide.Active(_sim) && _sim.State.Phase == RunPhase.Playing)
             _interaction.Feedback.ShowToast(_s.Content.Dialogue.Message("guide_done"), ToastKind.Success, 200);
         _guideWasActive = TutorialGuide.Active(_sim);
@@ -293,6 +294,50 @@ public sealed class WorkshopController : IScreen
         if (RibbonPickStation is { } station && !_pause.Blocking)
             _world.DrawSpoolLabels(ui, station, i => _s.Input.Label(InputAction.Part1 + i));
         _pause.Draw(ui);
+    }
+
+    // Sounds that come from watching the state rather than from one event.
+    private const double SpiritLowFraction = 0.25;
+    private const double MetresPerStep = 0.55;
+    private long _lastTickSecond = -1;
+    private bool? _wasJolly;
+    private bool? _wasLow;
+    private double _strideLeft = MetresPerStep / 2;
+    private int _lastFootstep;
+    private readonly Random _footRandom = new();
+
+    private void PlayShiftSounds()
+    {
+        var st = _sim.State;
+        if (st.Phase != RunPhase.Playing) return;
+        var audio = _s.Audio;
+
+        // A quiet tick each second of the last 10.
+        long ticksLeft = _sim.RemainingShiftTicks;
+        long second = (ticksLeft + _sim.Tuning.TicksPerSecond - 1) / _sim.Tuning.TicksPerSecond;
+        if (second is > 0 and <= 10 && second != _lastTickSecond) audio.Play(SoundIds.ClockTick);
+        _lastTickSecond = second;
+
+        // Spirit: sleigh bells on reaching JOLLY, a gust of wind (once) on dropping below a quarter.
+        var spirit = _sim.Tuning.Spirit;
+        if (spirit.Enabled)
+        {
+            bool jolly = st.Spirit >= spirit.JollyAt, low = st.Spirit < spirit.Max * SpiritLowFraction;
+            if (_wasJolly == false && jolly) audio.Play(SoundIds.JollyOn);
+            if (_wasLow == false && low) audio.Play(SoundIds.SpiritLow);
+            (_wasJolly, _wasLow) = (jolly, low);
+        }
+
+        // Footsteps by distance walked, so faster walking (perks) steps faster.
+        double moved = Math.Sqrt(Math.Pow(st.PlayerPosition.X - _lastPosition.X, 2) + Math.Pow(st.PlayerPosition.Y - _lastPosition.Y, 2))
+            / _sim.Tuning.PixelsPerMetre;
+        if (moved <= 0 || moved > 1) { if (moved > 1) _strideLeft = MetresPerStep; return; } // standing, or placed
+        _strideLeft -= moved;
+        if (_strideLeft > 0) return;
+        _strideLeft += MetresPerStep;
+        int pick = (_lastFootstep + 1 + _footRandom.Next(SoundIds.Footsteps.Length - 1)) % SoundIds.Footsteps.Length; // never the same twice
+        _lastFootstep = pick;
+        audio.Play(SoundIds.Footsteps[pick], pitch: 0.94f + 0.12f * (float)_footRandom.NextDouble());
     }
 
     private void FinishRound()

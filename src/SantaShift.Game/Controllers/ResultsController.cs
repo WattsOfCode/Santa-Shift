@@ -16,8 +16,16 @@ public sealed class ResultsController(GameServices s, ResultsSummary summary) : 
 
     public ResultsSummary Summary => summary;
 
+    // The whistle at the end of the shift plays first; the result's jingle follows it, then the unlock sparkle.
+    private const int JingleAtTick = 50, UnlockAtTick = 120;
+    private int _ticks;
+
     public void FixedUpdate()
     {
+        _ticks++;
+        if (_ticks == JingleAtTick) s.Audio.Play(summary.Passed ? SoundIds.RoundClear : SoundIds.RunOver);
+        if (_ticks == UnlockAtTick && summary.Unlocked.Count > 0) s.Audio.Play(SoundIds.Unlock);
+
         var run = summary.Run;
         if (s.Input.ConsumePressed(InputAction.Confirm))
         {

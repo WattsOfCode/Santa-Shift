@@ -1,0 +1,34 @@
+Santa Shift
+Copyright (c) 2026 WattsOfCode. All rights reserved.
+
+This is not an open-source licence. Santa Shift (its code, models, pictures, text, data files and builds) belongs to
+WattsOfCode. The source code is published so people can see how the game is made and because GitHub Game Off asks for a
+public repository; being able to read it does not give anyone the right to use it.
+
+WHAT YOU MAY DO, without asking:
+  1. Download the game from its official page and play it, for free, as much as you like.
+  2. Read the source code in the official repository (https://github.com/WattsOfCode/Santa-Shift), and use the
+     features GitHub itself provides there, such as viewing and forking on GitHub, as GitHub's Terms of Service allow.
+  3. Stream the game, make videos of it and share screenshots, including on monetised channels, as long as you name
+     the game and link to its official page.
+  4. Donate or pay what you want on the official page. A donation is a gift to support the game: it does not buy the
+     game, any rights in it, or any promise of future work, support or updates.
+
+WHAT YOU MAY NOT DO without written permission from WattsOfCode:
+  - Copy, modify, translate or build on the code, models, pictures, text or data, in whole or in part.
+  - Share, upload, mirror, sell, rent or bundle the game or its files anywhere other than the official pages.
+  - Use any part of it in another game, app or product, or release a "remake", "port" or "mod pack" of it.
+  - Use the code or assets to train or tune machine-learning or AI models.
+  - Remove or change this licence, the credits or the copyright notices.
+
+To ask for permission, open an issue on the repository above or contact WattsOfCode through GitHub.
+
+PARTS THAT BELONG TO OTHERS (not covered by this licence; they keep their own terms):
+  - Music: "Toy Factory Jingle" and "Cozy Christmas Game Ambience" by blueeyedmonkey, used in this game with the
+    composer's permission and credited by name. The music is not licensed to you for any other use.
+  - raylib, Raylib-cs and the libraries inside them (zlib, MIT or public domain) and the .NET runtime (MIT):
+    see THIRD_PARTY_NOTICES.md.
+  - The interface font is a Windows system font on your own computer; it is not included in the game.
+
+NO WARRANTY: the game is provided "as is", without warranty of any kind. WattsOfCode is not liable for any claim,
+damage or loss arising from playing, installing or using it, to the extent the law allows.

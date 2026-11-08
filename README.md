@@ -110,6 +110,8 @@ Everything in `src/SantaShift.Game/Content/data/` is plain JSON (comments allowe
 - **letters.json**: add or remove children's letters. A letter for an unknown toy is skipped with a warning.
 - **audio/**: `music_menu.mp3` (title, list, results) and `music_workshop.mp3` (the shift) loop and crossfade; `.ogg` or
   `.wav` work too. Volume is the Music setting (`MusicVolume`, 0.25 by default). Missing files just mean silence.
+  The sound effects (`<id>.wav`, listed in GDD section 17) are synthesised by `py tools/audio/make_sfx.py`; edit a
+  sound's recipe there and rerun it, or drop in your own `.wav` with the same name.
 - **perks.json**: the perks Santa offers between rounds (effect, amount, how many times each can stack).
 - **unlocks.json**: what lifetime totals unlock (a perk, a hat colour, or the head start).
 - **tuning.json**: deadlines, quotas, speeds, spawn times, score values.
@@ -130,10 +132,15 @@ A missing model simply shows the grey-box shape.
 
 ## Credits and licenses
 
-Music: "Toy Factory Jingle" and "Cozy Christmas Game Ambience" by **blueeyedmonkey**.
+Music: "Toy Factory Jingle" and "Cozy Christmas Game Ambience" by **blueeyedmonkey** (free to use; credit requested).
+Sound effects: made for the game, synthesised from scratch by `tools/audio/make_sfx.py`.
 
 Interface font: the game uses a font already installed with Windows (Bahnschrift, else Segoe UI Bold or Arial Bold);
 it is not shipped. To ship one, put a font whose licence allows it (e.g. OFL) at `Content/fonts/ui.ttf`.
 
+The credits are in the game under **Settings > Credits** (edit `Content/data/credits.json`).
 See [ASSET_CREDITS.md](ASSET_CREDITS.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-The project's own code license has not been chosen yet (GDD section 26).
+
+**License: all rights reserved.** Santa Shift is source-available, not open source: you may play it, read the code
+here, and stream or record it, but not copy, modify, redistribute or reuse any of it without written permission from
+WattsOfCode. Donations are welcome and buy no rights. Full terms in [LICENSE.txt](LICENSE.txt).

@@ -48,7 +48,7 @@ public sealed class TitleController(GameServices s) : IScreen
     private void Select(int index)
     {
         _selected = (Item)((index + ItemCount) % ItemCount);
-        s.Audio.Play(SoundIds.UiConfirm);
+        s.Audio.Play(SoundIds.UiMove);
     }
 
     private void Activate()

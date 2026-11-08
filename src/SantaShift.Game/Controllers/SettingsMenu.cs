@@ -6,12 +6,12 @@ using SantaShift.Game.Views.UI;
 
 namespace SantaShift.Game.Controllers;
 
-public enum SettingsTab { Sound, Controls, Game }
+public enum SettingsTab { Sound, Controls, Game, Credits }
 
 /// <summary>
 /// The settings screen, opened from the title or the pause menu: Sound (volumes, mute), Controls (two keys and one
 /// controller button per action, rebound by pressing them) and Game (reduced motion, look speed, camera, picture,
-/// tutorial guide, frame rate).
+/// tutorial guide, frame rate), plus Credits (who made it and what it is built with, from credits.json).
 /// Works the same with keyboard or controller. Changes apply at once and are saved when it closes.
 /// </summary>
 public sealed class SettingsMenu(GameServices s)
@@ -41,7 +41,7 @@ public sealed class SettingsMenu(GameServices s)
     {
         IsOpen = true;
         Tab = tab;
-        Row = 1;
+        Row = Math.Min(1, RowCount);
         Column = 0;
         Capturing = false;
         s.Input.Clear();
@@ -52,8 +52,11 @@ public sealed class SettingsMenu(GameServices s)
     {
         SettingsTab.Sound => 4,
         SettingsTab.Controls => ControlBindings.Actions.Length + 1, // + reset
+        SettingsTab.Credits => 0, // nothing to change: only the tab bar
         _ => 8,
     };
+
+    public Core.Content.GameContent Content => s.Content;
 
     public void Update()
     {
@@ -64,8 +67,8 @@ public sealed class SettingsMenu(GameServices s)
         if (input.ConsumePressed(InputAction.Back)) { Close(); return; }
         if (input.ConsumePressed(InputAction.TabNext)) SwitchTab(+1);
         if (input.ConsumePressed(InputAction.TabPrev)) SwitchTab(-1);
-        if (input.ConsumePressed(InputAction.MenuUp)) { Row = (Row + RowCount) % (RowCount + 1); Beep(); }
-        if (input.ConsumePressed(InputAction.MenuDown)) { Row = (Row + 1) % (RowCount + 1); Beep(); }
+        if (input.ConsumePressed(InputAction.MenuUp)) { Row = (Row + RowCount) % (RowCount + 1); Tick(); }
+        if (input.ConsumePressed(InputAction.MenuDown)) { Row = (Row + 1) % (RowCount + 1); Tick(); }
 
         int step = (input.ConsumePressed(InputAction.MenuRight) ? 1 : 0) - (input.ConsumePressed(InputAction.MenuLeft) ? 1 : 0);
         bool confirm = input.ConsumePressed(InputAction.Confirm);
@@ -129,7 +132,7 @@ public sealed class SettingsMenu(GameServices s)
 
     private void UpdateControls(int step, bool confirm, bool clear)
     {
-        if (step != 0) { Column = Math.Clamp(Column + step, 0, 2); Beep(); }
+        if (step != 0) { Column = Math.Clamp(Column + step, 0, 2); Tick(); }
         bool reset = Row == RowCount;
         if (reset)
         {
@@ -184,7 +187,8 @@ public sealed class SettingsMenu(GameServices s)
 
     private void SwitchTab(int step)
     {
-        Tab = (SettingsTab)(((int)Tab + step + 3) % 3);
+        int tabs = Enum.GetValues<SettingsTab>().Length;
+        Tab = (SettingsTab)(((int)Tab + step + tabs) % tabs);
         Row = Math.Min(Row, RowCount);
         Column = 0;
         Beep();
@@ -201,6 +205,7 @@ public sealed class SettingsMenu(GameServices s)
     }
 
     private void Beep() => s.Audio.Play(SoundIds.UiConfirm);
+    private void Tick() => s.Audio.Play(SoundIds.UiMove);
 
     private static float Nudge(float v, float by, float min, float max) => MathF.Round(Math.Clamp(v + by, min, max) * 100) / 100;
 }

@@ -297,3 +297,46 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - **Affects:** GDD sections 5 to 8, 12 to 15, 17 to 20, 24; `stations.json`, `dialogue.json`, `render.json`, `room_layout.json`.
 - **Validation:** `PunchClockTests` (8), frame rate settings tests; 191 tests pass. Screenshots of the clock, door,
   crates, bin signs, bench panel, ribbon labels and settings.
+## 2026-11-08: Credits in Settings; all-rights-reserved licence
+- **Reason:** Owner decisions: credits go in a Settings tab so they are easy to find; nobody may use the game without
+  the owner's permission, but players should be able to donate safely; the composer wants credit under the name
+  "blueeyedmonkey".
+- **Credits:** a fourth Settings tab, Credits, drawn from `Content/data/credits.json` (two columns plus a copyright
+  footer): the game by WattsOfCode, the music by blueeyedmonkey (used with permission), raylib, Raylib-cs, .NET, Blender,
+  the font, AI assistance (Claude), and a thank-you for donations. Reachable from the title and the pause menu.
+- **Licence:** `LICENSE.txt`, all rights reserved and source-available. Allowed without asking: playing, reading the code
+  on GitHub (and forking there under GitHub's terms), streaming and videos with a link. Needs written permission:
+  copying, modifying, redistributing, reuse in other projects, AI training. A donation buys no rights or promises.
+  Game Off requires only a public repository, not an open-source licence (2025 FAQ; recheck the 2026 page). The licence,
+  notices and asset credits are copied next to the executable in every build.
+- **Music:** permission given by the composer on condition of credit; ASSET_CREDITS.md records it. The owner should keep
+  the composer's message and confirm it covers a free game that accepts donations.
+- **Supersedes:** "MIT proposed for code" (GDD section 26).
+- **Validation:** a content test checks the credits name the composer and the copyright holder; screenshot of the tab.## 2026-11-08: Sound effects
+- **Reason:** Owner request ("lets add some sound effects"). The game already triggered 12 effects by name but no files
+  existed, so it was silent apart from the music.
+- **Source:** every effect is synthesised by `tools/audio/make_sfx.py` (Python standard library: sine waves, filtered
+  noise, bells, envelopes; fixed seeds so reruns are identical). No samples or sound packs, so they are the project's own
+  work under LICENSE.txt and there are no outside licences to track. Chosen over jsfxr (manual, one file at a time) and
+  CC0 packs (credit bookkeeping, a mixed sound).
+- **Wired:** all 26 GDD section 17 effects except `fire_loop` (it needs a positional loop by the hearth; later), plus 4
+  footstep variants. New in the game: menu move ticks, hammer pitch rising per part (`IAudioService.Play` takes a pitch),
+  separate crate, restock, shovel, spool, recycle, coal-delivery and new-letter sounds, a tick each of the last 10
+  seconds, JOLLY and low-Spirit cues, footsteps by distance walked, and the results screen's fanfare or slide whistle
+  after the end-of-shift whistle, then an unlock sparkle.
+- **Levels:** peaks 0.2 (ticks) to 0.75 (fanfare); long held tones (whistles, squeak) set lower so they don't sound
+  louder than the short ones. All go through the Effects volume.
+- **Affects:** GDD section 17 and the roadmap rows; `AudioService`, `InteractionController`, `WorkshopController`,
+  `ResultsController`, the menus; `credits.json`, ASSET_CREDITS.md, README.
+## 2026-11-08: Credits trimmed; licence review
+- **Reason:** Owner: the credits page should show only what is legally required (plus the music credit), not how the game
+  was made; check nothing needs royalties or blocks commercial use. blueeyedmonkey allows free use, asking only for credit.
+- **Credits page:** the game by WattsOfCode, the music by blueeyedmonkey, a thank-you, and a footer pointing to
+  LICENSE.txt and THIRD_PARTY_NOTICES.md. Removed: libraries, Blender, the font, AI assistance, the sound-effect note.
+- **Review:** raylib, Raylib-cs, GLFW (zlib: no credit required, keep the notice in source); raylib's MIT parts (cgltf,
+  QOI, QOA, par_shapes, tinyobj_loader_c, vox_loader, m3d, glad/Khronos) and the .NET runtime (MIT: notice must ship with
+  copies, now in THIRD_PARTY_NOTICES.md with the full licence texts, copied next to the game); stb, miniaudio, dr_*,
+  sdefl/sinfl, jar_* (public domain option); Blender, Python, the AI assistant (tools only; their output is the owner's,
+  no credit needed); the Windows font (used in place, not shipped). Nothing charges royalties or limits commercial use.
+- **Release step:** a self-contained publish must also include the .NET runtime pack's THIRD-PARTY-NOTICES.TXT.
+- **Supersedes:** the 2026-11-08 credits list above.

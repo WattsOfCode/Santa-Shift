@@ -36,6 +36,16 @@ public class ContentLoaderTests : IDisposable
     }
 
     [Fact]
+    public void Shipped_credits_name_the_composer_and_the_copyright_holder()
+    {
+        var credits = ContentLoader.LoadFromDirectory(ShippedData).Credits;
+        var all = credits.Left.Concat(credits.Right).SelectMany(s => s.Lines.Append(s.Heading)).Concat(credits.Footer).ToList();
+        Assert.Contains(all, l => l.Contains("blueeyedmonkey"));  // the composer's condition: credit by that name
+        Assert.Contains(credits.Footer, l => l.Contains("WattsOfCode") && l.Contains("All rights reserved"));
+        Assert.All(credits.Left.Concat(credits.Right).SelectMany(s => s.Lines), l => Assert.True(l.Length <= 40, $"too long for a column: {l}"));
+    }
+
+    [Fact]
     public void Shipped_dialogue_has_every_message_the_rules_use()
     {
         var d = ContentLoader.LoadFromDirectory(ShippedData).Dialogue;

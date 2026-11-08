@@ -66,12 +66,12 @@ public sealed class PerkPickController : IScreen
     private void Move(int step)
     {
         _selected = (_selected + step + Offers.Count) % Offers.Count;
-        _s.Audio.Play(SoundIds.UiConfirm);
+        _s.Audio.Play(SoundIds.UiMove);
     }
 
     private void Take(Perk perk)
     {
-        _s.Audio.Play(SoundIds.PolicyChime);
+        _s.Audio.Play(SoundIds.PerkPick);
         _run.AddPerk(perk);
         if (!BeforeFirstRound) _run.StartNextRound();
         _s.Scenes.Switch(new WorkshopController(_s, _run));

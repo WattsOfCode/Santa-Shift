@@ -94,7 +94,7 @@ No cutscenes or branching conversations.
 | Item | Status |
 |---|---|
 | Title, controls, start, pause, settings, results, restart | Built |
-| Credits screen | **Not built** (credits are only in README) |
+| Credits screen | Built: Settings > Credits (from `credits.json`) |
 | How to Play | Replaced by the guided first round plus controls on the pause screen |
 | One traversable workshop, one elf, functional fixtures | Built: 10 fixtures (3 kit bins, bench, ribbon, shipping, recycling, coal scuttle, supply sled, punch clock) and a door (solid, for later use) |
 | Three toy kits and assembled forms | Built: train, bear, robot (plus part models and botched forms) |
@@ -103,8 +103,8 @@ No cutscenes or branching conversations.
 | Two rule-changing event types (ribbon window, rush) | Built |
 | Guided practice | Built: the first six orders of round 1 are a guided lesson |
 | Keyboard operation, readable labels, audio sliders, reduced motion, relaxed mode | Built (plus controller and rebinding) |
-| Seven essential sound effects | **Not built:** the game triggers 12 effects but no sound files exist yet (Section 17) |
-| Music | Built: two tracks by blueeyedmonkey (license to confirm) |
+| Seven essential sound effects | **Built:** 30 effects plus 4 footsteps, synthesised by `tools/audio/make_sfx.py` (Section 17) |
+| Music | Built: two tracks by blueeyedmonkey (free to use, credit is the only condition) |
 | Release build, public source, instructions, credits, tested jam submission | **Not built:** packaging not set up (Section 27) |
 
 ### Built beyond the original scope
@@ -411,9 +411,9 @@ volume.
 - **Results:** performance, Santa's review, unlocks earned, Play again, Title.
 - **Settings** (from title and pause): Sound (master, music, effects, mute); Controls (rebind keys and buttons); Game
   (reduced motion, mouse and stick speed, camera follow, smooth edges, 3D resolution, tutorial guide, frame rate: 60,
-  120 (default), 144, match display (VSync) or unlimited). Volume, reduced motion and frame rate apply at once; mode
-  never changes an active run.
-- **Credits:** **(to build)** a screen reachable from the title and results listing code, music and tools.
+  120 (default), 144, match display (VSync) or unlimited); Credits. Volume, reduced motion and frame rate apply at once;
+  mode never changes an active run.
+- **Credits:** a tab in Settings (so it is reachable from the title and the pause menu), kept short: the game by WattsOfCode, the music by blueeyedmonkey, a thank-you, and the copyright line pointing to LICENSE.txt and THIRD_PARTY_NOTICES.md. Only credits a licence or an author requires go on screen; tools and libraries that need only a notice file are in THIRD_PARTY_NOTICES.md. Text in `credits.json`.
 
 ---
 
@@ -469,49 +469,56 @@ Brief, soft, toy-like effects. Delivery sounds rewarding; rejection informative,
 chime with a caption. No voice acting. No information is audio-only.
 
 **Music (built):** "Cozy Christmas Game Ambience" (menus) and "Toy Factory Jingle" (shifts) by blueeyedmonkey, looping
-with a crossfade. **License terms to confirm before release.**
+with a crossfade. Used with the composer's permission; the condition is credit as "blueeyedmonkey" (Settings > Credits, README, game page).
 
 **Mixer defaults:** master 0.8, effects 0.7, music 0.25. Repeats of the same effect are rate-limited (0.1 s).
 
-**Effects:** files go in `Content/audio/<id>.wav`; a missing file is silent. "Wired" means the game already plays it.
+**Effects (built, 2026-11-08):** files are `Content/audio/<id>.wav`; a missing file is silent. All of them except `fire_loop` are
+synthesised by `tools/audio/make_sfx.py` (sine waves, filtered noise and envelopes, no samples, so they are the project's
+own work) and played by the game. "Built" means the file ships and the game plays it.
 
 | ID | Descriptor | Length | Status |
 |---|---|---|---|
-| `ui_confirm` | Soft wooden click | 0.05 to 0.15 s | Wired |
-| `ui_move` | Tiny tick as menu focus moves | 0.05 s | To wire |
-| `kit_pickup` | Cardboard lift with a light rattle | 0.1 to 0.2 s | Wired |
-| `hammer_hit` | Small wooden tok, pitch rises per part | 0.1 s | Wired |
-| `assembly_complete` | Bright three-note "ta-da" | 0.2 to 0.4 s | Wired |
-| `assembly_botched` | Wobbly "boing" with a clatter | 0.3 s | Wired |
-| `ribbon_pick` | Spool squeak | 0.1 s | To wire |
-| `ribbon_complete` | Satin swish ending in a soft bell | 0.15 to 0.3 s | Wired |
-| `coal_shovel` | Gritty scoop of coal | 0.3 s | To wire |
-| `crate_pickup` | Heavy wooden crate thump | 0.2 s | To wire |
-| `bin_restock` | Kits tumbling into a bin | 0.3 s | To wire |
-| `delivery_success` | Chute whoosh with sleigh-bell sparkle | 0.3 to 0.6 s | Wired |
-| `coal_delivered` | Dull thud with a mischievous low "bwomp" | 0.3 s | To wire |
-| `action_rejected` | Gentle low double-blip | 0.1 to 0.25 s | Wired |
-| `recycle` | Barrel clunk with a short crunch | 0.2 s | To wire |
-| `order_new` | Paper flutter as a letter arrives | 0.2 s | To wire |
-| `order_expired` | Soft descending two notes | 0.2 to 0.4 s | Wired |
-| `policy_chime` | Office-intercom ding-dong on bells | 0.3 to 0.6 s | Wired |
-| `clock_tick` | Quiet tick each second of the last 10 | 0.05 s | To wire |
-| `shift_end` | Workshop whistle | 0.5 to 1.0 s | Wired |
-| `punch_clock` | Time-clock "ka-chunk" with a little bell | 0.3 s | Wired |
-| `round_clear` | Short jingle-bell fanfare | 1.0 s | To wire |
-| `run_over` | Deflating slide-whistle | 0.8 s | To wire |
-| `perk_pick` | Card flip and a warm chime | 0.3 s | To wire |
-| `unlock` | Music-box sparkle | 0.6 s | To wire |
-| `jolly_on` | Warm rising sleigh bells | 0.4 s | To wire |
-| `spirit_low` | Hollow wind gust (once, as Spirit drops below 25%) | 0.6 s | To wire |
-| `footstep` | Soft boot on wood planks, 3 or 4 variants | 0.08 s | To wire |
-| `fire_loop` | Fireplace crackle, quiet, looping by the hearth | 4 to 8 s loop | To wire |
+| `ui_confirm` | Soft wooden click | 0.05 to 0.15 s | Built |
+| `ui_move` | Tiny tick as menu focus moves | 0.05 s | Built |
+| `kit_pickup` | Cardboard lift with a light rattle | 0.1 to 0.2 s | Built |
+| `hammer_hit` | Small wooden tok, pitch rises 7% per part | 0.1 s | Built |
+| `assembly_complete` | Bright three-note "ta-da" | 0.2 to 0.4 s | Built |
+| `assembly_botched` | Wobbly "boing" with a clatter | 0.3 s | Built |
+| `ribbon_pick` | Spool squeak | 0.1 s | Built |
+| `ribbon_complete` | Satin swish ending in a soft bell | 0.15 to 0.3 s | Built |
+| `coal_shovel` | Gritty scoop of coal | 0.3 s | Built |
+| `crate_pickup` | Heavy wooden crate thump | 0.2 s | Built |
+| `bin_restock` | Kits tumbling into a bin | 0.3 s | Built |
+| `delivery_success` | Chute whoosh with sleigh-bell sparkle | 0.3 to 0.6 s | Built |
+| `coal_delivered` | Dull thud with a mischievous low "bwomp" | 0.3 s | Built |
+| `action_rejected` | Gentle low double-blip | 0.1 to 0.25 s | Built |
+| `recycle` | Barrel clunk with a short crunch | 0.2 s | Built |
+| `order_new` | Paper flutter as a letter arrives | 0.2 s | Built |
+| `order_expired` | Soft descending two notes | 0.2 to 0.4 s | Built |
+| `policy_chime` | Office-intercom ding-dong on bells | 0.3 to 0.6 s | Built |
+| `clock_tick` | Quiet tick each second of the last 10 | 0.05 s | Built |
+| `shift_end` | Workshop whistle | 0.5 to 1.0 s | Built |
+| `punch_clock` | Time-clock "ka-chunk" with a little bell | 0.3 s | Built |
+| `round_clear` | Short jingle-bell fanfare | 1.0 s | Built |
+| `run_over` | Deflating slide-whistle | 0.8 s | Built |
+| `perk_pick` | Card flip and a warm chime | 0.3 s | Built |
+| `unlock` | Music-box sparkle | 0.6 s | Built |
+| `jolly_on` | Warm rising sleigh bells | 0.4 s | Built |
+| `spirit_low` | Hollow wind gust (once, as Spirit drops below 25%) | 0.6 s | Built |
+| `footstep_1` to `_4` | Soft boot on wood planks, 4 variants, one per 0.55 m walked, never the same twice, pitch varied | 0.08 s | Built |
+| `fire_loop` | Fireplace crackle, quiet, looping by the hearth | 4 to 8 s loop | To do (needs a positional loop) |
 
-**Priority:** the 12 wired effects first (they need only files), then round_clear, run_over, coal_shovel, recycle and
-order_new, then the rest.
+**When each plays:** menu focus moves tick (`ui_move`), choices click (`ui_confirm`). `ribbon_pick` when a spool is
+chosen, `coal_shovel` when shovelling starts, `crate_pickup` at the supply sled, `bin_restock` on restocking,
+`coal_delivered` in place of `delivery_success` for coal, `order_new` with each new letter, `clock_tick` each second of
+the last 10, `jolly_on` on reaching JOLLY and `spirit_low` on dropping below 25% (once until it recovers past it). On the
+results screen `round_clear` or `run_over` follows the `shift_end` whistle (0.8 s later), then `unlock` if anything
+unlocked. `perk_pick` on taking a perk card.
 
-**Tools:** jsfxr (save its parameters next to each export) or another free synthesiser; Audacity for trimming. Record
-every sound's source in ASSET_CREDITS.md, including self-made ones. Check levels on headphones and laptop speakers.
+**Tools:** `py tools/audio/make_sfx.py [names]` rebuilds the files (fixed seeds, so the output is repeatable). To use a
+different sound, replace its file with one of the same name and record its source in ASSET_CREDITS.md. Check levels on
+headphones and laptop speakers.
 
 ---
 
@@ -525,7 +532,7 @@ src/SantaShift.Core/    Models, Rules (Simulation, OrderSystem, CraftingSystem, 
                         FloorPath, PlayerMotion), Content (JSON loading and validation), Persistence. No Raylib.
 src/SantaShift.Game/    App (window, fixed-step loop, screens), Controllers, Views/World (3D, lighting, effects),
                         Views/UI (HUD, menus), Services (input, audio, assets), Content/data|models|audio
-tests/SantaShift.Tests/ Rule, content and persistence tests (191 as of this version)
+tests/SantaShift.Tests/ Rule, content and persistence tests (192 as of this version)
 tools/blender/          Model generators and the export tool with rule checks
 source-assets/blender/  .blend sources (not shipped)
 docs/                   GDD, decision log, Blender export guide, playtests
@@ -603,7 +610,7 @@ Deadline: **December 1, 2026, 13:37 PST** (recheck the jam page). Remaining plan
 
 | Dates | Work | Exit criterion |
 |---|---|---|
-| Nov 7 to 10 | Sound effects (Section 17), Credits screen | Every wired effect has a file; credits reachable from title |
+| Nov 7 to 10 | Sound effects (Section 17) | **Done Nov 8:** every effect but `fire_loop` has a file and plays (credits done: Settings > Credits) |
 | Nov 10 to 14 | Event pool, first five proposed rule changes (Section 10.3) | Rounds 2+ feel different; every event announced and tested |
 | Nov 14 to 17 | Release build (`dotnet publish`), first itch.io upload (draft) | A fresh machine runs the downloaded zip |
 | Nov 17 to 22 | External playtests and tuning | Testers finish the lesson without help; quota feels reachable |
@@ -629,7 +636,7 @@ round, clear requirements, pause, results, the core sound effects, credits, the 
 | P06 | Scoring and review | Done | Formula reproduces from scripted runs (tests) |
 | P07 | Santa policies | Done (fixed schedule) | Warnings appear; requirements snapshot correctly |
 | P07b | Event pool and new rule changes | **To do** | Seeded draw per round; each event tested and announced |
-| P08 | Tutorial and menus | Done (credits missing) | A first-time player completes the lesson without help (**not yet playtested**) |
+| P08 | Tutorial and menus | Done (credits in Settings) | A first-time player completes the lesson without help (**not yet playtested**) |
 | P09 | Art and feedback | Done | Every fixture, toy and item state is distinguishable |
 | P10 | Audio and settings | Settings done; **effects missing** | Mute, sliders, persistence, missing audio is safe |
 | P11 | Accessibility pass | Mostly done | Keyboard and controller menus, reduced motion, relaxed mode |
@@ -639,7 +646,7 @@ round, clear requirements, pause, results, the core sound effects, credits, the 
 
 ## 24 Test plan and playtest protocol
 
-Automated tests protect rules whose failures lose progress, create unfair results or break restart (191 tests across
+Automated tests protect rules whose failures lose progress, create unfair results or break restart (192 tests across
 items, delivery, timing, events, orders, score, storage, rounds, perks, spirit and unlocks, supply and the shift sack,
 ribbon colours, the bench, naughty and nice, the tutorial, the punch clock, settings and content loading). Drawing code
 is not unit-tested; check it with screenshots and play.
@@ -666,14 +673,14 @@ and next change. Fix blockers, then ambiguity, then balance, then decoration.
 
 | Risk | Early signal | Response |
 |---|---|---|
-| Silent game hurts the Audio score | Still no effects by Nov 12 | Generate placeholder effects in jsfxr in one session; polish later |
+| Silent game hurts the Audio score | Still no effects by Nov 12 | Resolved Nov 8: effects synthesised in code; replace any with better ones later |
 | Downloadable build gets fewer plays | Low play count on itch | Small download, clear screenshots and controls, no installer, mention "no install needed" |
 | Build fails on other PCs | Missing .NET or native DLL on a clean machine | Self-contained publish; test on a second PC by Nov 17 |
 | Scope creep | New systems after Nov 23 | Feature freeze; the change rule in Section 1 |
 | Rounds feel the same | Testers say round 3 is round 1 again | Event pool (Section 10.3) |
 | Santa feels unfair | Tester can't explain a rejection | Snapshot requirements; clearer cards; reject without consuming |
 | Tutorial hides the game | Testers read for minutes | It is played, not read; it can be turned off |
-| Unlicensed music | Terms still unconfirmed at release | Confirm with blueeyedmonkey or replace before submitting |
+| Unlicensed music | Resolved Nov 8 | blueeyedmonkey allows free use; credit is the only condition (done in game, README, notices) |
 | Late submission problem | No verified entry by Nov 30 | Upload a draft build early; submit the stable candidate early |
 
 ---
@@ -686,13 +693,21 @@ $0 incremental spend. Tools: .NET SDK, Raylib-cs, Blender, Git, GitHub, itch.io 
 |---|---|
 | Code | Original (C#) |
 | 3D models | Original, generated by project Python scripts in Blender |
-| Music | blueeyedmonkey (two tracks; license to confirm) |
-| Effects | To make: jsfxr or similar, original |
+| Music | blueeyedmonkey (two tracks): free to use, including commercially; the only condition is credit by that name |
+| Effects | Built: synthesised by `tools/audio/make_sfx.py`, original, all rights reserved |
 
 For each outside asset: file name, author, source URL, license, required credit, modifications, local license file. For
 original assets: creator, method, editable source, export, date. All of it in ASSET_CREDITS.md.
 
-**Licenses:** choose the code license before release (MIT proposed). State the asset license separately if it differs.
+**License (decided 2026-11-08): all rights reserved, source-available** (`LICENSE.txt`). Players may download and play
+for free, read the source on GitHub (and fork it there, as GitHub's terms allow), and stream or record the game. Copying,
+modifying, redistributing, reusing any part, or using it to train AI models needs written permission from WattsOfCode.
+Game Off only requires the source in a public repository, not an open-source license. **Donations:** the itch.io page
+can take donations or pay-what-you-want; the license says a donation buys no rights or promises. The engine libraries
+(zlib, MIT, public domain) allow this with no fees or royalties; their notices ship in THIRD_PARTY_NOTICES.md, and none
+of them requires on-screen credit. The music is free to use and credited to blueeyedmonkey, the composer's only
+condition; keep their message as the record. A self-contained release must also ship the .NET runtime's
+THIRD-PARTY-NOTICES.TXT. This is a practical setup, not legal advice.
 
 **AI assistance:** code, models (via scripts) and documents were produced with an AI coding assistant. Check the jam's
 current rules on AI use and disclose it accurately on the game page; do not describe the game as entirely hand-made.
@@ -749,9 +764,9 @@ Theme: you work a Christmas shift while Santa shifts the rules, and every round 
 | Platform | **Decided:** Windows download | Done |
 | Humour intensity | Sarcastic, no profanity | Before dialogue polish |
 | Event pool (Section 10.3) | Proposed; which events to build | Nov 10 |
-| Code and asset licenses | MIT proposed for code; asset terms open | Before public release |
-| Music license | Confirm terms with blueeyedmonkey | Before public release |
-| Sound effect source | jsfxr (original) vs CC0 packs | Nov 8 |
+| Code and asset licenses | **Decided 2026-11-08:** all rights reserved, source-available (LICENSE.txt) | Done |
+| Music license | **Settled Nov 8:** free use, credit as "blueeyedmonkey" | Done |
+| Sound effect source | **Decided Nov 8:** synthesised in a project script (original, no licences to track) | Nov 8 |
 | Final quota, deadlines, Spirit values | Current values in Sections 9 and 12 | After external playtests |
 | AI-assistance disclosure wording | Required wording per jam rules | Before the page goes live |
 

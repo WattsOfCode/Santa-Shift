@@ -33,8 +33,9 @@ public static class ContentLoader
         RoomLayout? room = null;
         if (File.Exists(Path.Combine(dataDirectory, RoomLayoutFile)))
             room = ReadOptional<RoomLayout>(dataDirectory, RoomLayoutFile, warnings);
+        var credits = ReadOptional<CreditsBook>(dataDirectory, "credits.json", warnings) ?? new CreditsBook();
 
-        return Build(tuning, toys, stations, events, dialogue, letters, warnings, room, perks, unlocks);
+        return Build(tuning, toys, stations, events, dialogue, letters, warnings, room, perks, unlocks, credits);
     }
 
     public const string RoomLayoutFile = "room_layout.json";
@@ -43,7 +44,7 @@ public static class ContentLoader
     public static GameContent Build(
         Tuning tuning, List<Toy> toys, List<Station> stations, List<SantaEvent> events,
         DialogueBook dialogue, List<ChildLetter> letters, List<string>? warnings = null, RoomLayout? room = null,
-        List<Perk>? perks = null, List<Unlock>? unlocks = null)
+        List<Perk>? perks = null, List<Unlock>? unlocks = null, CreditsBook? credits = null)
     {
         warnings ??= [];
         var floor = tuning.Floor;
@@ -107,6 +108,7 @@ public static class ContentLoader
 
         return new GameContent
         {
+            Credits = credits ?? new CreditsBook(),
             Perks = goodPerks,
             Unlocks = (unlocks ?? []).Where(u => !string.IsNullOrWhiteSpace(u.Id)).GroupBy(u => u.Id).Select(g => g.First()).ToList(),
             Tuning = tuning, Toys = toys, Stations = stations, Events = events,

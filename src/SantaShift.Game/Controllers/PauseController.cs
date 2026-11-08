@@ -88,7 +88,7 @@ public sealed class PauseController(GameServices s, Simulation sim, Action resta
     private void Select(int index)
     {
         _selected = (Item)((index + ItemCount) % ItemCount);
-        s.Audio.Play(SoundIds.UiConfirm);
+        s.Audio.Play(SoundIds.UiMove);
     }
 
     private void Resume()

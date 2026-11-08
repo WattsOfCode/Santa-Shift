@@ -29,12 +29,13 @@ public sealed class SettingsView
         ui.Text("SETTINGS", X + W / 2, Y + 14, 30, Palette.Gold, Align.Center);
 
         // Tabs
-        string[] tabs = ["Sound", "Controls", "Game"];
-        float tw = 150, tx = X + W / 2 - tw * 1.5f - 10;
-        for (int i = 0; i < 3; i++)
+        string[] tabs = ["Sound", "Controls", "Game", "Credits"];
+        const float tw = 136, tgap = 10;
+        float tx = X + W / 2 - (tabs.Length * tw + (tabs.Length - 1) * tgap) / 2;
+        for (int i = 0; i < tabs.Length; i++)
         {
             bool current = (int)m.Tab == i, focused = current && m.Row == 0;
-            float x = tx + i * (tw + 10);
+            float x = tx + i * (tw + tgap);
             ui.FillRounded(x, Y + 58, tw, 32, current ? Palette.Berry : Palette.WithAlpha(Palette.Snow, 30), 0.4f);
             if (focused) ui.OutlineRounded(x - 3, Y + 55, tw + 6, 38, Palette.Gold, 2, 0.4f);
             ui.Text(tabs[i], x + tw / 2, Y + 64, 20, current ? Palette.Snow : Palette.Shade(Palette.Snow, 0.75f), Align.Center);
@@ -45,6 +46,7 @@ public sealed class SettingsView
             case SettingsTab.Sound: DrawSound(ui, m); break;
             case SettingsTab.Controls: DrawControls(ui, m); break;
             case SettingsTab.Game: DrawGame(ui, m); break;
+            case SettingsTab.Credits: DrawCredits(ui, m); break;
         }
 
         var input = m.Input;
@@ -129,6 +131,44 @@ public sealed class SettingsView
             Settings.Unlimited => "Unlimited",
             var fps => $"{fps} fps",
         });
+    }
+
+    /// <summary>Settings > Credits: credits.json in two columns, with the copyright footer across the bottom.</summary>
+    private static void DrawCredits(UiCanvas ui, SettingsMenu m)
+    {
+        var credits = m.Content.Credits;
+        if (credits.IsEmpty)
+        {
+            ui.Text("credits.json is missing.", X + W / 2, RowsTop + 40, 18, Palette.Snow, Align.Center);
+            return;
+        }
+        float colW = (W - 100) / 2;
+        Column(credits.Left, X + 40);
+        Column(credits.Right, X + 60 + colW);
+
+        float fy = Y + H - 82;
+        ui.Fill(X + 40, fy - 8, W - 80, 1, Palette.WithAlpha(Palette.Gold, 90));
+        foreach (var line in credits.Footer)
+        {
+            ui.Text(ui.Fit(line, 13, W - 60), X + W / 2, fy, 13, Palette.Shade(Palette.Snow, 0.75f), Align.Center);
+            fy += 17;
+        }
+
+        void Column(List<Core.Models.CreditSection> sections, float x)
+        {
+            float y = RowsTop - 8;
+            foreach (var section in sections)
+            {
+                ui.Text(section.Heading, x, y, 15, Palette.Gold);
+                y += 20;
+                foreach (var line in section.Lines)
+                {
+                    ui.Text(ui.Fit(line, 15, colW), x, y, 15, Palette.Snow);
+                    y += 18;
+                }
+                y += 8;
+            }
+        }
     }
 
     private static void DrawControls(UiCanvas ui, SettingsMenu m)

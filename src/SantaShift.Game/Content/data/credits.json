@@ -1,0 +1,25 @@
+// Settings > Credits. Two columns of sections, then footer lines across the bottom. Keep lines under about 40
+// characters so they fit their column. Only credits players need to see go here: the game's author and any asset whose
+// terms ask for credit. Software licence notices live in THIRD_PARTY_NOTICES.md, which ships next to the game.
+{
+  "left": [
+    { "heading": "SANTA SHIFT", "lines": [
+      "A game by WattsOfCode"
+    ] },
+    { "heading": "MUSIC", "lines": [
+      "\"Toy Factory Jingle\"",
+      "\"Cozy Christmas Game Ambience\"",
+      "by blueeyedmonkey"
+    ] }
+  ],
+  "right": [
+    { "heading": "THANK YOU", "lines": [
+      "for playing, and for any",
+      "donation: it keeps the elves fed"
+    ] }
+  ],
+  "footer": [
+    "(c) 2026 WattsOfCode. All rights reserved. Terms in LICENSE.txt.",
+    "Third-party software licences are in THIRD_PARTY_NOTICES.md, next to the game."
+  ]
+}
