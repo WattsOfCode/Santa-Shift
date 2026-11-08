@@ -21,5 +21,7 @@
   <ItemGroup>
     <!-- Test the real shipped data files, so a broken JSON edit fails the build's tests. -->
     <None Include="..\..\src\SantaShift.Game\Content\data\*.json" LinkBase="data" CopyToOutputDirectory="PreserveNewest" />
+    <!-- The shipped font folder, to check every font goes out with its licence. -->
+    <None Include="..\..\src\SantaShift.Game\Content\fonts\*" LinkBase="fonts" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

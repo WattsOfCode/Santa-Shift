@@ -70,7 +70,10 @@ Battery Boost can hold games to 30 fps: plug in or turn it off.
 
 ## Build and run
 
-Requires the .NET 10 SDK. Double-click **`Play Santa Shift.cmd`** to build the latest code and play, or:
+Requires the .NET 10 SDK. Double-click **`Play Santa Shift.cmd`** (Windows) or **`Play Santa Shift.command`** (Mac) to
+build the latest code and play. On a Mac, the first time, right-click the launcher and choose Open (macOS asks before
+running a downloaded script); if it still won't start, run `chmod +x "Play Santa Shift.command"` in Terminal once.
+The Mac build is untested so far. Or, on any system:
 
 ```
 dotnet build
@@ -135,8 +138,8 @@ A missing model simply shows the grey-box shape.
 Music: "Toy Factory Jingle" and "Cozy Christmas Game Ambience" by **blueeyedmonkey** (free to use; credit requested).
 Sound effects: made for the game, synthesised from scratch by `tools/audio/make_sfx.py`.
 
-Interface font: the game uses a font already installed with Windows (Bahnschrift, else Segoe UI Bold or Arial Bold);
-it is not shipped. To ship one, put a font whose licence allows it (e.g. OFL) at `Content/fonts/ui.ttf`.
+Interface font: Barlow SemiBold (SIL Open Font License, `Content/fonts/OFL.txt`), shipped so text looks the same on
+Windows and macOS. To try another, put a font whose licence allows shipping it at `Content/fonts/ui.ttf`.
 
 The credits are in the game under **Settings > Credits** (edit `Content/data/credits.json`).
 See [ASSET_CREDITS.md](ASSET_CREDITS.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

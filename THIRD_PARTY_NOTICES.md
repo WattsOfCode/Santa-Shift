@@ -70,9 +70,11 @@ miniaudio, dr_wav, dr_mp3, dr_flac (David Reid), sdefl, sinfl (Micha Mettke), ja
 is offered as public domain or MIT; used here under the public domain option. raylib's own rprand and rl_gputex are
 zlib, as above.
 
-## Interface font (not shipped)
-The game draws its text with a font already installed with Windows (Bahnschrift, else Segoe UI Bold or Arial Bold), read
-from the player's own Fonts folder. No font file is distributed.
+## Barlow (SIL Open Font License 1.1), the interface font
+Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow). Shipped as
+`Content/fonts/Barlow-SemiBold.ttf`, unmodified, with its full licence in `Content/fonts/OFL.txt`. The OFL allows bundling
+the font with any software, including commercial software, free of charge; the font itself may not be sold on its own.
+If that file is missing, the game uses a font already installed on the player's computer (never shipped).
 
 ## Made with, not shipped (no notice required)
 Blender (models are original; Blender's GPL does not cover what you make with it), Python (the sound effect script),

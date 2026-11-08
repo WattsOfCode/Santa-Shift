@@ -28,7 +28,7 @@ PARTS THAT BELONG TO OTHERS (not covered by this licence; they keep their own te
     composer's permission and credited by name. The music is not licensed to you for any other use.
   - raylib, Raylib-cs and the libraries inside them (zlib, MIT or public domain) and the .NET runtime (MIT):
     see THIRD_PARTY_NOTICES.md.
-  - The interface font is a Windows system font on your own computer; it is not included in the game.
+  - The interface font, Barlow, is under the SIL Open Font License (Content/fonts/OFL.txt).
 
 NO WARRANTY: the game is provided "as is", without warranty of any kind. WattsOfCode is not liable for any claim,
 damage or loss arising from playing, installing or using it, to the extent the law allows.

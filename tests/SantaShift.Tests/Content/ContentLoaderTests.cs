@@ -46,6 +46,17 @@ public class ContentLoaderTests : IDisposable
     }
 
     [Fact]
+    public void Every_shipped_font_goes_out_with_its_licence()
+    {
+        string fonts = Path.Combine(AppContext.BaseDirectory, "fonts");
+        var files = Directory.GetFiles(fonts, "*.ttf").Concat(Directory.GetFiles(fonts, "*.otf")).ToList();
+        Assert.NotEmpty(files); // the game ships its own font so Windows and macOS look the same
+        string licence = File.ReadAllText(Path.Combine(fonts, "OFL.txt"));
+        Assert.Contains("SIL Open Font License", licence);
+        Assert.Contains("Barlow Project Authors", licence);
+    }
+
+    [Fact]
     public void Shipped_dialogue_has_every_message_the_rules_use()
     {
         var d = ContentLoader.LoadFromDirectory(ShippedData).Dialogue;

@@ -453,7 +453,8 @@ any missing model falls back to a grey-box shape.
 - **Lighting:** up to 16 point lights from Blender (quality high/medium/low), tone mapping, fog, vignette, FXAA, glow
   halos (tree bulbs, the star) and window snow. Reduced motion stills the flicker, twinkle and snow.
 - **Type:** one clear sans-serif for all UI text, loaded as an outline font with mipmaps so it stays sharp at any window
-  size (Windows Bahnschrift; Segoe UI Bold or Arial Bold if missing; `Content/fonts/ui.ttf` overrides it). Key labels
+  size. Barlow SemiBold (OFL) ships with the game so Windows and macOS look the same; `Content/fonts/ui.ttf` overrides
+  it, and system fonts are only a fallback if the file is missing. Key labels
   sit on their own high-contrast chips (gold on ink at the bench, ink on gold over the ribbon spools).
 - **Palette** (UI and badges): snow #F4F0DC, ink #202934, pine #225E4C, berry #B94146, gold #E8BB57, wood #8C6043,
   ice #8EC9CF. Colour reinforces, never carries meaning alone: every requirement also has a shape, icon or label.

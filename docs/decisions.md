@@ -340,3 +340,13 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
   no credit needed); the Windows font (used in place, not shipped). Nothing charges royalties or limits commercial use.
 - **Release step:** a self-contained publish must also include the .NET runtime pack's THIRD-PARTY-NOTICES.TXT.
 - **Supersedes:** the 2026-11-08 credits list above.
+## 2026-11-08: Shipped interface font; Mac launcher
+- **Reason:** Owner: the game must look good on Windows and macOS. The Windows system font (Bahnschrift) doesn't exist on
+  a Mac, so text there fell back to Raylib's 10-pixel bitmap font.
+- **Font:** Barlow SemiBold, from Google Fonts' repository, unmodified, shipped as `Content/fonts/Barlow-SemiBold.ttf`
+  with `OFL.txt`. Similar DIN-style look to Bahnschrift. SIL Open Font License 1.1: bundling and commercial use free, no
+  royalties, no on-screen credit; the licence file must travel with it (a test checks this). System fonts per OS (Windows,
+  macOS, Linux) remain as fallbacks only.
+- **Mac launcher:** `Play Santa Shift.command` builds and runs the DLL through `dotnet` (Apple Silicon and Intel).
+  `.gitattributes` keeps it LF and git records it executable.
+- **Not done:** Retina (high-DPI) drawing; untested on a real Mac so far.
