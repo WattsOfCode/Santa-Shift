@@ -56,6 +56,9 @@ public static class MusicIds
     public const string Workshop = "music_workshop";
 
     public static readonly string[] All = [Menu, Workshop];
+
+    /// <summary>The hearth's crackle (Content/audio/fire_loop.wav), streamed so it loops without a gap; an effect, not music.</summary>
+    public const string FireLoop = "fire_loop";
 }
 
 /// <summary>Plays sound effects. Swappable; the game never depends on sound working (GDD section 14).</summary>
@@ -67,6 +70,9 @@ public interface IAudioService : IDisposable
 
     /// <summary>Call once per frame: fades towards <paramref name="musicId"/> (null = silence) and keeps the stream fed.</summary>
     void UpdateMusic(string? musicId, float dt);
+
+    /// <summary>Call once per frame: eases the fireplace loop towards <paramref name="volume"/> (0..1 of the effects volume).</summary>
+    void UpdateFire(float volume, float dt);
 }
 
 /// <summary>Used when there is no audio device. Does nothing, safely.</summary>
@@ -75,6 +81,7 @@ public sealed class SilentAudioService : IAudioService
     public void Play(string soundId, float pitch = 1f) { }
     public void ApplySettings(Settings settings) { }
     public void UpdateMusic(string? musicId, float dt) { }
+    public void UpdateFire(float volume, float dt) { }
     public void Dispose() { }
 }
 
@@ -93,6 +100,9 @@ public sealed class RaylibAudioService : IAudioService
     private readonly Dictionary<string, Music> _music = new();
     private readonly Dictionary<string, float> _fade = new(); // 0..1 per loaded track
     private string? _wanted;
+
+    private Music? _fire;
+    private float _fireLevel; // eased towards the wanted volume, so walking past (or pausing) never jumps
 
     private RaylibAudioService() { }
 
@@ -123,6 +133,12 @@ public sealed class RaylibAudioService : IAudioService
             music.Looping = true;
             service._music[id] = music;
             service._fade[id] = 0f;
+        }
+        string firePath = Path.Combine(audioDirectory, MusicIds.FireLoop + ".wav");
+        if (File.Exists(firePath))
+        {
+            var fire = Raylib.LoadMusicStream(firePath);
+            if (Raylib.IsMusicValid(fire)) { fire.Looping = true; service._fire = fire; }
         }
         return service;
     }
@@ -170,12 +186,31 @@ public sealed class RaylibAudioService : IAudioService
         }
     }
 
+    public void UpdateFire(float volume, float dt)
+    {
+        if (_fire is not { } fire) return;
+        float target = Math.Clamp(volume, 0f, 1f);
+        float rate = dt / 0.6f; // about 0.6 s from silent to full
+        _fireLevel = target > _fireLevel ? Math.Min(target, _fireLevel + rate) : Math.Max(target, _fireLevel - rate);
+        bool playing = Raylib.IsMusicStreamPlaying(fire);
+        if (_fireLevel <= 0f)
+        {
+            if (playing) Raylib.PauseMusicStream(fire);
+            return;
+        }
+        if (!playing) Raylib.PlayMusicStream(fire);
+        Raylib.SetMusicVolume(fire, _effectsVolume * _fireLevel);
+        Raylib.UpdateMusicStream(fire);
+    }
+
     public void Dispose()
     {
         foreach (var sound in _sounds.Values) Raylib.UnloadSound(sound);
         _sounds.Clear();
         foreach (var music in _music.Values) Raylib.UnloadMusicStream(music);
         _music.Clear();
+        if (_fire is { } fire) Raylib.UnloadMusicStream(fire);
+        _fire = null;
         Raylib.CloseAudioDevice();
     }
 }

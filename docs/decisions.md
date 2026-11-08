@@ -360,3 +360,11 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - **Fix:** the buffer ids are kept in `Lighting` (`_boneBuffers`, `_skinnedVaos`) and freed in `Lighting.Dispose`.
   No other code writes into Raylib-owned arrays. The Mac launcher now runs the game in its Terminal window and keeps
   any error on screen.
+## 2026-11-08: Fireplace crackle (`fire_loop`)
+- **Sound:** a 6 s loop from `make_sfx.py` (low-passed noise roar, random crackles and snaps). The last half second is
+  crossfaded over the start and the ends are not faded, so it loops with no click (the join steps less than a median
+  sample step).
+- **Playing it:** streamed as a looping music stream (a `Sound` restarted on finish would leave a gap), but at the
+  effects volume. Each screen reports `FireVolume` (0 everywhere but the workshop); the workshop sets it by the elf's
+  distance from the fireplace light in room_layout.json (falling back to the coal scuttle), and halves it while paused.
+- **Not done:** left/right panning by camera angle; volume by distance is enough for one room.

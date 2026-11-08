@@ -24,5 +24,8 @@ public interface IScreen
     /// <summary>The music track for this screen (see <see cref="Services.MusicIds"/>); null = silence. Crossfades on change.</summary>
     string? Music => Services.MusicIds.Menu;
 
+    /// <summary>How loud the fireplace crackle is on this screen, 0..1 (only the workshop has one).</summary>
+    float FireVolume => 0f;
+
     void Exit() { }
 }

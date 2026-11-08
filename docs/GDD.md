@@ -474,7 +474,7 @@ with a crossfade. Used with the composer's permission; the condition is credit a
 
 **Mixer defaults:** master 0.8, effects 0.7, music 0.25. Repeats of the same effect are rate-limited (0.1 s).
 
-**Effects (built, 2026-11-08):** files are `Content/audio/<id>.wav`; a missing file is silent. All of them except `fire_loop` are
+**Effects (built, 2026-11-08):** files are `Content/audio/<id>.wav`; a missing file is silent. All of them are
 synthesised by `tools/audio/make_sfx.py` (sine waves, filtered noise and envelopes, no samples, so they are the project's
 own work) and played by the game. "Built" means the file ships and the game plays it.
 
@@ -508,14 +508,15 @@ own work) and played by the game. "Built" means the file ships and the game play
 | `jolly_on` | Warm rising sleigh bells | 0.4 s | Built |
 | `spirit_low` | Hollow wind gust (once, as Spirit drops below 25%) | 0.6 s | Built |
 | `footstep_1` to `_4` | Soft boot on wood planks, 4 variants, one per 0.55 m walked, never the same twice, pitch varied | 0.08 s | Built |
-| `fire_loop` | Fireplace crackle, quiet, looping by the hearth | 4 to 8 s loop | To do (needs a positional loop) |
+| `fire_loop` | Fireplace crackle: low roar, small crackles, the odd snap. Streamed, gapless loop; louder near the hearth | 6 s loop | Built |
 
 **When each plays:** menu focus moves tick (`ui_move`), choices click (`ui_confirm`). `ribbon_pick` when a spool is
 chosen, `coal_shovel` when shovelling starts, `crate_pickup` at the supply sled, `bin_restock` on restocking,
 `coal_delivered` in place of `delivery_success` for coal, `order_new` with each new letter, `clock_tick` each second of
 the last 10, `jolly_on` on reaching JOLLY and `spirit_low` on dropping below 25% (once until it recovers past it). On the
 results screen `round_clear` or `run_over` follows the `shift_end` whistle (0.8 s later), then `unlock` if anything
-unlocked. `perk_pick` on taking a perk card.
+unlocked. `perk_pick` on taking a perk card. `fire_loop` runs through every shift: full within 1.5 m of the
+hearth, fading to a faint murmur (12%) across the room, half as loud while paused; it eases over 0.6 s, never jumps.
 
 **Tools:** `py tools/audio/make_sfx.py [names]` rebuilds the files (fixed seeds, so the output is repeatable). To use a
 different sound, replace its file with one of the same name and record its source in ASSET_CREDITS.md. Check levels on
@@ -533,7 +534,7 @@ src/SantaShift.Core/    Models, Rules (Simulation, OrderSystem, CraftingSystem, 
                         FloorPath, PlayerMotion), Content (JSON loading and validation), Persistence. No Raylib.
 src/SantaShift.Game/    App (window, fixed-step loop, screens), Controllers, Views/World (3D, lighting, effects),
                         Views/UI (HUD, menus), Services (input, audio, assets), Content/data|models|audio
-tests/SantaShift.Tests/ Rule, content and persistence tests (192 as of this version)
+tests/SantaShift.Tests/ Rule, content and persistence tests (193 as of this version)
 tools/blender/          Model generators and the export tool with rule checks
 source-assets/blender/  .blend sources (not shipped)
 docs/                   GDD, decision log, Blender export guide, playtests
@@ -611,7 +612,7 @@ Deadline: **December 1, 2026, 13:37 PST** (recheck the jam page). Remaining plan
 
 | Dates | Work | Exit criterion |
 |---|---|---|
-| Nov 7 to 10 | Sound effects (Section 17) | **Done Nov 8:** every effect but `fire_loop` has a file and plays (credits done: Settings > Credits) |
+| Nov 7 to 10 | Sound effects (Section 17) | **Done Nov 8:** every effect has a file and plays (credits done: Settings > Credits) |
 | Nov 10 to 14 | Event pool, first five proposed rule changes (Section 10.3) | Rounds 2+ feel different; every event announced and tested |
 | Nov 14 to 17 | Release build (`dotnet publish`), first itch.io upload (draft) | A fresh machine runs the downloaded zip |
 | Nov 17 to 22 | External playtests and tuning | Testers finish the lesson without help; quota feels reachable |
@@ -639,7 +640,7 @@ round, clear requirements, pause, results, the core sound effects, credits, the 
 | P07b | Event pool and new rule changes | **To do** | Seeded draw per round; each event tested and announced |
 | P08 | Tutorial and menus | Done (credits in Settings) | A first-time player completes the lesson without help (**not yet playtested**) |
 | P09 | Art and feedback | Done | Every fixture, toy and item state is distinguishable |
-| P10 | Audio and settings | Settings done; **effects missing** | Mute, sliders, persistence, missing audio is safe |
+| P10 | Audio and settings | Done | Mute, sliders, persistence, missing audio is safe |
 | P11 | Accessibility pass | Mostly done | Keyboard and controller menus, reduced motion, relaxed mode |
 | P12 | Release candidate | **To do** | Downloaded build, source, notices, instructions and jam entry verified |
 
@@ -647,7 +648,7 @@ round, clear requirements, pause, results, the core sound effects, credits, the 
 
 ## 24 Test plan and playtest protocol
 
-Automated tests protect rules whose failures lose progress, create unfair results or break restart (192 tests across
+Automated tests protect rules whose failures lose progress, create unfair results or break restart (193 tests across
 items, delivery, timing, events, orders, score, storage, rounds, perks, spirit and unlocks, supply and the shift sack,
 ribbon colours, the bench, naughty and nice, the tutorial, the punch clock, settings and content loading). Drawing code
 is not unit-tested; check it with screenshots and play.

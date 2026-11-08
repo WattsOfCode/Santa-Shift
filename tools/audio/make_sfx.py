@@ -371,10 +371,38 @@ def make_footstep(variant):
     return footstep
 
 
+def fire_loop(rng):
+    """A quiet hearth: a low roar under small crackles and the odd snap. Loops seamlessly (the game streams it)."""
+    seconds, overlap = 6.0, 0.5
+    total = seconds + overlap
+    roar = biquad(biquad(noise(total, rng), "lowpass", 420), "lowpass", 300)
+    roar = [v * (1 + 0.25 * math.sin(2 * math.pi * 0.35 * i / RATE) + 0.15 * math.sin(2 * math.pi * 0.9 * i / RATE))
+            for i, v in enumerate(roar)]
+    crackle = silence(total)
+    t = rng.uniform(0, 0.1)
+    while t < total - 0.05:
+        if rng.random() < 0.08:  # a snap: louder, lower, a little longer
+            mix_into(crackle, click(rng, 0.03, rng.uniform(900, 1600), 1.2), at=t, gain=rng.uniform(0.7, 1.0))
+        else:
+            mix_into(crackle, click(rng, rng.uniform(0.004, 0.01), rng.uniform(1800, 5000), 1.5), at=t,
+                     gain=rng.uniform(0.15, 0.5))
+        t += rng.expovariate(9)
+    mixed = [r * 2.2 + c for r, c in zip(roar, crackle)]
+    # Fold the extra half second over the start with a crossfade, so the end runs straight into the beginning.
+    n, k = int(seconds * RATE), int(overlap * RATE)
+    out = mixed[:n]
+    for i in range(k):
+        a = i / k
+        out[i] = out[i] * a + mixed[n + i] * (1 - a)
+    mean = sum(out) / len(out)
+    top = max(abs(v - mean) for v in out) or 1.0
+    return [(v - mean) * 0.3 / top for v in out]  # no end fades: it must loop without a click
+
+
 SOUNDS = [ui_confirm, ui_move, kit_pickup, hammer_hit, assembly_complete, assembly_botched, ribbon_pick, ribbon_complete,
           coal_shovel, crate_pickup, bin_restock, delivery_success, coal_delivered, action_rejected, recycle, order_new,
           order_expired, policy_chime, clock_tick, shift_end, punch_clock, round_clear, run_over, perk_pick, unlock,
-          jolly_on, spirit_low] + [make_footstep(v) for v in range(4)]
+          jolly_on, spirit_low] + [make_footstep(v) for v in range(4)] + [fire_loop]
 
 
 def write_wav(path, samples):

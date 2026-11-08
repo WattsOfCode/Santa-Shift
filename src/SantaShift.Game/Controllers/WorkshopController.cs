@@ -1,4 +1,5 @@
 using Raylib_cs;
+using SantaShift.Core.Content;
 using SantaShift.Core.Models;
 using SantaShift.Core.Rules;
 using SantaShift.Game.App;
@@ -40,6 +41,7 @@ public sealed class WorkshopController : IScreen
         _world = new WorldView(services.Content, services.Assets, services.World);
         _world.PlayerHat = DebugHat != null ? Views.Palette.Hex(DebugHat) : services.HatColour;
         _hud = new HudView(services.Content, services.Input);
+        _firePixels = FirePosition(services.Content);
     }
 
     /// <summary>Starts a brand-new run at round 1: Santa draws a fresh naughty and nice list and shows it first.</summary>
@@ -57,6 +59,33 @@ public sealed class WorkshopController : IScreen
 
     /// <summary>The upbeat toy factory jingle while the shift runs.</summary>
     public string? Music => MusicIds.Workshop;
+
+    /// <summary>
+    /// The hearth crackles louder as the elf comes near: full within 1.5 m, fading to a faint murmur across the room,
+    /// and half as loud while the pause menu is up.
+    /// </summary>
+    public float FireVolume
+    {
+        get
+        {
+            if (_firePixels is not { } fire) return 0f;
+            var at = _sim.State.PlayerPosition;
+            double metres = Math.Sqrt(Math.Pow(at.X - fire.X, 2) + Math.Pow(at.Y - fire.Y, 2)) / _sim.Tuning.PixelsPerMetre;
+            float near = (float)Math.Clamp(1 - (metres - 1.5) / 9, 0, 1);
+            float volume = 0.12f + 0.88f * near * near;
+            return _pause.Blocking && _pause.State != PauseState.Ready ? volume * 0.5f : volume;
+        }
+    }
+
+    /// <summary>Where the crackle comes from: the fireplace's light, else the coal scuttle on its hearth, else nowhere.</summary>
+    private static Point2? FirePosition(GameContent content)
+    {
+        if (content.Lights.FirstOrDefault(l => l.Name.Contains("fireplace", StringComparison.OrdinalIgnoreCase)) is { } light)
+            return content.Tuning.MetresToPixels(light.X, light.Z);
+        return content.Stations.FirstOrDefault(st => st.Type == StationType.Coal)?.Interact;
+    }
+
+    private readonly Point2? _firePixels;
 
     public Simulation Simulation => _sim;
 

@@ -148,6 +148,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
                 screen.FrameUpdate();
             }
             audio.UpdateMusic(screen.Music, Raylib.GetFrameTime());
+            audio.UpdateFire(screen.FireVolume, Raylib.GetFrameTime());
 
             WorldEffects.ReducedMotion = services.Settings.ReducedMotion;
             // The 3D picture follows the window's size (times the resolution setting), so edges stay crisp instead of
