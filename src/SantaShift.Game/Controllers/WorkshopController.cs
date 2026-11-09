@@ -339,8 +339,12 @@ public sealed class WorkshopController : IScreen
     public void DrawWorld() =>
         _world.Draw(_sim, DrawnFacing, _player.Bob, new ElfPose(_player.Walking, CurrentActivity(), _swings));
 
+    /// <summary>Debug builds only (--cover): draw the cover art instead of the HUD, for the project's cover image.</summary>
+    public static bool DebugCover;
+
     public void DrawUi(UiCanvas ui)
     {
+        if (DebugCover) { MenuView.DrawCover(ui); return; }
         _hud.Draw(ui, _sim, _interaction.Feedback, _world, _run.TotalScore, _s.Settings.Controls);
         if (RibbonPickStation is { } station && !_pause.Blocking)
             _world.DrawSpoolLabels(ui, station, i => _s.Input.Label(InputAction.Part1 + i));

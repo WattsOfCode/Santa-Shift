@@ -76,12 +76,11 @@ Battery Boost can hold games to 30 fps: plug in or turn it off.
 ## Player downloads (Windows and Mac)
 
 Players don't need this repository or .NET. Double-click **`tools\release\make_player_download.cmd`** (needs the .NET
-10 SDK and Python) to make three zips in `publish\`, about 40 MB each, each with a How to play note and the licence and
-credits files:
+10 SDK and Python) to make three downloads in `publish\`, about 45 MB each:
 
-| Zip | For | First launch |
+| Download | For | First launch |
 |---|---|---|
-| `SantaShift-Windows.zip` | Windows 10 and 11 | Double-click `SantaShift.exe`; on "Windows protected your PC", More info > Run anyway |
+| `SantaShift.exe` | Windows 10 and 11 | The whole game in one file: double-click it. On "Windows protected your PC", More info > Run anyway |
 | `SantaShift-macOS-AppleSilicon.zip` | Macs with M1 or later | Drag the app to Applications, then paste the two Terminal lines from the note (`xattr -cr` and `codesign --sign -`) |
 | `SantaShift-macOS-Intel.zip` | Intel Macs | Drag the app to Applications, open it once, then Privacy & Security > Open Anyway |
 

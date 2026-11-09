@@ -151,6 +151,26 @@ public sealed class MenuView
     }
 
     /// <param name="assemblyWarning">Shown under the countdown when the bench works differently this round.</param>
+    /// <summary>
+    /// The cover image (debug --cover): the title, candy canes, garland and tagline over the workshop, kept inside the
+    /// middle 680 x 540 so a 630 x 500 crop (itch.io) keeps all of it.
+    /// </summary>
+    public static void DrawCover(UiCanvas ui)
+    {
+        // Darken the top for the title and the bottom edge a little, fading into the room.
+        for (int i = 0; i < 24; i++)
+        {
+            float t = i / 24f;
+            ui.Fill(0, i * 9, UiCanvas.Width, 9, Palette.WithAlpha(Palette.Ink, (byte)(215 * (1 - t) * (1 - t))));
+            ui.Fill(0, UiCanvas.Height - (i + 1) * 4, UiCanvas.Width, 4, Palette.WithAlpha(Palette.Ink, (byte)(150 * (1 - t))));
+        }
+        DrawGarland(ui, 0, still: true);
+        DrawTitleWithCanes(ui, 0, still: true);
+        const string tagline = "You make the toys. Santa takes the credit.";
+        ui.Text(tagline, 482, 152, 24, Palette.WithAlpha(Palette.Ink, 200), Align.Center);
+        ui.Text(tagline, 480, 150, 24, Palette.Gold, Align.Center);
+    }
+
     public void DrawReady(UiCanvas ui, float secondsLeft, string? assemblyWarning = null)
     {
         ui.FillRounded(380, 230, 200, 80, Palette.WithAlpha(Palette.Ink, 220), 0.3f);

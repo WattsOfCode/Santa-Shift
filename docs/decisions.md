@@ -444,4 +444,13 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
   round 2: the parts go on in a different order every build. Read the ORDER line."); the READY countdown shows the same
   strip; Santa still announces it a second in; and in that round the ASSEMBLY POLICY UPDATE tag over the bench panel
   pulses with a white rim. AssemblyTuning.PolicyChange(mode, round) is the one place that decides it.
+## 2026-11-09: Windows download is one file
+- **Why:** to keep itch.io as simple as possible: no zip to extract, no folder to keep together, no installer.
+- **How:** `SantaShift.exe` is a self-contained single file with the Content folder and the graphics library inside
+  (`IncludeAllContentForSelfExtract`). On first launch .NET unpacks it to a hidden temp folder (about 2 s; later launches
+  reuse it, under 1 s). The crash log moved from beside the game to `%AppData%\SantaShift` (next to the saves), since
+  the unpacked folder is hidden.
+- **Not an installer:** an unsigned installer adds a setup wizard and its own SmartScreen warning: more steps, not fewer.
+- **Mac:** unchanged, a zip with `Santa Shift.app` and the How to play note (the Apple Silicon note's Terminal lines
+  are needed).
 

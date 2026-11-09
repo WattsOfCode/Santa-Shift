@@ -27,6 +27,9 @@ public sealed class CameraController
     /// <summary>Debug builds only (--yaw / --pitch): starting camera angle for automated screenshots.</summary>
     public static float? DebugStartYaw, DebugStartPitch;
 
+    /// <summary>Debug builds only (--distance metres): how far behind the elf the camera sits, for the cover image.</summary>
+    public static float? DebugDistance;
+
     private readonly ShoulderCameraSettings _shoulder;
 
     public CameraController(ChaseCameraSettings cfg, ShoulderCameraSettings shoulder, WorldSpace world, GameContent content)
@@ -80,7 +83,7 @@ public sealed class CameraController
         var target = _world.ToWorld(playerPosition, _cfg.TargetHeight);
         float yaw = YawDegrees * MathF.PI / 180f, pitch = PitchDegrees * MathF.PI / 180f;
         var back = new Vector3(MathF.Sin(yaw) * MathF.Cos(pitch), MathF.Sin(pitch), MathF.Cos(yaw) * MathF.Cos(pitch));
-        var position = target + back * _cfg.Distance;
+        var position = target + back * (DebugDistance ?? _cfg.Distance);
         float fov = _cfg.FovDegrees;
 
         if (ShoulderBlend > 0 && _lastWork is { } focus)

@@ -12,7 +12,7 @@ public static class Program
         // Release builds have no console to print to, so a crash leaves its details in a log next to the game.
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
         {
-            try { File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "santashift-error.log"), e.ExceptionObject.ToString()); }
+            try { WriteErrorLog(e.ExceptionObject.ToString() ?? "Unknown error"); }
             catch (IOException) { } catch (UnauthorizedAccessException) { }
         };
 
@@ -24,8 +24,7 @@ public static class Program
         catch (ContentException ex)
         {
             // Bad data should explain itself, not crash with a stack trace.
-            string log = Path.Combine(AppContext.BaseDirectory, "santashift-error.log");
-            File.WriteAllText(log, ex.Message);
+            WriteErrorLog(ex.Message);
             Console.Error.WriteLine($"Santa Shift could not load its data: {ex.Message}");
             return 1;
         }
@@ -34,6 +33,18 @@ public static class Program
 
         new GameApp(content, ParseOptions(args)).Run();
         return 0;
+    }
+
+    /// <summary>
+    /// The error log goes next to the saves (%AppData%/SantaShift on Windows, ~/.config/SantaShift on a Mac), not next to
+    /// the game: the one-file Windows build unpacks itself to a hidden temp folder, where nobody would find it.
+    /// </summary>
+    public static string ErrorLogPath => Path.Combine(Core.Persistence.JsonFileStore.DefaultDirectory, "santashift-error.log");
+
+    private static void WriteErrorLog(string text)
+    {
+        Directory.CreateDirectory(Core.Persistence.JsonFileStore.DefaultDirectory);
+        File.WriteAllText(ErrorLogPath, text);
     }
 
     private static LaunchOptions ParseOptions(string[] args)
@@ -62,6 +73,8 @@ public static class Program
             else if (args[i] == "--naughty" && i + 1 < args.Length) Controllers.WorkshopController.DebugNaughty = args[++i].Split(',');
             else if (args[i] == "--at" && i + 1 < args.Length) Controllers.WorkshopController.DebugAt = args[++i];
             else if (args[i] == "--use") Controllers.WorkshopController.DebugUse = true;
+            else if (args[i] == "--cover") Controllers.WorkshopController.DebugCover = true;
+            else if (args[i] == "--distance" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float distance)) Controllers.CameraController.DebugDistance = distance;
             else if (args[i] == "--round" && i + 1 < args.Length && int.TryParse(args[++i], out int round)) Controllers.WorkshopController.DebugRound = round;
             else if (args[i] == "--skip" && i + 1 < args.Length && double.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out double skip)) Controllers.WorkshopController.DebugSkip = skip;
             else if (args[i] == "--carry" && i + 1 < args.Length)
