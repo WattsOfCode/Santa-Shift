@@ -27,8 +27,18 @@ public sealed class NaughtyNiceListView(GameContent content)
     private const float W = 540, FullH = 430, X = (UiCanvas.Width - W) / 2;
 
     /// <param name="unroll">0 = rolled up, 1 = fully open (the writing fades in at the end).</param>
+    /// <summary>The list's buttons once it is written out: 0 starts the shift, 1 goes back, 2 turns the tutorial on or off.</summary>
+    public UiHits Hits { get; } = new();
+
+    /// <summary>The button under the mouse (0, 1 or 2), drawn darker.</summary>
+    public int Hovered { get; set; } = -1;
+
+    /// <summary>Whether round 1 will be the tutorial (Settings > Game > Tutorial helpers), shown on its button.</summary>
+    public bool TutorialOn { get; set; } = true;
+
     public void Draw(UiCanvas ui, NaughtyNiceList list, float unroll, IInputService input)
     {
+        Hits.Clear();
         ui.Fill(0, 0, UiCanvas.Width, UiCanvas.Height, Palette.WithAlpha(Palette.Ink, 165));
 
         float eased = 1 - MathF.Pow(1 - Math.Clamp(unroll, 0, 1), 3);
@@ -157,7 +167,20 @@ public sealed class NaughtyNiceListView(GameContent content)
         ui.Circle(wx, wy, 21, A(Palette.Shade(Palette.Berry, 0.75f)));
         ui.Circle(wx, wy, 16, A(Palette.Berry));
         ui.Text("S", wx, wy - 11, 22, A(Palette.Gold), Align.Center);
-        ui.Text($"{input.Label(InputAction.Confirm)}  Start the shift      {input.Label(InputAction.Back)}  Back", x + W / 2 - 20, y + FullH - 50, 14, A(InkBrown), Align.Center);
+        Button(0, $"{input.Label(InputAction.Confirm)}  Start the shift", x + 36, 184);
+        Button(2, $"{input.Label(InputAction.ToggleMode)}  Tutorial: {(TutorialOn ? "On" : "Off")}", x + 228, 138);
+        Button(1, $"{input.Label(InputAction.Back)}  Back", x + 374, 80);
+
+        // Ink-outlined buttons on the parchment; the one under the mouse is filled in.
+        void Button(int id, string text, float bx, float bw)
+        {
+            float by = y + FullH - 56, bh = 28;
+            bool hot = Hovered == id;
+            ui.FillRounded(bx, by, bw, bh, A(Palette.WithAlpha(hot ? Palette.Berry : InkBrown, (byte)(hot ? 230 : 25))), 0.5f);
+            ui.OutlineRounded(bx, by, bw, bh, A(Palette.WithAlpha(InkBrown, 150)), 1.5f, 0.5f);
+            ui.Text(ui.Fit(text, 14, bw - 10), bx + bw / 2, by + 6, 14, A(hot ? Palette.Snow : InkBrown), Align.Center);
+            if (alpha > 0.5f) Hits.Add(id, bx, by, bw, bh);
+        }
     }
 
     private static void DrawCoal(UiCanvas ui, float cx, float cy, Func<Color, Color> a)

@@ -5,9 +5,6 @@ public enum GameMode { Standard, Relaxed }
 /// <summary>How the camera comes round behind the elf: after it faces one way for a moment (2 s), almost at once, or never.</summary>
 public enum CameraFollow { AfterAMoment, Always, Off }
 
-/// <summary>When round 1 is guided (arrows on the floor and a lesson's worth of orders).</summary>
-public enum GuideMode { UntilFirstRoundCleared, EveryRun, Off }
-
 /// <summary>Player settings, saved to settings.json in the save folder.</summary>
 public sealed class Settings
 {
@@ -39,8 +36,13 @@ public sealed class Settings
     /// <summary>The camera swinging round behind the elf. "Always" helps on a trackpad, where mouse look is awkward.</summary>
     public CameraFollow CameraFollow { get; set; } = CameraFollow.AfterAMoment;
 
-    /// <summary>The guided first round: until the player has cleared a round once, every run, or never.</summary>
-    public GuideMode Guide { get; set; } = GuideMode.UntilFirstRoundCleared;
+    /// <summary>
+    /// The tutorial helpers in round 1 of every run: the lesson's orders, the arrows on the floor, the hint and the
+    /// controls card. On by default; players who know the job turn them off in Settings > Game.
+    /// (Replaces the older three-way "guide" setting, which turned itself off after the first cleared round; an old
+    /// settings file's "guide" is ignored.)
+    /// </summary>
+    public bool TutorialHelpers { get; set; } = true;
 
     /// <summary>Frame rate cap: one of <see cref="FrameRates"/>.</summary>
     public int FrameRate { get; set; } = DefaultFrameRate;
@@ -64,7 +66,6 @@ public sealed class Settings
         EffectsVolume = Math.Clamp(float.IsFinite(EffectsVolume) ? EffectsVolume : 0.7f, 0f, 1f);
         if (!Enum.IsDefined(PreferredMode)) PreferredMode = GameMode.Standard;
         if (!Enum.IsDefined(CameraFollow)) CameraFollow = CameraFollow.AfterAMoment;
-        if (!Enum.IsDefined(Guide)) Guide = GuideMode.UntilFirstRoundCleared;
         MouseSensitivity = Math.Clamp(float.IsFinite(MouseSensitivity) ? MouseSensitivity : 1f, 0.25f, 3f);
         StickSensitivity = Math.Clamp(float.IsFinite(StickSensitivity) ? StickSensitivity : 1f, 0.25f, 3f);
         RenderScale = Math.Clamp(float.IsFinite(RenderScale) ? RenderScale : 1f, 0.5f, 1.5f);

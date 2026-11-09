@@ -82,6 +82,7 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
         Raylib.SetTraceLogLevel(FrameProfiler.Enabled ? TraceLogLevel.Info : TraceLogLevel.Warning); // profiling: show the GPU in use
         Raylib.InitWindow(render.WindowWidth, render.WindowHeight, "Santa Shift");
         Raylib.SetWindowMinSize(640, 360);
+        SetWindowIcons(Path.Combine(contentDir, "textures"));
         Raylib.SetExitKey(KeyboardKey.Null); // Escape pauses; it must not close the game
 
         var assets = new AssetLibrary(Path.Combine(contentDir, "models"));
@@ -199,5 +200,26 @@ public sealed class GameApp(GameContent content, LaunchOptions options)
         lighting.Dispose();
         audio.Dispose();
         Raylib.CloseWindow();
+    }
+
+    /// <summary>
+    /// Title bar and taskbar icons (candy cane and holly, from tools/icon/make_icon.py). The window needs its own copy:
+    /// GLFW doesn't use the .exe icon. macOS ignores this (the Dock icon comes from an .app bundle). Missing files are
+    /// skipped, so the game still starts without them.
+    /// </summary>
+    private static void SetWindowIcons(string textureDir)
+    {
+        var images = new List<Image>();
+        foreach (int size in new[] { 16, 32, 48, 64, 256 })
+        {
+            string path = Path.Combine(textureDir, $"icon_{size}.png");
+            if (!File.Exists(path)) continue;
+            var image = Raylib.LoadImage(path);
+            Raylib.ImageFormat(ref image, PixelFormat.UncompressedR8G8B8A8); // GLFW wants 32-bit RGBA
+            images.Add(image);
+        }
+        if (images.Count == 0) return;
+        Raylib.SetWindowIcons(images.ToArray());
+        foreach (var image in images) Raylib.UnloadImage(image);
     }
 }

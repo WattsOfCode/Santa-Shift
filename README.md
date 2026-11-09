@@ -15,7 +15,7 @@ Built in C# with .NET 10 and [Raylib-cs](https://github.com/ChrisDill/Raylib-cs)
 | E / Space | A | Collect, start building, add ribbon, ship, recycle |
 | 1 / 2 / 3 | X / Y / RB | At the bench: hammer on the part on that key. Follow the order shown; a wrong part or running out of time botches the toy (scrap it in the barrel) |
 | Esc | Start | Pause (Esc also cancels the recycle prompt) |
-| Arrows, Enter, Esc | D-pad, A, B | Menus |
+| Arrows, Enter, Esc, or the mouse (click; right click backs out) | D-pad, A, B | Menus |
 
 Every key and button above (except pause and the menu keys) can be changed in **Settings > Controls**, from the
 title screen or the pause menu; prompts show whatever you bound. Settings also has volumes (master, music, effects,
@@ -40,10 +40,11 @@ then hold still while it is tied. A toy with the wrong colour won't ship to that
 more) and you keep one for the rest of the run: walk faster, more time at the bench, quicker ribbons and shovelling,
 bigger supply crates, longer deadlines, more points. Each can stack a few times. They are listed in `perks.json`.
 
-**Guided first round.** Until you clear a round, round 1 is a lesson: glowing arrows on the floor lead from the
-elf to the next station (around the furniture), with a hint under Santa's strip. The first six orders show every job:
-plain toys, one lump of coal for a naughty child, one ribbon and one trip to the supply sled. Settings > Game > Tutorial guide turns it on for
-every run or off.
+**Guided first round.** Round 1 of every run is a lesson: glowing arrows on the floor lead from the
+elf to the next station (around the furniture), with a hint under Santa's strip and a small card in the bottom-left corner showing how to move and look, and that
+every control can be changed in Settings > Controls. The first six orders show every job:
+plain toys, one lump of coal for a naughty child, one ribbon and one trip to the supply sled. Know the job already? Turn it off
+with the Tutorial button on Santa's list (Tab, or Y on a controller), or in Settings > Game > Tutorial helpers.
 
 **Christmas Spirit.** The star bar under the clock lasts the whole run. Deliveries raise it; missed orders and botched
 toys lower it, and it recovers a little between rounds. Keep it above 75% for JOLLY: 10% more points. If it runs out,
@@ -61,7 +62,7 @@ is one kit short on purpose, so its last lesson order teaches the sled. Without 
 never run out. Every kit crate and bin sign shows its toy's picture (painted at startup from the order-card icons).
 
 **Punch out early.** The punch clock on the left wall, by the workshop door, ends the shift: press E there, then E again
-to confirm (move or Esc to cancel). The shift is scored as if time had run out, so with the quota met it's a safe pass;
+to confirm (move or Esc to cancel), or click Punch out / Keep working. The shift is scored as if time had run out, so with the quota met it's a safe pass;
 short of it, the run ends. The door beside it is shut for now (a solid fixture a later update can open).
 
 **Frame rate.** The game draws at 120 fps by default (Settings > Game > Frame rate: 60, 120, 144, match display or
@@ -71,7 +72,8 @@ Battery Boost can hold games to 30 fps: plug in or turn it off.
 ## Build and run
 
 Requires the .NET 10 SDK. Double-click **`Play Santa Shift.cmd`** (Windows) or **`Play Santa Shift.command`** (Mac) to
-build the latest code and play. On a Mac, macOS blocks a downloaded script the first time: open System Settings >
+build the latest code and play. On Windows, double-click **`Add Desktop Shortcut.cmd`** once for a Santa Shift
+shortcut on your desktop with the game's candy cane icon. On a Mac, macOS blocks a downloaded script the first time: open System Settings >
 Privacy & Security and click Open Anyway, or run `bash "Play Santa Shift.command"` in Terminal from the game folder.
 If double-clicking says it can't be run, run `chmod +x "Play Santa Shift.command"` once. Tested on an Intel Mac
 (macOS 15). Or, on any system:

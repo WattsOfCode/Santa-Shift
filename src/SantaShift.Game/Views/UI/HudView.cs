@@ -1,4 +1,5 @@
 using SantaShift.Core.Content;
+using SantaShift.Core.Models;
 using SantaShift.Core.Rules;
 using SantaShift.Game.Services;
 using SantaShift.Game.Views.World;
@@ -16,17 +17,29 @@ public sealed class HudView(GameContent content, IInputService input)
     private readonly PromptView _prompt = new();
     private readonly AssemblyPanelView _assembly = new();
 
+    /// <summary>The punch-clock / recycle question's buttons drawn last: 0 confirms, 1 cancels.</summary>
+    public UiHits Hits { get; } = new();
+
+    /// <summary>The question button under the mouse (0 or 1), drawn gold.</summary>
+    public int ConfirmHovered { get; set; } = -1;
+
     /// <param name="earlierRoundsScore">Score carried over from previous rounds of this run.</param>
-    public void Draw(UiCanvas ui, Simulation sim, Feedback feedback, WorldView world, int earlierRoundsScore = 0)
+    /// <param name="controls">The player's bindings, for the guided round's controls card (null: no card).</param>
+    public void Draw(UiCanvas ui, Simulation sim, Feedback feedback, WorldView world, int earlierRoundsScore = 0,
+        ControlBindings? controls = null)
     {
         var state = sim.State;
         var t = sim.Tuning;
+        Hits.Clear();
 
         if (!state.IsWorking) world.DrawLabels(ui, sim.SelectedStation(), state); // labels would cover the close-up work
         DrawProgressBar(ui, sim, world);
         _assembly.Draw(ui, sim, input, (UiCanvas.Width - AssemblyPanelView.Width) / 2, 486 - AssemblyPanelView.Height - 8);
         DrawRibbonPick(ui, sim);
         DrawGuide(ui, sim);
+        bool asking = state.PunchPromptOpen || state.RecyclePromptOpen;
+        if (controls != null && !asking) DrawControlsCard(ui, sim, controls);
+        if (asking) DrawQuestionButtons(ui, state.PunchPromptOpen);
 
         // Top band
         // No full-width band: in third person the room shows between the panels.
@@ -114,6 +127,49 @@ public sealed class HudView(GameContent content, IInputService input)
         ui.FillRounded(x + 4, y + 4, tw + 14, 20, Palette.Gold, 0.5f);
         ui.Text(title, x + 11, y + 7, 14, Palette.Ink);
         ui.Text(hint, x + tw + 28, y + 5, 17, Palette.Snow);
+    }
+
+    /// <summary>
+    /// Buttons for the punch-clock and recycle questions, just above the bottom band, so they can be answered with the
+    /// mouse too (the pointer is freed while one is open). The keys still work: use confirms, moving or Esc cancels.
+    /// </summary>
+    private void DrawQuestionButtons(UiCanvas ui, bool punch)
+    {
+        var d = content.Dialogue;
+        string[] labels = punch
+            ? [d.Message("button_punch_out"), d.Message("button_keep_working")]
+            : [d.Message("button_recycle"), d.Message("button_keep_it")];
+        const float w = 170, h = 36, gap = 14, y = 486 - h - 10;
+        for (int i = 0; i < 2; i++)
+        {
+            float x = UiCanvas.Width / 2f + (i == 0 ? -gap / 2 - w : gap / 2);
+            bool hot = ConfirmHovered == i;
+            ui.FillRounded(x, y, w, h, hot ? Palette.Gold : Palette.WithAlpha(Palette.Ink, 225), 0.45f);
+            ui.OutlineRounded(x, y, w, h, Palette.WithAlpha(i == 0 ? Palette.Gold : Palette.Snow, 150), 1.5f, 0.45f);
+            ui.Text(labels[i], x + w / 2, y + 8, 18, hot ? Palette.Ink : i == 0 ? Palette.Gold : Palette.Snow, Align.Center);
+            Hits.Add(i, x, y, w, h);
+        }
+    }
+
+    /// <summary>
+    /// The guided round's reminder, in the bottom-left corner above the bottom band: how to move and look (with the
+    /// player's own keys, or the sticks on a controller), and where to change the controls.
+    /// </summary>
+    private void DrawControlsCard(UiCanvas ui, Simulation sim, ControlBindings c)
+    {
+        if (!TutorialGuide.Active(sim) || sim.State.IsWorking) return;
+        var d = content.Dialogue;
+        string K(string bind) => InputNames.Key(Enumerable.Range(0, ControlBindings.KeySlots).Select(i => c.KeyAt(bind, i))
+            .FirstOrDefault(k => k != "") ?? "");
+        string move = input.UsingGamepad ? "Left stick"
+            : $"{K(ControlBindings.MoveUp)} {K(ControlBindings.MoveLeft)} {K(ControlBindings.MoveDown)} {K(ControlBindings.MoveRight)}";
+        string look = input.UsingGamepad ? "Right stick" : "Mouse";
+        string line1 = d.Message("guide_move", move, look);
+        string line2 = d.Message("guide_keys", input.Label(InputAction.Pause));
+        float w = Math.Max(ui.MeasureText(line1, 15), ui.MeasureText(line2, 13)) + 24, h = 46, x = 10, y = 486 - h - 8;
+        ui.FillRounded(x, y, w, h, Palette.WithAlpha(Palette.Ink, 215), 0.25f);
+        ui.Text(line1, x + 12, y + 7, 15, Palette.Snow);
+        ui.Text(line2, x + 12, y + 27, 13, Palette.Ice);
     }
 
     /// <summary>

@@ -241,7 +241,7 @@ bear, robot) and the next letter for that toy from `letters.json`, and is coal i
 from the plan in order (a skipped attempt does not skip a plan entry). Ribbon and rush are still decided when each order is
 created, from the events active at that moment. The plan is what stocks the kit bins (Section 8).
 
-**Guided lesson.** In round 1, until the player has cleared a round once, the first six orders are arranged to show
+**Guided lesson.** In round 1 of every run (unless Settings > Game > Tutorial helpers is off), the first six orders are arranged to show
 every job: plain toys, coal for a naughty child as the 3rd, a ribbon as the 5th, and **a resupply on the 6th**. They are
 real orders and count towards the quota (this replaces 0.1's separate untimed practice order).
 - The lesson round's sack is one kit short. The missing kit is for the 6th order's toy (the robot with the shipped data).
@@ -507,7 +507,7 @@ own work) and played by the game. "Built" means the file ships and the game play
 | `unlock` | Music-box sparkle | 0.6 s | Built |
 | `jolly_on` | Warm rising sleigh bells | 0.4 s | Built |
 | `spirit_low` | Hollow wind gust (once, as Spirit drops below 25%) | 0.6 s | Built |
-| `footstep_1` to `_4` | Soft boot on wood planks, 4 variants, one per 0.55 m walked, never the same twice, pitch varied | 0.08 s | Built |
+| `footstep_1` to `_4` | Soft boot on wood planks, 4 variants, on the walk animation's footfalls (3 a second), never the same twice, pitch varied | 0.08 s | Built |
 | `fire_loop` | Fireplace crackle: low roar, small crackles, the odd snap. Streamed, gapless loop; louder near the hearth | 6 s loop | Built |
 
 **When each plays:** menu focus moves tick (`ui_move`), choices click (`ui_confirm`). `ribbon_pick` when a spool is
@@ -565,7 +565,7 @@ Debug flags: `--profile` (uncapped), `--profile-capped` (frame pacing at the set
 | Order | ID, toy ID, letter, naughty, requires ribbon (+ colour), rush, created tick, deadline tick, allowed duration, status |
 | CraftingAction | station, action type, item revision, start and completion ticks (bench: part sequence and progress) |
 | EventState | ribbon window end tick, pending rush, fired event IDs |
-| Settings | volumes, mute, reduced motion, preferred mode, mouse and stick speed, control bindings, camera follow, smooth edges, 3D resolution, guide mode, frame rate, hat |
+| Settings | volumes, mute, reduced motion, preferred mode, mouse and stick speed, control bindings, camera follow, smooth edges, 3D resolution, tutorial helpers (on/off), frame rate, hat |
 | PersonalBest | best score and furthest round per mode |
 | PlayerProgress | lifetime totals, earned unlocks |
 

@@ -42,6 +42,7 @@ public sealed class WorkshopController : IScreen
         _world.PlayerHat = DebugHat != null ? Views.Palette.Hex(DebugHat) : services.HatColour;
         _hud = new HudView(services.Content, services.Input);
         _firePixels = FirePosition(services.Content);
+        _mouse = new MenuMouse(services.Input);
     }
 
     /// <summary>Starts a brand-new run at round 1: Santa draws a fresh naughty and nice list and shows it first.</summary>
@@ -86,6 +87,7 @@ public sealed class WorkshopController : IScreen
     }
 
     private readonly Point2? _firePixels;
+    private readonly MenuMouse _mouse;
 
     public Simulation Simulation => _sim;
 
@@ -109,13 +111,8 @@ public sealed class WorkshopController : IScreen
 
     private bool _guideWasActive;
 
-    /// <summary>Whether round 1 is guided: Settings > Game > Tutorial guide, and (by default) only until a round is cleared.</summary>
-    private static bool GuideOn(GameServices s) => DebugGuide || s.Settings.Guide switch
-    {
-        GuideMode.EveryRun => true,
-        GuideMode.Off => false,
-        _ => s.Progress.RoundsCleared == 0,
-    };
+    /// <summary>Whether round 1 is guided: Settings > Game > Tutorial helpers (on unless the player turned them off).</summary>
+    private static bool GuideOn(GameServices s) => DebugGuide || s.Settings.TutorialHelpers;
 
     /// <summary>Debug builds only (--hat #RRGGBB): wear this hat colour, for screenshots.</summary>
     public static string? DebugHat;
@@ -275,7 +272,16 @@ public sealed class WorkshopController : IScreen
         // Part keys only mean something in the bench minigame and when choosing a ribbon (key n = spool n);
         // otherwise they are dropped. Clicking a spool counts as pressing its key.
         int partKey = _s.Input.ConsumePartKey();
-        bool click = _s.Input.ConsumePressed(InputAction.Click);
+        _mouse.Update();
+        bool click = _mouse.Clicked;
+        // The punch-clock and recycle questions have buttons: clicking one answers it like the keys would.
+        bool asking = _sim.State.PunchPromptOpen || _sim.State.RecyclePromptOpen;
+        _hud.ConfirmHovered = asking ? _hud.Hits.At(_mouse.At) : -1;
+        if (asking && click)
+        {
+            if (_hud.ConfirmHovered == 0) interact = true;
+            else if (_hud.ConfirmHovered == 1) cancel = true;
+        }
         if (_sim.State.RibbonPick != null)
         {
             if (partKey == 0 && click && _world.HoveredSpool >= 0) partKey = _world.HoveredSpool + 1;
@@ -302,9 +308,10 @@ public sealed class WorkshopController : IScreen
         // Choosing a ribbon frees the pointer too, so the spools can be clicked (the camera holds still meanwhile).
         bool playing = !_pause.Blocking || _pause.State == PauseState.Ready;
         bool picking = _sim.State.RibbonPick != null;
-        _s.Input.SetMouseCaptured(playing && !picking && Raylib.IsWindowFocused());
+        bool asking = _sim.State.PunchPromptOpen || _sim.State.RecyclePromptOpen; // its buttons can be clicked
+        _s.Input.SetMouseCaptured(playing && !picking && !asking && Raylib.IsWindowFocused());
         _camera.Follow = _s.Settings.CameraFollow;
-        _camera.Update(_pause.Blocking || picking ? System.Numerics.Vector2.Zero : _s.Input.Look(), DrawnPosition,
+        _camera.Update(_pause.Blocking || picking || asking ? System.Numerics.Vector2.Zero : _s.Input.Look(), DrawnPosition,
             CurrentWork(), Raylib.GetFrameTime(), DrawnFacing);
         _world.PlayerAt = DrawnPosition;
         _world.HoveredSpool = picking ? SpoolUnderPointer() : -1;
@@ -319,7 +326,7 @@ public sealed class WorkshopController : IScreen
 
     public void DrawUi(UiCanvas ui)
     {
-        _hud.Draw(ui, _sim, _interaction.Feedback, _world, _run.TotalScore);
+        _hud.Draw(ui, _sim, _interaction.Feedback, _world, _run.TotalScore, _s.Settings.Controls);
         if (RibbonPickStation is { } station && !_pause.Blocking)
             _world.DrawSpoolLabels(ui, station, i => _s.Input.Label(InputAction.Part1 + i));
         _pause.Draw(ui);
@@ -327,11 +334,15 @@ public sealed class WorkshopController : IScreen
 
     // Sounds that come from watching the state rather than from one event.
     private const double SpiritLowFraction = 0.25;
-    private const double MetresPerStep = 0.55;
+    /// <summary>
+    /// Seconds between footfalls: the walk animation loops every 0.67 s with a foot landing at its start and halfway
+    /// (frames 0 and 10 of 20 at 30 fps, tools/blender/make_models.py), and it plays at that rate whatever the speed.
+    /// </summary>
+    private const double SecondsPerStep = 20.0 / 30.0 / 2;
     private long _lastTickSecond = -1;
     private bool? _wasJolly;
     private bool? _wasLow;
-    private double _strideLeft = MetresPerStep / 2;
+    private double _walkClock = -1; // seconds since the elf started walking; below 0 when standing
     private int _lastFootstep;
     private readonly Random _footRandom = new();
 
@@ -357,13 +368,13 @@ public sealed class WorkshopController : IScreen
             (_wasJolly, _wasLow) = (jolly, low);
         }
 
-        // Footsteps by distance walked, so faster walking (perks) steps faster.
-        double moved = Math.Sqrt(Math.Pow(st.PlayerPosition.X - _lastPosition.X, 2) + Math.Pow(st.PlayerPosition.Y - _lastPosition.Y, 2))
-            / _sim.Tuning.PixelsPerMetre;
-        if (moved <= 0 || moved > 1) { if (moved > 1) _strideLeft = MetresPerStep; return; } // standing, or placed
-        _strideLeft -= moved;
-        if (_strideLeft > 0) return;
-        _strideLeft += MetresPerStep;
+        // Footsteps on the walk animation's footfalls: the first as the elf sets off (the clip starts with a foot down),
+        // then one every half loop. Standing still or working resets it.
+        if (!_player.Walking || st.IsWorking) { _walkClock = -1; return; }
+        double before = _walkClock;
+        _walkClock += 1.0 / _sim.Tuning.TicksPerSecond;
+        if (before >= 0 && Math.Floor(_walkClock / SecondsPerStep) == Math.Floor(before / SecondsPerStep)) return;
+        if (before < 0) _walkClock = 0;
         int pick = (_lastFootstep + 1 + _footRandom.Next(SoundIds.Footsteps.Length - 1)) % SoundIds.Footsteps.Length; // never the same twice
         _lastFootstep = pick;
         audio.Play(SoundIds.Footsteps[pick], pitch: 0.94f + 0.12f * (float)_footRandom.NextDouble());

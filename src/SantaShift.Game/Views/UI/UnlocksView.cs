@@ -8,13 +8,18 @@ public sealed class UnlocksView
 {
     private const float X = 150, Y = 30, W = 660, H = 480;
 
-    public void Draw(UiCanvas ui, IReadOnlyList<Unlock> unlocks, PlayerProgress p, int row, IInputService input)
+    /// <summary>The rows (0 = classic hat, then each unlock) and the close button drawn last, for the mouse.</summary>
+    public UiHits Hits { get; } = new();
+    public const int CloseId = 1000;
+
+    public void Draw(UiCanvas ui, IReadOnlyList<Unlock> unlocks, PlayerProgress p, int row, IInputService input, bool closeHovered = false)
     {
+        Hits.Clear();
         ui.Fill(0, 0, UiCanvas.Width, UiCanvas.Height, Palette.WithAlpha(Palette.Ink, 210));
         ui.FillRounded(X, Y, W, H, Palette.Hex("#1B232D"), 0.05f);
         ui.OutlineRounded(X, Y, W, H, Palette.WithAlpha(Palette.Gold, 160), 2, 0.05f);
         Festive.HollySprig(ui, X + 26, Y + 24, 1f, 1f, 0.7f);
-        Festive.HollySprig(ui, X + W - 26, Y + 24, -1f, 1f, 0.7f);
+        SettingsView.CloseButton(ui, Hits, X + W - 46, Y + 12, closeHovered, CloseId);
         ui.Text("UNLOCKS", X + W / 2, Y + 12, 30, Palette.Gold, Align.Center);
         ui.Text($"{p.ToysDelivered} toys and {p.CoalDelivered} coal delivered   -   furthest round {p.BestRound}   -   {p.RunsPlayed} runs",
             X + W / 2, Y + 50, 14, Palette.Ice, Align.Center);
@@ -22,6 +27,7 @@ public sealed class UnlocksView
         float y = Y + 78;
         const float rowH = 40;
         DrawRow(ui, "Classic Red Hat", "The elf's own hat.", true, 1, 1, "", row == 0, p.Hat == "", Palette.Hex("#BA2D33"), y);
+        Hits.Add(0, X + 18, y - 4, W - 36, 36);
         for (int i = 0; i < unlocks.Count; i++)
         {
             var u = unlocks[i];
@@ -30,9 +36,10 @@ public sealed class UnlocksView
             var swatch = u.Reward == UnlockReward.Hat ? Palette.Hex(u.Value) : (Raylib_cs.Color?)null;
             DrawRow(ui, u.Name, u.Description, have, p.Value(u.Stat), u.Target, StatName(u.Stat), row == i + 1,
                 u.Reward == UnlockReward.Hat && p.Hat == u.Id, swatch, y);
+            Hits.Add(i + 1, X + 18, y - 4, W - 36, 36);
         }
 
-        ui.Text($"{(input.UsingGamepad ? "D-pad" : "Arrows")}  Choose      {input.Label(InputAction.Confirm)}  Wear hat      " +
+        ui.Text($"{(input.UsingGamepad ? "D-pad" : "Arrows or mouse")}  Choose      {input.Label(InputAction.Confirm)}  Wear hat      " +
                 $"{input.Label(InputAction.Back)}  Back", X + W / 2, Y + H - 28, 15, Palette.Ice, Align.Center);
     }
 

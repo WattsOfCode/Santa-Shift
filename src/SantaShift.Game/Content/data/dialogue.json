@@ -74,6 +74,8 @@
     "guide_supply": "That bin is empty: grab a supply crate from the sled",
     "guide_restock": "Restock the empty kit bin",
     "guide_wait": "Wait for the next letter...",
+    "guide_move": "Move  {0}      Look  {1}",
+    "guide_keys": "Change any control in Settings > Controls ({0} to pause)",
     "guide_done": "Guide complete! You know the whole job now.",
 
     "prompt_punch_out": "[use]  Punch out early (quota met)",
@@ -81,6 +83,10 @@
     "prompt_punch_confirm": "Punch out and end the shift?  [use] Confirm  /  move to cancel",
     "prompt_punch_confirm_short": "Only {0} of {1}: punching out ends the run!  [use] Confirm  /  move to cancel",
     "punch_prompt": "Punch your card again to clock off",
+    "button_punch_out": "Punch out",
+    "button_keep_working": "Keep working",
+    "button_recycle": "Recycle it",
+    "button_keep_it": "Keep it",
     "punched_out_left": "Punched out with {0} left",
 
     "prompt_supply": "[use]  Take a supply crate",

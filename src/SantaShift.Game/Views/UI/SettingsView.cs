@@ -10,6 +10,16 @@ public sealed class SettingsView
     private const float X = 150, Y = 46, W = 660, H = 448;
     private const float RowsTop = Y + 112, RowH = 30;
 
+    // Ids of the clickable areas (see Hits).
+    public const int CloseId = 1;
+    public static int TabId(int tab) => 10 + tab;
+    public static int RowId(int row) => 100 + row;
+    public static int SliderId(int row) => 300 + row;
+    public static int CellId(int row, int column) => 1000 + row * 10 + column;
+
+    /// <summary>The buttons, rows, sliders and key cells drawn last, for the mouse.</summary>
+    public UiHits Hits { get; } = new();
+
     private static readonly Dictionary<string, string> ActionNames = new()
     {
         [ControlBindings.MoveUp] = "Move up", [ControlBindings.MoveDown] = "Move down",
@@ -21,11 +31,12 @@ public sealed class SettingsView
 
     public void Draw(UiCanvas ui, SettingsMenu m)
     {
+        Hits.Clear();
         ui.Fill(0, 0, UiCanvas.Width, UiCanvas.Height, Palette.WithAlpha(Palette.Ink, 210));
         ui.FillRounded(X, Y, W, H, Palette.Hex("#1B232D"), 0.05f);
         ui.OutlineRounded(X, Y, W, H, Palette.WithAlpha(Palette.Gold, 160), 2, 0.05f);
         Festive.HollySprig(ui, X + 26, Y + 24, 1f, 1f, 0.7f);
-        Festive.HollySprig(ui, X + W - 26, Y + 24, -1f, 1f, 0.7f);
+        CloseButton(ui, Hits, X + W - 46, Y + 14, m.CloseHovered);
         ui.Text("SETTINGS", X + W / 2, Y + 14, 30, Palette.Gold, Align.Center);
 
         // Tabs
@@ -39,6 +50,7 @@ public sealed class SettingsView
             ui.FillRounded(x, Y + 58, tw, 32, current ? Palette.Berry : Palette.WithAlpha(Palette.Snow, 30), 0.4f);
             if (focused) ui.OutlineRounded(x - 3, Y + 55, tw + 6, 38, Palette.Gold, 2, 0.4f);
             ui.Text(tabs[i], x + tw / 2, Y + 64, 20, current ? Palette.Snow : Palette.Shade(Palette.Snow, 0.75f), Align.Center);
+            Hits.Add(TabId(i), x, Y + 58, tw, 32);
         }
 
         switch (m.Tab)
@@ -57,20 +69,34 @@ public sealed class SettingsView
         ui.Text(hint, X + W / 2, Y + H - 30, 15, Palette.Ice, Align.Center);
     }
 
-    private static string Arrows(IInputService input) => input.UsingGamepad ? "D-pad" : "Arrows";
+    private static string Arrows(IInputService input) => input.UsingGamepad ? "D-pad" : "Arrows or mouse";
 
-    private static void Row(UiCanvas ui, SettingsMenu m, int row, string label)
+    /// <summary>A small X button that closes a panel (Settings, Unlocks), gold while the mouse is on it.</summary>
+    public static void CloseButton(UiCanvas ui, UiHits hits, float x, float y, bool hovered, int id = CloseId)
+    {
+        const float size = 30;
+        ui.FillRounded(x, y, size, size, hovered ? Palette.Gold : Palette.WithAlpha(Palette.Snow, 30), 0.4f);
+        ui.Text("X", x + size / 2, y + 5, 20, hovered ? Palette.Ink : Palette.Snow, Align.Center);
+        hits.Add(id, x, y, size, size);
+    }
+
+    private void Row(UiCanvas ui, SettingsMenu m, int row, string label)
     {
         float y = RowsTop + (row - 1) * RowH;
+        Hits.Add(RowId(row), X + 20, y - 4, W - 40, RowH - 2);
         bool selected = m.Row == row;
         if (selected) ui.FillRounded(X + 20, y - 4, W - 40, RowH - 2, Palette.WithAlpha(Palette.Gold, 45), 0.3f);
         ui.Text(label, X + 40, y, 18, selected ? Palette.Gold : Palette.Snow);
     }
 
-    private static void Slider(UiCanvas ui, SettingsMenu m, int row, string label, float value, float min, float max, string text)
+    /// <summary>Where a slider's bar is drawn, so a click or drag on it can be turned into a value (0..1 along it).</summary>
+    public const float SliderX = X + 290, SliderWidth = 250;
+
+    private void Slider(UiCanvas ui, SettingsMenu m, int row, string label, float value, float min, float max, string text)
     {
         Row(ui, m, row, label);
-        float y = RowsTop + (row - 1) * RowH, bx = X + 290, bw = 250;
+        float y = RowsTop + (row - 1) * RowH, bx = SliderX, bw = SliderWidth;
+        Hits.Add(SliderId(row), bx - 12, y - 4, bw + 24, RowH - 2);
         float t = (value - min) / (max - min);
         ui.FillRounded(bx, y + 5, bw, 10, Palette.WithAlpha(Palette.Snow, 40), 0.5f);
         ui.FillRounded(bx, y + 5, bw * t, 10, m.Row == row ? Palette.Gold : Palette.Ice, 0.5f);
@@ -78,7 +104,7 @@ public sealed class SettingsView
         ui.Text(text, X + W - 40, y, 18, Palette.Snow, Align.Right);
     }
 
-    private static void Toggle(UiCanvas ui, SettingsMenu m, int row, string label, bool on)
+    private void Toggle(UiCanvas ui, SettingsMenu m, int row, string label, bool on)
     {
         Row(ui, m, row, label);
         float y = RowsTop + (row - 1) * RowH;
@@ -86,7 +112,7 @@ public sealed class SettingsView
         ui.Text(on ? "On" : "Off", X + W - 75, y + 1, 18, Palette.Snow, Align.Center);
     }
 
-    private static void Choice(UiCanvas ui, SettingsMenu m, int row, string label, string value)
+    private void Choice(UiCanvas ui, SettingsMenu m, int row, string label, string value)
     {
         Row(ui, m, row, label);
         float y = RowsTop + (row - 1) * RowH;
@@ -94,7 +120,7 @@ public sealed class SettingsView
         ui.Text(on ? $"<  {value}  >" : value, X + W - 40, y, 18, on ? Palette.Gold : Palette.Snow, Align.Right);
     }
 
-    private static void DrawSound(UiCanvas ui, SettingsMenu m)
+    private void DrawSound(UiCanvas ui, SettingsMenu m)
     {
         var st = m.Settings;
         Slider(ui, m, 1, "Master volume", st.MasterVolume, 0, 1, $"{st.MasterVolume * 100:0}%");
@@ -105,7 +131,7 @@ public sealed class SettingsView
             X + W / 2, RowsTop + 5 * RowH, 13, Palette.Shade(Palette.Snow, 0.6f), Align.Center);
     }
 
-    private static void DrawGame(UiCanvas ui, SettingsMenu m)
+    private void DrawGame(UiCanvas ui, SettingsMenu m)
     {
         var st = m.Settings;
         Toggle(ui, m, 1, "Reduced motion (no sway, flicker or falling snow)", st.ReducedMotion);
@@ -119,12 +145,7 @@ public sealed class SettingsView
         });
         Toggle(ui, m, 5, "Smooth jagged edges", st.SmoothEdges);
         Slider(ui, m, 6, "3D resolution", st.RenderScale, 0.5f, 1.5f, $"{st.RenderScale * 100:0}%");
-        Choice(ui, m, 7, "Tutorial guide in round 1", st.Guide switch
-        {
-            GuideMode.EveryRun => "Every run",
-            GuideMode.Off => "Off",
-            _ => "Until you clear a round",
-        });
+        Toggle(ui, m, 7, "Tutorial helpers in round 1 (arrows, hints, controls card)", st.TutorialHelpers);
         Choice(ui, m, 8, "Frame rate", st.FrameRate switch
         {
             Settings.MatchDisplay => "Match display (VSync)",
@@ -171,7 +192,7 @@ public sealed class SettingsView
         }
     }
 
-    private static void DrawControls(UiCanvas ui, SettingsMenu m)
+    private void DrawControls(UiCanvas ui, SettingsMenu m)
     {
         var c = m.Settings.Controls;
         float[] colX = [X + 300, X + 420, X + 540];
@@ -186,6 +207,7 @@ public sealed class SettingsView
             int row = r + 1;
             float y = RowsTop + r * rowH;
             bool selected = m.Row == row;
+            Hits.Add(RowId(row), X + 20, y - 3, W - 40, rowH - 2);
             if (selected) ui.FillRounded(X + 20, y - 3, W - 40, rowH - 2, Palette.WithAlpha(Palette.Gold, 35), 0.3f);
             ui.Text(ActionNames[actions[r]], X + 40, y, 17, selected ? Palette.Gold : Palette.Snow);
             for (int col = 0; col < 3; col++)
@@ -195,6 +217,7 @@ public sealed class SettingsView
                     : col < ControlBindings.KeySlots ? InputNames.Key(c.KeyAt(actions[r], col)) : InputNames.Button(c.PadFor(actions[r]));
                 ui.FillRounded(colX[col], y - 2, cellW, rowH - 4, cell ? (m.Capturing ? Palette.Berry : Palette.Gold) : Palette.WithAlpha(Palette.Snow, 28), 0.35f);
                 ui.Text(ui.Fit(text, 15, cellW - 8), colX[col] + cellW / 2, y + 1, 15, cell && !m.Capturing ? Palette.Ink : Palette.Snow, Align.Center);
+                Hits.Add(CellId(row, col), colX[col], y - 2, cellW, rowH - 4);
             }
         }
 
@@ -202,10 +225,11 @@ public sealed class SettingsView
         float ry = RowsTop + actions.Length * rowH + 4;
         bool onReset = m.Row == reset;
         ui.FillRounded(X + W / 2 - 100, ry - 2, 200, 24, onReset ? Palette.Gold : Palette.WithAlpha(Palette.Snow, 30), 0.4f);
+        Hits.Add(RowId(reset), X + W / 2 - 100, ry - 2, 200, 24);
         ui.Text("Reset to defaults", X + W / 2, ry + 1, 16, onReset ? Palette.Ink : Palette.Snow, Align.Center);
 
         var input = m.Input;
-        ui.Text($"Always: Esc / Start pause    Enter / A confirm    {input.Label(InputAction.ClearBinding)} clears a slot",
+        ui.Text($"Click a slot, then press the new key.    {input.Label(InputAction.ClearBinding)} clears a slot.    Esc / Start always pause.",
             X + W / 2, ry + 32, 13, Palette.Shade(Palette.Snow, 0.65f), Align.Center);
     }
 }

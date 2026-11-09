@@ -12,8 +12,13 @@ public sealed record ResultsSummary(
 /// <summary>End of a round: "Round complete" (continue) or "Game over" (run finished).</summary>
 public sealed class ResultsView
 {
-    public void Draw(UiCanvas ui, ResultsSummary r, IInputService input)
+    /// <summary>The two buttons drawn last: 0 continues (next round / new run), 1 goes back to the title.</summary>
+    public UiHits Hits { get; } = new();
+
+    /// <param name="hovered">The button under the mouse (0 or 1), drawn brighter.</param>
+    public void Draw(UiCanvas ui, ResultsSummary r, IInputService input, int hovered = -1)
     {
+        Hits.Clear();
         ui.Fill(0, 0, UiCanvas.Width, UiCanvas.Height, Palette.WithAlpha(Palette.Ink, 215));
         ui.Text(r.Heading, 480, 40, 48, r.Passed ? Palette.Gold : Palette.Berry, Align.Center);
         ui.Text(r.ReviewLabel, 480, 98, 26, Palette.Snow, Align.Center);
@@ -42,23 +47,34 @@ public sealed class ResultsView
         if (r.Passed)
         {
             ui.Text($"Round {r.Run.Round + 1}: quota {r.NextQuota}, shorter deadlines.", 480, y += 34, 18, Palette.Gold, Align.Center);
-            Button(ui, $"{input.Label(InputAction.Confirm)}  Next round", 442);
-            ui.Text($"{input.Label(InputAction.Back)}  End run and return to title", 480, 494, 16, Palette.Snow, Align.Center);
+            Button(ui, $"{input.Label(InputAction.Confirm)}  Next round", 442, hovered == 0);
+            SmallButton(ui, $"{input.Label(InputAction.Back)}  End run and return to title", 492, hovered == 1);
         }
         else
         {
             string best = r.NewBest ? $"NEW BEST: {r.BestScore}" : $"Best: {r.BestScore}";
             ui.Text($"Reached round {r.Run.Round}.  {best}  (furthest round {r.BestRound})", 480, y += 34, 18,
                 r.NewBest ? Palette.Gold : Palette.Ice, Align.Center);
-            Button(ui, $"{input.Label(InputAction.Confirm)}  New run", 442);
-            ui.Text($"{input.Label(InputAction.Back)}  Title", 480, 494, 16, Palette.Snow, Align.Center);
+            Button(ui, $"{input.Label(InputAction.Confirm)}  New run", 442, hovered == 0);
+            SmallButton(ui, $"{input.Label(InputAction.Back)}  Title", 492, hovered == 1);
         }
     }
 
-    private static void Button(UiCanvas ui, string text, float y)
+    private void Button(UiCanvas ui, string text, float y, bool hovered)
     {
-        ui.FillRounded(330, y, 300, 44, Palette.Gold, 0.4f);
+        ui.FillRounded(330, y, 300, 44, hovered ? Palette.Shade(Palette.Gold, 1.15f) : Palette.Gold, 0.4f);
+        if (hovered) ui.OutlineRounded(327, y - 3, 306, 50, Palette.Snow, 2, 0.4f);
         ui.Text(text, 480, y + 11, 22, Palette.Ink, Align.Center);
+        Hits.Add(0, 330, y, 300, 44);
+    }
+
+    /// <summary>The quieter second choice under the main button.</summary>
+    private void SmallButton(UiCanvas ui, string text, float y, bool hovered)
+    {
+        float w = Math.Max(200, ui.MeasureText(text, 16) + 40);
+        ui.FillRounded(480 - w / 2, y, w, 28, hovered ? Palette.WithAlpha(Palette.Snow, 60) : Palette.WithAlpha(Palette.Snow, 20), 0.5f);
+        ui.Text(text, 480, y + 5, 16, Palette.Snow, Align.Center);
+        Hits.Add(1, 480 - w / 2, y, w, 28);
     }
 
     private static void Row(UiCanvas ui, string label, string value, float y)

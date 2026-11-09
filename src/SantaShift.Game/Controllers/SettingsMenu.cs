@@ -20,6 +20,11 @@ public sealed class SettingsMenu(GameServices s)
     private const double CaptureTimeoutSeconds = 6;
 
     private readonly SettingsView _view = new();
+    private readonly MenuMouse _mouse = new(s.Input);
+    private int _dragRow; // the slider row being dragged with the mouse, or 0
+
+    /// <summary>True while the mouse is on the close button (drawn gold).</summary>
+    public bool CloseHovered { get; private set; }
 
     public bool IsOpen { get; private set; }
     public SettingsTab Tab { get; private set; }
@@ -44,6 +49,8 @@ public sealed class SettingsMenu(GameServices s)
         Row = Math.Min(1, RowCount);
         Column = 0;
         Capturing = false;
+        _dragRow = 0;
+        _view.Hits.Clear();
         s.Input.Clear();
     }
 
@@ -62,9 +69,11 @@ public sealed class SettingsMenu(GameServices s)
     {
         if (!IsOpen) return;
         var input = s.Input;
+        _mouse.Update();
         if (Capturing) { UpdateCapture(); return; }
 
         if (input.ConsumePressed(InputAction.Back)) { Close(); return; }
+        if (UpdateMouse()) return;
         if (input.ConsumePressed(InputAction.TabNext)) SwitchTab(+1);
         if (input.ConsumePressed(InputAction.TabPrev)) SwitchTab(-1);
         if (input.ConsumePressed(InputAction.MenuUp)) { Row = (Row + RowCount) % (RowCount + 1); Tick(); }
@@ -86,6 +95,104 @@ public sealed class SettingsMenu(GameServices s)
     public void Draw(UiCanvas ui)
     {
         if (IsOpen) _view.Draw(ui, this);
+    }
+
+    /// <summary>
+    /// The mouse: moving over a row selects it, clicking does what Enter would there (a tab opens, a toggle flips, a
+    /// choice steps on, a key slot waits for the new key), and the sliders follow a click or drag along their bar.
+    /// Returns true when a click was handled (the keys are not read this step).
+    /// </summary>
+    private bool UpdateMouse()
+    {
+        int hit = _view.Hits.At(_mouse.At);
+        CloseHovered = hit == SettingsView.CloseId;
+
+        if (_dragRow > 0)
+        {
+            if (MenuMouse.Held && _dragRow == Row) SetSliderFromPointer(_dragRow);
+            else _dragRow = 0;
+        }
+
+        if (!_mouse.Clicked)
+        {
+            if (_mouse.Moved) Hover(hit);
+            return false;
+        }
+        if (hit == SettingsView.CloseId) { Close(); return true; }
+        for (int t = 0; t < Enum.GetValues<SettingsTab>().Length; t++)
+            if (hit == SettingsView.TabId(t))
+            {
+                if (Tab != (SettingsTab)t) SwitchTab(t - (int)Tab);
+                Row = 0;
+                return true;
+            }
+        for (int r = 1; r <= RowCount; r++)
+        {
+            if (hit == SettingsView.SliderId(r)) { Row = r; _dragRow = r; SetSliderFromPointer(r); return true; }
+            for (int c = 0; c <= ControlBindings.KeySlots; c++)
+                if (hit == SettingsView.CellId(r, c))
+                {
+                    (Row, Column) = (r, c);
+                    Capturing = true;
+                    _captureStarted = Raylib.GetTime();
+                    return true;
+                }
+            if (hit != SettingsView.RowId(r)) continue;
+            Row = r;
+            switch (Tab)
+            {
+                case SettingsTab.Sound: UpdateSound(0, confirm: true); break;
+                case SettingsTab.Controls: if (r == RowCount) UpdateControls(0, confirm: true, clear: false); break; // only Reset acts
+                case SettingsTab.Game: UpdateGame(0, confirm: true); break;
+            }
+            return true;
+        }
+        return true; // a click on nothing does nothing
+    }
+
+    private void Hover(int hit)
+    {
+        for (int r = 1; r <= RowCount; r++)
+        {
+            int column = -1;
+            for (int c = 0; c <= ControlBindings.KeySlots; c++) if (hit == SettingsView.CellId(r, c)) column = c;
+            bool onRow = column >= 0 || hit == SettingsView.RowId(r) || hit == SettingsView.SliderId(r);
+            if (!onRow) continue;
+            if (Row != r || (column >= 0 && Column != column)) Tick();
+            Row = r;
+            if (column >= 0) Column = column;
+            return;
+        }
+    }
+
+    /// <summary>The value range and step of the slider on <paramref name="row"/> of the current tab, or null.</summary>
+    private (float Min, float Max, float Step)? SliderRange(int row) => (Tab, row) switch
+    {
+        (SettingsTab.Sound, 1 or 2 or 3) => (0f, 1f, 0.05f),
+        (SettingsTab.Game, 2 or 3) => (0.25f, 3f, 0.25f),
+        (SettingsTab.Game, 6) => (0.5f, 1.5f, 0.1f),
+        _ => null,
+    };
+
+    private void SetSliderFromPointer(int row)
+    {
+        if (SliderRange(row) is not var (min, max, step)) return;
+        float t = Math.Clamp((_mouse.At.X - SettingsView.SliderX) / SettingsView.SliderWidth, 0f, 1f);
+        float value = MathF.Round((min + MathF.Round(t * (max - min) / step) * step) * 100) / 100;
+        var st = s.Settings;
+        float before;
+        switch (Tab, row)
+        {
+            case (SettingsTab.Sound, 1): before = st.MasterVolume; st.MasterVolume = value; break;
+            case (SettingsTab.Sound, 2): before = st.MusicVolume; st.MusicVolume = value; break;
+            case (SettingsTab.Sound, 3): before = st.EffectsVolume; st.EffectsVolume = value; break;
+            case (SettingsTab.Game, 2): before = st.MouseSensitivity; st.MouseSensitivity = value; break;
+            case (SettingsTab.Game, 3): before = st.StickSensitivity; st.StickSensitivity = value; break;
+            default: before = st.RenderScale; st.RenderScale = value; break;
+        }
+        if (before == value) return;
+        if (Tab == SettingsTab.Sound) s.Audio.ApplySettings(st);
+        Tick();
     }
 
     private void UpdateSound(int step, bool confirm)
@@ -116,7 +223,7 @@ public sealed class SettingsMenu(GameServices s)
             case 5: if (step != 0 || confirm) st.SmoothEdges = !st.SmoothEdges; break;
             case 6: st.RenderScale = Nudge(st.RenderScale, step * 0.1f, 0.5f, 1.5f); break;
             case 7:
-                if (step != 0 || confirm) st.Guide = (GuideMode)(((int)st.Guide + (step < 0 ? 2 : 1)) % 3);
+                if (step != 0 || confirm) st.TutorialHelpers = !st.TutorialHelpers;
                 break;
             case 8:
                 if (step != 0 || confirm)
@@ -162,6 +269,7 @@ public sealed class SettingsMenu(GameServices s)
                       || input.ConsumePressed(InputAction.Pause) && Column == ControlBindings.KeySlots
                       || waited > CaptureTimeoutSeconds;
         string action = ControlBindings.Actions[Row - 1];
+        if (_mouse.Clicked && waited >= CaptureGraceSeconds) cancel = true; // clicking elsewhere gives up on this slot
         if (cancel) { EndCapture(); return; }
         if (waited < CaptureGraceSeconds) { input.TryCaptureKey(out _); input.TryCaptureButton(out _); return; }
 
@@ -191,6 +299,7 @@ public sealed class SettingsMenu(GameServices s)
         Tab = (SettingsTab)(((int)Tab + step + tabs) % tabs);
         Row = Math.Min(Row, RowCount);
         Column = 0;
+        _dragRow = 0;
         Beep();
     }
 

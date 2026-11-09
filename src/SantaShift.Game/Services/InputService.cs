@@ -185,6 +185,7 @@ public sealed class PlayerInputService : IInputService
 
         if (Raylib.GetMouseDelta().LengthSquared() > 4) UsingGamepad = false;
         if (Raylib.IsMouseButtonPressed(MouseButton.Left)) { Latch(InputAction.Click); UsingGamepad = false; }
+        if (Raylib.IsMouseButtonPressed(MouseButton.Right)) { Latch(InputAction.Back); UsingGamepad = false; } // right click backs out of menus
 
         // The first connected controller.
         _pad = -1;

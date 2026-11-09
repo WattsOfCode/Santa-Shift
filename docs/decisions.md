@@ -368,3 +368,31 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
   effects volume. Each screen reports `FireVolume` (0 everywhere but the workshop); the workshop sets it by the elf's
   distance from the fireplace light in room_layout.json (falling back to the coal scuttle), and halves it while paused.
 - **Not done:** left/right panning by camera angle; volume by distance is enough for one room.
+## 2026-11-09: Mouse in every menu; footsteps on the footfalls
+- **Mouse:** every menu takes the mouse: title, pause and its yes / no questions, Settings (tabs, rows, sliders that
+  follow a click or drag, key slots, Reset, an X to close), Unlocks (rows, X), Santa's list, results, the perk pick
+  (already did), and the punch-clock and recycle questions in the workshop (two buttons; the pointer is freed while
+  one is open). Moving the mouse over a choice selects it; a resting pointer never overrides the keys. Right click is
+  Back everywhere. Views record what they drew as clickable areas (`UiHits`), so a click always matches the picture;
+  `MenuMouse` reads pointer, movement and click once per step.
+- **Footsteps:** were one per 0.55 m walked, about 9 a second at 5 m/s, much faster than the legs. Now one on each of
+  the walk animation's two footfalls per 0.67 s loop (3 a second), the first as the elf sets off. The animation plays at
+  a fixed rate, so a speed perk makes the elf glide a little further per step rather than stepping faster.
+## 2026-11-09: Tutorial helpers on by default, with an off switch
+- **Problem:** the guide's default ("until you clear a round") switched it off for good after the first passed round,
+  so it seemed missing, and it was unclear where it went.
+- **Now:** one on/off setting, Settings > Game > Tutorial helpers, on by default. When on, round 1 of every run has the
+  lesson orders, floor arrows, hint and controls card; off, round 1 is a normal round. It is a new setting
+  (`tutorialHelpers`), so an old settings file loads cleanly and starts with the helpers on.
+- **Also on Santa's list:** a Tutorial: On/Off button (Tab / Y, or click) beside Start, the same saved setting, so
+  it can be switched right before the run without opening Settings.
+## 2026-11-09: Launcher icon (candy cane and holly)
+- **What:** a striped candy cane with a holly sprig (two leaves, three berries) on a night-blue tile with a gold rim,
+  in the GDD palette. Drawn by `tools/icon/make_icon.py` (standard library only, like `make_sfx.py`); run it again
+  after changing a shape or colour.
+- **Where it shows:** `SantaShift.exe` carries `Icon/santa_shift.ico` (16-256 px) as its `ApplicationIcon`, so
+  Explorer shows it. The game window sets its own title bar and taskbar icons from `Content/textures/icon_*.png` at
+  start, because GLFW doesn't use the .exe icon.
+- **Not done:** `Play Santa Shift.cmd` and `.command` are scripts and can't carry an icon. To get one, make a desktop
+  shortcut to `SantaShift.exe` (or to the .cmd, then Change Icon > `Icon/santa_shift.ico`). `Icon/santa_shift.icns` is
+  ready for a macOS .app bundle at release; macOS ignores the window icon call.

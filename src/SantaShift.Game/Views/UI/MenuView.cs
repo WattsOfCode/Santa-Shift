@@ -23,21 +23,34 @@ public sealed class MenuView
 
         string modeText = mode == GameMode.Relaxed ? "Relaxed" : "Standard";
         string[] items = ["Start shift", $"Mode:  {modeText}", "Unlocks", "Settings", "Quit"];
-        float y = 222;
-        for (int i = 0; i < items.Length; i++, y += 44)
+        float y = TitleItemsTop;
+        for (int i = 0; i < items.Length; i++, y += TitleItemStep)
             MenuItem(ui, items[i], y, i == selected, arrows: i == 1);
         ui.Text(mode == GameMode.Relaxed ? "Longer deadlines and a quota of 6: a gentler shift." : "Meet the quota to reach the next round. Miss it and the run is over.",
             480, 448, 15, Palette.Ice, Align.Center);
         if (best > 0) ui.Text($"Best ({mode}): {best} points, round {bestRound}", 480, 472, 15, Palette.Shade(Palette.Ice, 0.85f), Align.Center);
-        string arrowsHint = input.UsingGamepad ? "D-pad" : "Arrows";
-        ui.Text($"{arrowsHint}  Choose      {input.Label(InputAction.Confirm)}  Select      {input.Label(InputAction.Back)}  Quit",
+        string arrowsHint = input.UsingGamepad ? "D-pad" : "Arrows or mouse";
+        string selectHint = input.UsingGamepad ? input.Label(InputAction.Confirm) : $"{input.Label(InputAction.Confirm)} or click";
+        ui.Text($"{arrowsHint}  Choose      {selectHint}  Select      {input.Label(InputAction.Back)}  Quit",
             480, 508, 14, Palette.Shade(Palette.Snow, 0.65f), Align.Center);
+    }
+
+    private const float TitleItemsTop = 222, TitleItemStep = 44, ItemWidth = 300, ItemHeight = 40;
+    private const int TitleItemCount = 5;
+
+    /// <summary>Which title menu button is under <paramref name="p"/> (logical 960 x 540 coordinates), or -1.</summary>
+    public static int TitleItemAt(Vector2 p)
+    {
+        if (p.X < 480 - ItemWidth / 2 || p.X > 480 + ItemWidth / 2 || p.Y < TitleItemsTop) return -1;
+        int i = (int)((p.Y - TitleItemsTop) / TitleItemStep);
+        bool onButton = p.Y - TitleItemsTop - i * TitleItemStep <= ItemHeight; // not in the gap between two
+        return i < TitleItemCount && onButton ? i : -1;
     }
 
     /// <summary>One menu button; the selected one is gold with holly at its ends.</summary>
     private static void MenuItem(UiCanvas ui, string text, float y, bool selected, bool arrows = false)
     {
-        const float w = 300, h = 40, x = 480 - w / 2;
+        const float w = ItemWidth, h = ItemHeight, x = 480 - w / 2;
         ui.FillRounded(x, y, w, h, selected ? Palette.Gold : Palette.WithAlpha(Palette.Ink, 200), 0.45f);
         if (!selected) ui.OutlineRounded(x, y, w, h, Palette.WithAlpha(Palette.Snow, 70), 1.5f, 0.45f);
         ui.Text(text, 480, y + 9, 22, selected ? Palette.Ink : Palette.Snow, Align.Center);
@@ -55,12 +68,17 @@ public sealed class MenuView
     /// <param name="selected">0 resume, 1 restart, 2 settings, 3 quit to title.</param>
     public void DrawPause(UiCanvas ui, int selected, ControlBindings c, IInputService input)
     {
+        Hits.Clear();
         ui.Fill(0, 0, UiCanvas.Width, UiCanvas.Height, Palette.WithAlpha(Palette.Ink, 205));
         ui.Text("PAUSED", 250, 92, 48, Palette.Snow, Align.Center);
         string[] items = ["Resume", "Restart shift", "Settings", "Quit to title"];
         float y = 170;
-        for (int i = 0; i < items.Length; i++, y += 54) MenuItemAt(ui, 250, items[i], y, i == selected);
-        string arrowsHint = input.UsingGamepad ? "D-pad" : "Arrows";
+        for (int i = 0; i < items.Length; i++, y += 54)
+        {
+            MenuItemAt(ui, 250, items[i], y, i == selected);
+            Hits.Add(i, 250 - PauseItemWidth / 2, y, PauseItemWidth, PauseItemHeight);
+        }
+        string arrowsHint = input.UsingGamepad ? "D-pad" : "Arrows or mouse";
         ui.Text($"{arrowsHint}  Choose     {input.Label(InputAction.Confirm)}  Select     {input.Label(InputAction.Pause)}  Resume",
             250, 400, 14, Palette.Shade(Palette.Snow, 0.65f), Align.Center);
 
@@ -99,7 +117,7 @@ public sealed class MenuView
 
     private static void MenuItemAt(UiCanvas ui, float cx, string text, float y, bool selected)
     {
-        const float w = 280, h = 42;
+        const float w = PauseItemWidth, h = PauseItemHeight;
         float x = cx - w / 2;
         ui.FillRounded(x, y, w, h, selected ? Palette.Gold : Palette.WithAlpha(Palette.Snow, 25), 0.45f);
         ui.Text(text, cx, y + 10, 22, selected ? Palette.Ink : Palette.Snow, Align.Center);
@@ -108,11 +126,28 @@ public sealed class MenuView
         Festive.HollySprig(ui, x + w - 4, y + 4, -1f, 1f, 0.55f, 0.2f);
     }
 
-    public void DrawConfirm(UiCanvas ui, string question, IInputService input)
+    private const float PauseItemWidth = 280, PauseItemHeight = 42;
+
+    /// <summary>The buttons drawn last (pause items 0-3, or confirm Yes 0 / No 1), for the mouse.</summary>
+    public UiHits Hits { get; } = new();
+
+    /// <summary>A yes / no question with two buttons; <paramref name="hovered"/> is the one under the mouse (0 yes, 1 no).</summary>
+    public void DrawConfirm(UiCanvas ui, string question, IInputService input, int hovered = -1)
     {
+        Hits.Clear();
         ui.Fill(0, 0, UiCanvas.Width, UiCanvas.Height, Palette.WithAlpha(Palette.Ink, 220));
         ui.Text(question, 480, 210, 28, Palette.Snow, Align.Center);
-        ui.Text($"{input.Label(InputAction.Confirm)}  Yes        {input.Label(InputAction.Back)}  No", 480, 270, 22, Palette.Gold, Align.Center);
+        const float w = 170, h = 44, y = 262;
+        string[] labels = [$"{input.Label(InputAction.Confirm)}  Yes", $"{input.Label(InputAction.Back)}  No"];
+        for (int i = 0; i < 2; i++)
+        {
+            float x = i == 0 ? 480 - 12 - w : 480 + 12;
+            bool hot = hovered == i;
+            ui.FillRounded(x, y, w, h, hot ? Palette.Gold : Palette.WithAlpha(Palette.Snow, 25), 0.45f);
+            if (!hot) ui.OutlineRounded(x, y, w, h, Palette.WithAlpha(Palette.Gold, 140), 1.5f, 0.45f);
+            ui.Text(labels[i], x + w / 2, y + 11, 22, hot ? Palette.Ink : Palette.Gold, Align.Center);
+            Hits.Add(i, x, y, w, h);
+        }
     }
 
     public void DrawReady(UiCanvas ui, float secondsLeft)
@@ -122,21 +157,33 @@ public sealed class MenuView
         ui.Text($"{Math.Max(0.1f, secondsLeft):0.0}", 480, 286, 16, Palette.Snow, Align.Center);
     }
 
-    private const string Title = "SANTA SHIFT";
-    private const float TitleSize = 64, TitleY = 70;
+    private const string Title = "SANTA SHIFT", TitleThe = "The";
+    private const float TitleSize = 64, TitleY = 70, TheSize = 30, TheGap = 4, TheRaise = -5;
 
-    /// <summary>The title in festive red with a gold shadow, between two candy canes wrapped in holly.</summary>
+    /// <summary>
+    /// The title in festive red with a gold shadow, between two candy canes wrapped in holly. A smaller "The" sits in
+    /// front of it, raised a little; the pair is centred together.
+    /// </summary>
     private static void DrawTitleWithCanes(UiCanvas ui, double time, bool still)
     {
-        float half = ui.MeasureText(Title, TitleSize) / 2;
+        float titleW = ui.MeasureText(Title, TitleSize), theW = ui.MeasureText(TitleThe, TheSize);
+        float left = 480 - (theW + TheGap + titleW) / 2, right = left + theW + TheGap + titleW;
         float sway = still ? 0 : 0.035f * MathF.Sin((float)time * 1.2f);
-        Festive.CandyCane(ui, 480 - half - 44, TitleY - 12, TitleY + 100, hookSide: -1, sway: -sway);
-        Festive.CandyCane(ui, 480 + half + 44, TitleY - 12, TitleY + 100, hookSide: 1, sway: sway);
+        Festive.CandyCane(ui, left - 44, TitleY - 12, TitleY + 100, hookSide: -1, sway: -sway);
+        Festive.CandyCane(ui, right + 44, TitleY - 12, TitleY + 100, hookSide: 1, sway: sway);
 
-        foreach (var (dx, dy) in new[] { (-2f, 0f), (2f, 0f), (0f, -2f), (0f, 2f) })
-            ui.Text(Title, 480 + dx, TitleY + dy, TitleSize, Palette.Shade(Palette.Ink, 0.8f), Align.Center);
-        ui.Text(Title, 483, TitleY + 4, TitleSize, Palette.Gold, Align.Center);
-        ui.Text(Title, 480, TitleY, TitleSize, Festive.CaneRed, Align.Center);
+        Festive3(ui, TitleThe, left, TitleY - TheRaise, TheSize, 1.5f);
+        Festive3(ui, Title, left + theW + TheGap, TitleY, TitleSize, 2f);
+    }
+
+    /// <summary>Red lettering with a dark outline and a gold drop shadow, left-aligned at (x, y).</summary>
+    private static void Festive3(UiCanvas ui, string text, float x, float y, float size, float outline)
+    {
+        foreach (var (dx, dy) in new[] { (-outline, 0f), (outline, 0f), (0f, -outline), (0f, outline) })
+            ui.Text(text, x + dx, y + dy, size, Palette.Shade(Palette.Ink, 0.8f));
+        float shadow = size / 16;
+        ui.Text(text, x + shadow * 0.75f, y + shadow, size, Palette.Gold);
+        ui.Text(text, x, y, size, Festive.CaneRed);
     }
 
     /// <summary>A holly garland swagged along the top edge, with glass baubles hanging from where it is pinned up.</summary>

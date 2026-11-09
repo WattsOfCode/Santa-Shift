@@ -1,3 +1,5 @@
+using System.Numerics;
+using Raylib_cs;
 using SantaShift.Core.Models;
 using SantaShift.Game.App;
 using SantaShift.Game.Services;
@@ -6,7 +8,10 @@ using SantaShift.Game.Views.World;
 
 namespace SantaShift.Game.Controllers;
 
-/// <summary>Title screen: a short menu (start, mode, settings, quit), driven by keyboard or controller.</summary>
+/// <summary>
+/// Title screen: a short menu (start, mode, settings, quit), driven by keyboard, controller or mouse (hover to choose,
+/// click to select).
+/// </summary>
 public sealed class TitleController(GameServices s) : IScreen
 {
     public enum Item { Start, Mode, Unlocks, Settings, Quit }
@@ -17,6 +22,7 @@ public sealed class TitleController(GameServices s) : IScreen
     private readonly SettingsMenu _settings = new(s);
     private readonly UnlocksMenu _unlocks = new(s);
     private Item _selected = Item.Start;
+    private Vector2? _lastPointer; // hovering only changes the choice when the mouse moves, so it never fights the keys
 
     /// <summary>Debug builds only (--settings N): open the settings on tab N, for screenshots.</summary>
     public static int? DebugSettingsTab;
@@ -35,6 +41,18 @@ public sealed class TitleController(GameServices s) : IScreen
         if (_settings.IsOpen) { _settings.Update(); return; }
         if (_unlocks.IsOpen) { _unlocks.Update(); return; }
         var input = s.Input;
+
+        var pointer = UiCanvas.FromScreen(input.Pointer(), Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
+        bool moved = _lastPointer is { } last && Vector2.DistanceSquared(pointer, last) > 0.25f;
+        _lastPointer = pointer;
+        int hovered = MenuView.TitleItemAt(pointer);
+        if (moved && hovered >= 0 && hovered != (int)_selected) Select(hovered);
+        if (input.ConsumePressed(InputAction.Click) && hovered >= 0)
+        {
+            _selected = (Item)hovered;
+            Activate();
+            return;
+        }
 
         if (input.ConsumePressed(InputAction.MenuUp)) Select((int)_selected - 1);
         if (input.ConsumePressed(InputAction.MenuDown)) Select((int)_selected + 1);

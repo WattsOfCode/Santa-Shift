@@ -13,6 +13,8 @@ public sealed class ResultsController(GameServices s, ResultsSummary summary) : 
 {
     private readonly WorldView _world = new(s.Content, s.Assets, s.World);
     private readonly ResultsView _view = new();
+    private readonly MenuMouse _mouse = new(s.Input);
+    private int _hovered = -1;
 
     public ResultsSummary Summary => summary;
 
@@ -27,7 +29,11 @@ public sealed class ResultsController(GameServices s, ResultsSummary summary) : 
         if (_ticks == UnlockAtTick && summary.Unlocked.Count > 0) s.Audio.Play(SoundIds.Unlock);
 
         var run = summary.Run;
-        if (s.Input.ConsumePressed(InputAction.Confirm))
+        _mouse.Update();
+        _hovered = _view.Hits.At(_mouse.At);
+        bool next = _mouse.Clicked ? _hovered == 0 : s.Input.ConsumePressed(InputAction.Confirm);
+        bool back = _mouse.Clicked && _hovered == 1;
+        if (next)
         {
             s.Audio.Play(SoundIds.UiConfirm);
             if (summary.Passed)
@@ -39,7 +45,7 @@ public sealed class ResultsController(GameServices s, ResultsSummary summary) : 
                 s.Scenes.Switch(WorkshopController.NewRun(s, run.Mode));
             }
         }
-        else if (s.Input.ConsumePressed(InputAction.Back))
+        else if (back || s.Input.ConsumePressed(InputAction.Back))
         {
             if (summary.Passed) // leaving a passed run still counts it
             {
@@ -53,7 +59,7 @@ public sealed class ResultsController(GameServices s, ResultsSummary summary) : 
 
     public void DrawWorld() => _world.DrawRoom();
 
-    public void DrawUi(UiCanvas ui) => _view.Draw(ui, summary, s.Input);
+    public void DrawUi(UiCanvas ui) => _view.Draw(ui, summary, s.Input, _hovered);
 
     private void RecordEndedRun(RunProgress run)
     {

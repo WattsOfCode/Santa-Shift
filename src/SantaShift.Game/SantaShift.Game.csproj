@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>SantaShift.Game</RootNamespace>
     <AssemblyName>SantaShift</AssemblyName>
+    <ApplicationIcon>Icon\santa_shift.ico</ApplicationIcon> <!-- Explorer / taskbar icon of SantaShift.exe; drawn by tools/icon/make_icon.py -->
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks> <!-- Raylib pointers: model materials (lighting shader), animations and bone matrices -->
   </PropertyGroup>
 
