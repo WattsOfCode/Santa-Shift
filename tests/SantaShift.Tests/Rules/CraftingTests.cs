@@ -181,7 +181,15 @@ public class CraftingTests
         sim.Wait(sim.Tuning.Ticks(1.0));
         Assert.True(sim.State.CarriedItem!.HasRibbon);
 
+        // Still at the station: it says the ribbon went on, and another press does nothing.
+        Assert.Equal("ribbon_applied", sim.Prompt());
+        Assert.DoesNotContain(sim.Use("ribbon"), e => e.Type == SimEventType.Rejected);
+
+        // Coming back later with the same toy: it already has one.
+        sim.PlacePlayer(sim.StationById("shipping").Interact);
+        sim.Wait(1);
         Assert.Contains(sim.Use("ribbon"), e => e.Text == "already_ribboned");
+        Assert.Equal("already_ribboned", sim.Prompt());
     }
 
     [Fact]

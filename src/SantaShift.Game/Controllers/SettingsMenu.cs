@@ -42,9 +42,23 @@ public sealed class SettingsMenu(GameServices s)
     public Settings Settings => s.Settings;
     public IInputService Input => s.Input;
 
-    public void Open(SettingsTab tab = SettingsTab.Sound)
+    /// <summary>Settings > Game > Start over: only from the title screen, never in the middle of a run.</summary>
+    public bool CanResetProgress { get; private set; }
+
+    /// <summary>Start over was pressed once: pressing it again erases the progress (moving off the row cancels).</summary>
+    public bool ResetArmed { get; private set; }
+
+    /// <summary>The progress was just erased (the row says so until the menu closes).</summary>
+    public bool ResetDone { get; private set; }
+
+    public const int ResetProgressRow = 9;
+
+    /// <param name="canResetProgress">False from the pause menu: progress can only be erased between runs.</param>
+    public void Open(SettingsTab tab = SettingsTab.Sound, bool canResetProgress = true)
     {
         IsOpen = true;
+        CanResetProgress = canResetProgress;
+        ResetArmed = ResetDone = false;
         Tab = tab;
         Row = Math.Min(1, RowCount);
         Column = 0;
@@ -60,7 +74,7 @@ public sealed class SettingsMenu(GameServices s)
         SettingsTab.Sound => 4,
         SettingsTab.Controls => ControlBindings.Actions.Length + 1, // + reset
         SettingsTab.Credits => 0, // nothing to change: only the tab bar
-        _ => 8,
+        _ => ResetProgressRow,
     };
 
     public Core.Content.GameContent Content => s.Content;
@@ -83,6 +97,7 @@ public sealed class SettingsMenu(GameServices s)
         bool confirm = input.ConsumePressed(InputAction.Confirm);
         bool clear = input.ConsumePressed(InputAction.ClearBinding);
 
+        if (Tab != SettingsTab.Game || Row != ResetProgressRow) ResetArmed = false;
         if (Row == 0) { if (step != 0) SwitchTab(step); return; }
         switch (Tab)
         {
@@ -232,6 +247,15 @@ public sealed class SettingsMenu(GameServices s)
                     int at = Math.Max(0, Array.IndexOf(rates, st.FrameRate));
                     st.FrameRate = rates[(at + (step < 0 ? rates.Length - 1 : 1)) % rates.Length]; // applied by the game loop
                 }
+                break;
+            case ResetProgressRow:
+                // Two presses, like the punch clock: the first asks, the second erases. Left / right never trigger it.
+                if (!confirm) return;
+                if (!CanResetProgress || ResetDone) { s.Audio.Play(SoundIds.ActionRejected); return; }
+                if (!ResetArmed) { ResetArmed = true; s.Audio.Play(SoundIds.ActionRejected); return; }
+                s.ResetProgress();
+                ResetArmed = false;
+                ResetDone = true;
                 break;
         }
         if (step != 0 || confirm) Beep();

@@ -396,3 +396,52 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - **Not done:** `Play Santa Shift.cmd` and `.command` are scripts and can't carry an icon. To get one, make a desktop
   shortcut to `SantaShift.exe` (or to the .cmd, then Change Icon > `Icon/santa_shift.ico`). `Icon/santa_shift.icns` is
   ready for a macOS .app bundle at release; macOS ignores the window icon call.
+## 2026-11-09: Playtest round: steady orders, rising demands, longer rushes
+- **Steady flow from round 2:** playtesters hit idle time once the 3-card board was cleared and the next attempt was up
+  to 18 s away (and a full board skipped attempts outright). Round 1 stays as it was. From round 2 the shift opens with 2
+  letters, letters come every 16 s (1.5 s sooner each round, never under 10 s), the board holds 10, and whenever fewer
+  than 2 are waiting the next letter comes early (at most one per 2 s, with 6 reserve letters). Kits are stocked for the
+  whole plan, reserve included, so the sled still matters only after a botch or a scrap. Compact cards fit ten across.
+- **Demands by stage:** round 1 easy going (9), round 2 opens the floodgates with a small rise (10), round 3 raises the
+  demands (13), then +2 a round. Relaxed: 6, 7, 9, then +1.
+- **Longer rushes:** the two rush events are now 30-second windows (every order created in them is RUSH) instead of one
+  order each, and round 4, 7, 10... are rush shifts (every order). RUSH takes 10 s off a deadline instead of setting it to
+  45 s, so a ribbon order caught in a rush still gets its extra ribbon time.
+- **Ribbon station:** after tying, the prompt said "Already has a ribbon" because the elf was still standing there. It
+  now says "Red ribbon applied! Ready to ship" until the elf leaves; a press then does nothing. Coming back later with
+  the same toy says it already has one.
+- **Assembly policy notices:** Santa announces when the bench changes (mixed-up order, then moved keys), and a gold
+  "ASSEMBLY POLICY UPDATE" tag sits over the bench panel whenever the build isn't the plain 1, 2, 3.
+- **Text pass:** shorter Santa lines so none is cut off in the strip, warnings in one pattern ("Ribbon orders start in
+  5 seconds."), friendlier rejections ("This order needs a ribbon", "Nobody has asked for this"). Spelling is British
+  throughout (colour, favour, shovelling), matching the existing text.
+- **Watch in playtests:** a missed order costs 20 spirit, and a bigger board means more can expire. If spirit runs out
+  too often in rounds 3+, lengthen `flow.intervalSeconds` or lower `spirit.missed` first.
+## 2026-11-09: No console window; Start over
+- **Console:** players saw a console window. Two causes: the game was a console app, and `Play Santa Shift.cmd` showed
+  its build window. Release builds are now a windowed app (`WinExe`; Debug keeps the console for logs and the screenshot
+  tools). The launcher reopens itself minimised, builds quietly into `%TEMP%\santashift-build.log`, and closes once the
+  game starts; a failed build shows a message box and opens the log. The desktop shortcut starts it minimised too. With
+  no console, an unhandled crash now writes `santashift-error.log` next to the game (bad data already did).
+- **Start over:** Settings > Game > Start over erases unlocks, lifetime totals, the chosen hat and best scores, after a
+  second press (like the punch clock). Settings and controls stay. Only from the title screen: from the pause menu the
+  button is greyed out, so a run in progress can't lose its record halfway.
+- **Not done:** the Mac `.command` still opens Terminal; closing it from the script needs Terminal permissions we can't
+  test here.
+## 2026-11-09: Slow camera looks while walking were swallowed
+- **Problem:** holding the movement keys and moving the mouse sometimes didn't turn the camera. While the elf walks one
+  way, the auto-follow swings the camera round behind it; it stands down only while the player is steering, and that
+  was judged per frame (more than 1.5 px). At 120 fps a slow, deliberate look is about a pixel a frame, so it didn't
+  count, and the follow spring pulled the camera back each frame.
+- **Fix:** steering is judged on the last moment's movement summed with direction (decaying over 0.15 s, more than
+  2.5 px net). Slow steady looks count within a few frames; a resting trackpad's back-and-forth twitch still cancels out.
+- **Also possible on laptops:** Windows pauses a touchpad while keys are held (palm rejection). That is outside the
+  game; Settings > Bluetooth & devices > Touchpad > Touchpad sensitivity "Most sensitive" relaxes it, or use a mouse.
+## 2026-11-09: Warn before the bench changes
+- **Problem:** the assembly change was announced only once, a second into the shift on Santa's strip, where a new
+  letter or the next notice could replace it within seconds.
+- **Now, at every step:** the perk pick before the round has a gold strip under the cards ("Assembly policy update in
+  round 2: the parts go on in a different order every build. Read the ORDER line."); the READY countdown shows the same
+  strip; Santa still announces it a second in; and in that round the ASSEMBLY POLICY UPDATE tag over the bench panel
+  pulses with a white rim. AssemblyTuning.PolicyChange(mode, round) is the one place that decides it.
+

@@ -33,6 +33,7 @@ public sealed class Simulation
             LimitedKits = content.HasSupply,
             Modifiers = modifiers ?? RunModifiers.None,
             Tutorial = tutorial,
+            RushShift = !tutorial && content.Tuning.Rounds.IsRushShift(Math.Max(1, round)),
             Spirit = Math.Clamp(spirit ?? content.Tuning.Spirit.Start, 0, content.Tuning.Spirit.Max),
         };
         _motion = new PlayerMotion(content);
@@ -64,6 +65,9 @@ public sealed class Simulation
 
         _motion.Move(State, cmd.MoveX, cmd.MoveY);
         _crafting.Update(State, cmd.IsMoving, cmd.PartKey, _pending);
+        // "Ribbon applied" lasts while the elf stays at the ribbon station with that toy; coming back later says it already has one.
+        if (State.FreshRibbonRevision is { } fresh && (State.CarriedItem?.Revision != fresh || SelectedStation()?.Type != StationType.Ribbon))
+            State.FreshRibbonRevision = null;
         if (cmd.IsMoving || cmd.Cancel) State.RecyclePromptOpen = State.PunchPromptOpen = false;
 
         if (cmd.Interact) Interact();
@@ -149,6 +153,7 @@ public sealed class Simulation
                 : d.Message(item == null ? "bench_needs_kit" : "already_assembled"),
             StationType.Ribbon => item is { Stage: ItemStage.Assembled, HasRibbon: false }
                 ? d.Message("prompt_ribbon", ToyName(item))
+                : item is { HasRibbon: true } && item.Revision == State.FreshRibbonRevision ? RibbonApplied(item)
                 : d.Message(item == null ? "ribbon_needs_toy" : item.HasRibbon ? "already_ribboned" : "assemble_first"),
             StationType.Coal => item == null ? d.Message("prompt_coal") : d.Message("hands_full"),
             StationType.Clock => State.Delivered >= Quota ? d.Message("prompt_punch_out")
@@ -178,6 +183,11 @@ public sealed class Simulation
             ? Content.Dialogue.Message("item_ribboned_colour", name, colour.Name.ToLowerInvariant())
             : Content.Dialogue.Message("item_ribboned", name);
     }
+
+    /// <summary>"Red ribbon applied! Ready to ship".</summary>
+    private string RibbonApplied(Item item) => Tuning.FindRibbon(item.RibbonColor) is { } colour
+        ? Content.Dialogue.Message("ribbon_applied_colour", colour.Name)
+        : Content.Dialogue.Message("ribbon_applied");
 
     /// <summary>"Wheels", for a toy part id.</summary>
     public string PartName(string toyId, string partId) => _crafting.PartName(toyId, partId);

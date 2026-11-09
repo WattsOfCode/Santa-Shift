@@ -230,10 +230,18 @@ coal → empty. Empty → supply crate → empty at a bin. Invalid transitions a
 ## 9 Orders and scheduling
 
 Each card shows the child's name, toy icon and name, seconds left, a ribbon badge in the required colour, a RUSH badge,
-or a coal badge. All live cards are visible, sorted by earliest deadline.
+or a coal badge. All live cards are visible, sorted by earliest deadline. With more than three waiting, the top bar
+switches to compact cards (toy or coal, seconds left, a ribbon tab in the wanted colour, a RUSH tag), up to ten across.
 
-**Schedule** (seconds after the shift starts): 0, 18, 36 … 252 (15 attempts). An attempt creates one order only if fewer
-than three are live; otherwise it is skipped (no backlog, not counted as missed).
+**Round 1 schedule** (seconds after the shift starts): 0, 18, 36 … 252 (15 attempts). An attempt creates one order only
+if fewer than three are live; otherwise it is skipped (no backlog, not counted as missed).
+
+**From round 2: a steady flow** (`tuning.json > flow`). The training wheels come off:
+- The shift opens with 2 letters, then one every 16 s in round 2, 1.5 s sooner each round after (never under 10 s;
+  relaxed mode spaces them ×1.25). The last scheduled letter is at 260 s.
+- The board holds up to 10 orders.
+- Whenever fewer than 2 are waiting, the next letter arrives early (at most one every 2 s), so there is no idle time.
+  Six reserve letters in Santa's sack cover a fast elf who runs through the schedule.
 
 **Letters and the shift plan.** At the start of each run, Santa's naughty and nice list marks 3 children naughty; their
 orders want coal. At the start of each shift the order plan is fixed: the n-th order created takes the toy sequence (train,
@@ -251,7 +259,7 @@ real orders and count towards the quota (this replaces 0.1's separate untimed pr
 - One crate holds 2 kits, so one is left over. Every other bin holds everything the round needs.
 - `tuning.json > tutorial.shortKit` turns this off.
 
-**Deadlines:** 55 s; ribbon orders 65 s; rush 45 s. Relaxed mode ×1.5. Each round multiplies deadlines by 0.95 (never
+**Deadlines:** 55 s; ribbon orders 65 s; rush takes 10 s off either (45 s, or 55 s with a ribbon). Relaxed mode ×1.5. Each round multiplies deadlines by 0.95 (never
 below 0.7). Perks can lengthen them.
 
 **Expiry** removes the card, counts a miss, resets the streak, costs Christmas Spirit (−20) and shows "Order expired". It
@@ -269,13 +277,22 @@ Santa is a portrait and announcement strip in the HUD; he never stands on the fl
 | Warning | Active | Event | Effect |
 |---|---|---|---|
 | 55 s | 60 to 90 s | Presentation initiative | New orders need ribbons |
-| 115 s | 120 s until the next created order | Executive priority | The next created order is RUSH |
+| 115 s | 120 to 150 s | Executive priority | New orders are RUSH |
 | 175 s | 180 to 210 s | Festive compliance | New orders need ribbons |
-| 235 s | 240 s until the next created order | Last minute promise | The next created order is RUSH |
+| 235 s | 240 to 270 s | Last minute promise | New orders are RUSH |
 
-Ribbon windows include their start and exclude their end. Requirements are copied onto an order when it is created and
-never changed. A rush token survives skipped attempts and is used only when an order is created; it does not carry past
-shift end. Rush deliveries earn +25.
+Windows include their start and exclude their end. Requirements are copied onto an order when it is created and never
+changed. A rush event without an `endAt` is a single token instead: it survives skipped attempts and is used by the next
+created order, and does not carry past shift end. Rush deliveries earn +25.
+
+**Rush shifts.** Round 4, and every third round after it (7, 10...), is a rush shift: every order is RUSH. Santa
+announces it a second into the shift, the policy strip says so throughout, and the results screen warns about it the
+round before (`rounds.rushShiftFrom`, `rounds.rushShiftEvery`).
+
+**Assembly policy updates.** When the bench changes from the round before (the parts go on in a mixed-up order from
+round 2; they move to different keys from round 4), the player is warned before it starts: a gold strip on the perk
+pick and on the READY countdown, then Santa announces it a second into the shift. While building, a
+gold "ASSEMBLY POLICY UPDATE" tag over the bench panel says what is different whenever it isn't the plain 1, 2, 3.
 
 The warning states the exact effect 5 s ahead; the active banner is compact, with a captioned chime. Flavour lines fade
 after 5 s; the requirement stays on the card.
@@ -340,7 +357,9 @@ Menus, pause, perk picks, results and READY time never count as shift time. Game
 - Multipliers: JOLLY +10% (Christmas Spirit at 75% or more) and the Santa's Favour perk (+15% per stack).
 - Optional extra ribbons earn nothing. Misses never subtract points.
 
-**Rounds.** Quota 9 in round 1 (relaxed 6), +1 each round. Meet it and the next round starts after a perk pick, with
+**Rounds.** Round 1 is easy going; round 2 opens the floodgates on letters (Section 9) with only a small rise in the
+quota; from round 3 the demands climb. Quota 9, 10, 13, then +2 a round (15, 17...); relaxed 6, 7, 9, then +1 a round
+(`rounds.quotaIncreases`, `rounds.quotaIncrease`). Meet it and the next round starts after a perk pick, with
 shorter deadlines and a harder bench; miss it and the run is over. Score carries across rounds. Best score and furthest
 round are saved per mode.
 
@@ -426,15 +445,20 @@ companies, no required profanity.
 | Cue | Santa line | Mechanical text |
 |---|---|---|
 | intro | Welcome aboard. We are one big festive family. Your break is next year. | Collect a train kit. |
-| ribbon_warning | A memo from Branding. Apparently joy needs a bow. | In 5 seconds, new orders will require ribbons. |
-| ribbon_start | Every present deserves presentation. Especially mine. | New orders require ribbons for 30 seconds. |
-| rush_warning | I may have promised a very important child a very impossible deadline. | The next new order will be RUSH. |
-| ribbon_second | Good news. We have standardized the festive compliance initiative. | New orders require ribbons for 30 seconds. |
-| final_rush | One last tiny favor. It is only Christmas at stake. | The next new order will be RUSH. |
-| quota_met | Excellent. I shall mention my leadership in the newsletter. | Quota reached. Keep going for a higher score. |
+| ribbon_warning | A memo from Branding. Apparently joy needs a bow. | Ribbon orders start in 5 seconds. |
+| ribbon_start | Every present deserves presentation. Especially mine. | New orders need ribbons for 30 seconds. |
+| rush_warning | I promised a very important child a very impossible deadline. | Rush orders start in 5 seconds. |
+| rush_start | Faster, please. Faster is festive. | New orders are RUSH for 30 seconds. |
+| ribbon_second | Good news: the festive compliance initiative is now standard. | New orders need ribbons for 30 seconds. |
+| final_rush | One last tiny favour. It's only Christmas at stake. | Rush orders start in 5 seconds. |
+| rush_final | Last push! Think of the bonus I'll get. | New orders are RUSH for 30 seconds. |
+| rush_shift | Big news: this whole shift is a rush job. I believe in you. Mostly. | Rush shift: every order is RUSH. |
+| assembly_order | A memo from Engineering: we've reorganised the parts. Again. | Assembly policy update: new part order |
+| assembly_keys | Efficiency consultants rearranged the bench. Don't ask me why. | Assembly policy update: parts on new keys |
+| quota_met | Excellent. I shall mention my leadership in the newsletter. | Quota reached! Keep going for a higher score. |
 | review_pass | Another successful Christmas. My system works beautifully. | Shift complete. |
-| review_miss | Let us call this a development opportunity. | Quota missed. Try another shift. |
-| punched_out | Clocking off early? Quota's met, so... fine. I'll note your enthusiasm. | Punched out early. |
+| review_miss | Let's call this a development opportunity. | Quota missed. Try another shift. |
+| punched_out | Clocking off early? The quota's met, so... fine. I'll note your enthusiasm. | Punched out early. |
 | naughty_order | (naughty-list order line) | Coal order. |
 | spirit_out | (Christmas Spirit ran out) | The shift ends. |
 
@@ -534,7 +558,7 @@ src/SantaShift.Core/    Models, Rules (Simulation, OrderSystem, CraftingSystem, 
                         FloorPath, PlayerMotion), Content (JSON loading and validation), Persistence. No Raylib.
 src/SantaShift.Game/    App (window, fixed-step loop, screens), Controllers, Views/World (3D, lighting, effects),
                         Views/UI (HUD, menus), Services (input, audio, assets), Content/data|models|audio
-tests/SantaShift.Tests/ Rule, content and persistence tests (193 as of this version)
+tests/SantaShift.Tests/ Rule, content and persistence tests (206 as of this version)
 tools/blender/          Model generators and the export tool with rule checks
 source-assets/blender/  .blend sources (not shipped)
 docs/                   GDD, decision log, Blender export guide, playtests
@@ -648,7 +672,7 @@ round, clear requirements, pause, results, the core sound effects, credits, the 
 
 ## 24 Test plan and playtest protocol
 
-Automated tests protect rules whose failures lose progress, create unfair results or break restart (193 tests across
+Automated tests protect rules whose failures lose progress, create unfair results or break restart (206 tests across
 items, delivery, timing, events, orders, score, storage, rounds, perks, spirit and unlocks, supply and the shift sack,
 ribbon colours, the bench, naughty and nice, the tutorial, the punch clock, settings and content loading). Drawing code
 is not unit-tested; check it with screenshots and play.

@@ -55,6 +55,7 @@ public sealed class CraftingSystem(GameContent content, Random random)
         if (item.Stage == ItemStage.Botched) { output.Add(Reject(d.Message("botched_scrap_it"))); return; }
         if (item.IsCoal) { output.Add(Reject(d.Message("no_ribbon_for_coal"))); return; }
         if (item.Stage != ItemStage.Assembled) { output.Add(Reject(d.Message("assemble_first"))); return; }
+        if (item.HasRibbon && item.Revision == state.FreshRibbonRevision) return; // just tied: the prompt already says so
         if (item.HasRibbon) { output.Add(Reject(d.Message("already_ribboned"))); return; }
 
         // With ribbon colours, the elf first picks a spool (part keys, or a click on it); otherwise tying starts now.
@@ -203,6 +204,7 @@ public sealed class CraftingSystem(GameContent content, Random random)
         item.Revision = state.NextId();
         item.HasRibbon = true;
         item.RibbonColor = action.RibbonColor;
+        state.FreshRibbonRevision = item.Revision;
         output.Add(new SimEvent(SimEventType.RibbonComplete, ToyId: item.ToyId));
     }
 

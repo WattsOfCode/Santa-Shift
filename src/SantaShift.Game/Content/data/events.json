@@ -1,16 +1,16 @@
 // Santa's policy schedule (GDD section 10). Times in seconds after the shift starts.
 // ribbonWindow: orders created from startAt (included) to endAt (excluded) need ribbons.
-// rush: the next order actually created after startAt is RUSH.
+// rush: orders created from startAt (included) to endAt (excluded) are RUSH. Without endAt, only the next order is.
 // Cue names refer to entries in dialogue.json.
 {
   "events": [
     { "id": "presentation", "type": "ribbonWindow", "warnAt": 55,  "startAt": 60,  "endAt": 90,
       "warningCue": "ribbon_warning", "startCue": "ribbon_start" },
-    { "id": "executive",    "type": "rush",         "warnAt": 115, "startAt": 120,
-      "warningCue": "rush_warning" },
+    { "id": "executive",    "type": "rush",         "warnAt": 115, "startAt": 120, "endAt": 150,
+      "warningCue": "rush_warning", "startCue": "rush_start" },
     { "id": "compliance",   "type": "ribbonWindow", "warnAt": 175, "startAt": 180, "endAt": 210,
       "warningCue": "ribbon_warning", "startCue": "ribbon_second" },
-    { "id": "last_minute",  "type": "rush",         "warnAt": 235, "startAt": 240,
-      "warningCue": "final_rush" }
+    { "id": "last_minute",  "type": "rush",         "warnAt": 235, "startAt": 240, "endAt": 270,
+      "warningCue": "final_rush", "startCue": "rush_final" }
   ]
 }

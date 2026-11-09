@@ -9,6 +9,13 @@ public static class Program
     {
         string dataDir = Path.Combine(AppContext.BaseDirectory, "Content", "data");
 
+        // Release builds have no console to print to, so a crash leaves its details in a log next to the game.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            try { File.WriteAllText(Path.Combine(AppContext.BaseDirectory, "santashift-error.log"), e.ExceptionObject.ToString()); }
+            catch (IOException) { } catch (UnauthorizedAccessException) { }
+        };
+
         GameContent content;
         try
         {
@@ -55,6 +62,8 @@ public static class Program
             else if (args[i] == "--naughty" && i + 1 < args.Length) Controllers.WorkshopController.DebugNaughty = args[++i].Split(',');
             else if (args[i] == "--at" && i + 1 < args.Length) Controllers.WorkshopController.DebugAt = args[++i];
             else if (args[i] == "--use") Controllers.WorkshopController.DebugUse = true;
+            else if (args[i] == "--round" && i + 1 < args.Length && int.TryParse(args[++i], out int round)) Controllers.WorkshopController.DebugRound = round;
+            else if (args[i] == "--skip" && i + 1 < args.Length && double.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out double skip)) Controllers.WorkshopController.DebugSkip = skip;
             else if (args[i] == "--carry" && i + 1 < args.Length)
             {
                 var parts = args[++i].Split(':');

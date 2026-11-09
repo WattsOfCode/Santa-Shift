@@ -93,7 +93,7 @@ public sealed class PauseController(GameServices s, Simulation sim, Action resta
         {
             case Item.Resume: Resume(); break;
             case Item.Restart: Ask(PauseState.ConfirmRestart); break;
-            case Item.Settings: _settings.Open(); break;
+            case Item.Settings: _settings.Open(canResetProgress: false); break;
             case Item.Quit: Ask(PauseState.ConfirmQuit); break;
         }
     }
@@ -118,6 +118,14 @@ public sealed class PauseController(GameServices s, Simulation sim, Action resta
         BeginReady(); // resume needs an explicit action, then a 1 second READY
     }
 
+    /// <summary>During READY: the warning when this round's bench works differently from the last.</summary>
+    private string? ReadyWarning() => sim.Tuning.Assembly.PolicyChange(sim.State.Mode, sim.State.Round) switch
+    {
+        "assembly_keys" => s.Content.Dialogue.Message("assembly_warn_keys", sim.State.Round),
+        "assembly_order" => s.Content.Dialogue.Message("assembly_warn_order", sim.State.Round),
+        _ => null,
+    };
+
     public void Draw(UiCanvas ui)
     {
         switch (State)
@@ -128,7 +136,7 @@ public sealed class PauseController(GameServices s, Simulation sim, Action resta
                 break;
             case PauseState.ConfirmRestart: _menu.DrawConfirm(ui, "Restart this shift?", s.Input, _confirmHovered); break;
             case PauseState.ConfirmQuit: _menu.DrawConfirm(ui, "Quit to title? This shift will be lost.", s.Input, _confirmHovered); break;
-            case PauseState.Ready: _menu.DrawReady(ui, _readyLeft / 60f); break;
+            case PauseState.Ready: _menu.DrawReady(ui, _readyLeft / 60f, ReadyWarning()); break;
         }
     }
 }

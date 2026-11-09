@@ -8,16 +8,34 @@ public sealed class OrderSystem(GameContent content)
 {
     private readonly Tuning _t = content.Tuning;
 
-    /// <summary>Runs every scheduled spawn attempt that is due. A full board skips the attempt; nothing is queued.</summary>
+    /// <summary>
+    /// Runs every scheduled spawn attempt that is due. A full board skips the attempt; nothing is queued. From the second
+    /// round, when the board runs low the next letter arrives early, so there is always something to do.
+    /// </summary>
     public void SpawnScheduled(RunState state, List<SimEvent> output)
     {
-        var times = _t.SpawnTimes;
-        while (state.NextSpawnIndex < times.Length && _t.Ticks(times[state.NextSpawnIndex]) <= state.Tick)
+        var times = state.SpawnTicks;
+        int max = _t.MaxLiveFor(state.Round);
+        while (state.NextSpawnIndex < times.Length && times[state.NextSpawnIndex] <= state.Tick)
         {
             state.NextSpawnIndex++;
-            if (state.LiveOrders.Count >= _t.MaxLiveOrders) { state.SkippedSpawns++; continue; }
-            output.Add(new SimEvent(SimEventType.OrderCreated, OrderId: Create(state).Id));
+            if (state.LiveOrders.Count >= max) { state.SkippedSpawns++; continue; }
+            Spawn(state, output);
         }
+
+        int min = _t.MinLiveFor(state.Round);
+        if (state.LiveOrders.Count < Math.Min(min, max) && state.NextSpawnIndex < times.Length
+            && state.Tick - state.LastSpawnTick >= _t.Ticks(_t.Flow.RefillSeconds))
+        {
+            state.NextSpawnIndex++;
+            Spawn(state, output);
+        }
+    }
+
+    private void Spawn(RunState state, List<SimEvent> output)
+    {
+        state.LastSpawnTick = state.Tick;
+        output.Add(new SimEvent(SimEventType.OrderCreated, OrderId: Create(state).Id));
     }
 
     /// <summary>
@@ -30,9 +48,10 @@ public sealed class OrderSystem(GameContent content)
     {
         state.OrderPlan.Clear();
         state.LetterCursor.Clear();
+        state.SpawnTicks = _t.SpawnTicksFor(state.Mode, state.Round);
         var tut = _t.Tutorial;
         string[] sequence = _t.ToySequence;
-        for (int i = 0; i < _t.SpawnTimes.Length; i++)
+        for (int i = 0; i < state.SpawnTicks.Length; i++)
         {
             // Lesson round with a short kit: after the lesson, the last lesson order's toy isn't asked for again, so its
             // bin really is empty when that order comes in (see TutorialTuning.ShortKit).
@@ -58,7 +77,7 @@ public sealed class OrderSystem(GameContent content)
 
     /// <summary>The lesson ends on a plain toy whose bin can start one kit short (needs a sled and a full lesson).</summary>
     private bool LessonShortKit(RunState state) =>
-        _t.Tutorial.ShortKit && content.HasSupply && _t.Tutorial.Orders >= 1 && _t.Tutorial.Orders <= _t.SpawnTimes.Length
+        _t.Tutorial.ShortKit && content.HasSupply && _t.Tutorial.Orders >= 1 && _t.Tutorial.Orders <= state.SpawnTicks.Length
         && state.OrderPlan.Count >= _t.Tutorial.Orders && !state.OrderPlan[_t.Tutorial.Orders - 1].Naughty;
 
     /// <summary>The <paramref name="n"/>-th order of the shift (1-based): its toy, letter and whether the child is naughty.</summary>
@@ -91,7 +110,7 @@ public sealed class OrderSystem(GameContent content)
             : PlanOrder(state, state.OrdersCreated + 1, _t.ToySequence[state.OrdersCreated % _t.ToySequence.Length]);
         var (toyId, letter, naughty) = (plan.ToyId, plan.Letter, plan.Naughty);
         bool ribbon = state.Events.RibbonActive(state.Tick);
-        bool rush = state.Events.PendingRush;
+        bool rush = state.RushShift || state.Events.RushActive(state.Tick) || state.Events.PendingRush;
         state.Events.PendingRush = false;
 
         bool guided = state.Tutorial && state.TutorialOrderIds.Count < _t.Tutorial.Orders;
@@ -103,7 +122,9 @@ public sealed class OrderSystem(GameContent content)
         }
         if (naughty) ribbon = false; // coal never needs a ribbon
 
-        double seconds = rush ? _t.RushDeadlineSeconds : ribbon ? _t.RibbonDeadlineSeconds : _t.DeadlineSeconds;
+        // RUSH takes the same time off either deadline, so a rush order that also needs a ribbon keeps its extra time.
+        double seconds = (ribbon ? _t.RibbonDeadlineSeconds : _t.DeadlineSeconds)
+            - (rush ? _t.DeadlineSeconds - _t.RushDeadlineSeconds : 0);
         seconds *= _t.DeadlineMultiplier(state.Mode, state.Round) * state.Modifiers.DeadlineMultiplier;
         long allowed = _t.Ticks(seconds);
 

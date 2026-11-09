@@ -19,12 +19,24 @@ public sealed class GameServices
     public required WorldSpace World { get; init; }
 
     public required Settings Settings { get; init; }
-    public required PersonalBest Best { get; init; }
+    public required PersonalBest Best { get; set; }
 
     /// <summary>Lifetime totals and unlocks, kept between runs.</summary>
-    public required PlayerProgress Progress { get; init; }
+    public required PlayerProgress Progress { get; set; }
 
     public void SaveProgress() => Save.SaveProgress(Progress);
+
+    /// <summary>
+    /// Start from scratch: forgets the unlocks, lifetime totals, chosen hat and best scores, and saves that at once.
+    /// Settings and controls are kept.
+    /// </summary>
+    public void ResetProgress()
+    {
+        Progress = new PlayerProgress();
+        Best = new PersonalBest();
+        Save.SaveProgress(Progress);
+        Save.SaveBest(Best);
+    }
 
     /// <summary>The hat colour the player chose from their unlocks, or null for the classic red.</summary>
     public Raylib_cs.Color? HatColour =>

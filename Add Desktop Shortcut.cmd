@@ -11,6 +11,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
   "$link.WorkingDirectory = $here;" ^
   "$link.IconLocation = (Join-Path $here 'src\SantaShift.Game\Icon\santa_shift.ico') + ',0';" ^
   "$link.Description = 'Play Santa Shift';" ^
+  "$link.WindowStyle = 7;" ^
   "$link.Save();" ^
   "Write-Host ('Made the shortcut: ' + (Join-Path $desktop 'Santa Shift.lnk'))"
 if errorlevel 1 (

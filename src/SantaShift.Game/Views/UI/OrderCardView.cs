@@ -8,6 +8,9 @@ public sealed class OrderCardView(GameContent content)
 {
     public const float Width = 248, Height = 72;
 
+    /// <summary>The widest a compact card gets (they shrink to fit ten on the top bar).</summary>
+    public const float CompactMaxWidth = 110;
+
     public void Draw(UiCanvas ui, Order order, long tick, float x, float y)
     {
         var t = content.Tuning;
@@ -50,6 +53,47 @@ public sealed class OrderCardView(GameContent content)
         float frac = order.AllowedDurationTicks > 0 ? (float)remaining / order.AllowedDurationTicks : 0;
         ui.Fill(x + 8, y + Height - 6, Width - 16, 3, Palette.WithAlpha(Palette.Ink, 40));
         ui.Fill(x + 8, y + Height - 6, (Width - 16) * frac, 3, urgent ? Palette.Berry : Palette.Pine);
+    }
+
+    /// <summary>
+    /// A small card for a busy board: the toy (or coal) and the seconds left, a ribbon tab in the wanted color, and a
+    /// RUSH tag. Same colors and outline rules as the full card.
+    /// </summary>
+    public void DrawCompact(UiCanvas ui, Order order, long tick, float x, float y, float w)
+    {
+        var t = content.Tuning;
+        var toy = content.FindToy(order.ToyId);
+        long remaining = order.RemainingTicks(tick);
+        double seconds = (double)remaining / t.TicksPerSecond;
+        bool urgent = seconds <= 10;
+        float h = Height;
+
+        ui.FillRounded(x, y, w, h, order.Naughty ? Palette.Hex("#EBDDBF") : Palette.Snow, 0.2f);
+        if (order.IsRush || order.Naughty) ui.OutlineRounded(x, y, w, h, Palette.Berry, 3, 0.2f);
+
+        float cx = x + w / 2;
+        if (order.Naughty) ToyIcon.Draw(ui, Item.CoalId, cx, y + 27, 30, Palette.Ink);
+        else ToyIcon.Draw(ui, order.ToyId, cx, y + 27, 30, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
+
+        if (order.IsRush)
+        {
+            float rw = ui.MeasureText("RUSH", 10) + 6;
+            ui.FillRounded(x + 4, y + 4, rw, 13, Palette.Berry, 0.5f);
+            ui.Text("RUSH", x + 7, y + 5, 10, Palette.Snow);
+        }
+        if (order.RequiresRibbon)
+        {
+            var ribbon = t.FindRibbon(order.RibbonColor);
+            var bg = ribbon != null ? Palette.Hex(ribbon.Color) : Palette.Gold;
+            ui.FillRounded(x + w - 20, y + 4, 16, 13, bg, 0.5f);
+            ui.OutlineRounded(x + w - 20, y + 4, 16, 13, Palette.WithAlpha(Palette.Ink, 90), 1, 0.5f);
+        }
+
+        ui.Text($"{(int)Math.Ceiling(seconds)}s", cx, y + 46, 16, urgent ? Palette.Berry : Palette.Ink, Align.Center);
+
+        float frac = order.AllowedDurationTicks > 0 ? (float)remaining / order.AllowedDurationTicks : 0;
+        ui.Fill(x + 6, y + h - 6, w - 12, 3, Palette.WithAlpha(Palette.Ink, 40));
+        ui.Fill(x + 6, y + h - 6, (w - 12) * frac, 3, urgent ? Palette.Berry : Palette.Pine);
     }
 
     private static float Badge(UiCanvas ui, string text, float x, float y, Raylib_cs.Color bg, Raylib_cs.Color fg)

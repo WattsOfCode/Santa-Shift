@@ -2,7 +2,9 @@
 
 Finish your shift in Santa's workshop while your boss keeps shifting the rules.
 A small third-person 3D time-management game for **Game Off 2026** (theme: SHIFT).
-Meet each round's quota to move on to a harder round; miss it and the run is over.
+Meet each round's quota to move on to a harder round; miss it and the run is over. Round 1 is easy going; from round 2
+the letters keep coming (up to ten on the board), from round 3 the quota climbs, and every third round from round 4 is
+a rush shift where every order is RUSH.
 
 Built in C# with .NET 10 and [Raylib-cs](https://github.com/ChrisDill/Raylib-cs). No engine. Models are made in Blender.
 
@@ -52,7 +54,9 @@ the shift ends there and so does the run. Tuned in tuning.json > spirit.
 
 **Unlocks.** Lifetime totals (toys and coal delivered, furthest round, runs played) unlock more perks for Santa to
 offer, hat colours for your elf (pick one in **Unlocks** on the title screen), and a Head Start perk before round 1.
-They are listed in `unlocks.json` and saved in progress.json next to your settings.
+They are listed in `unlocks.json` and saved in progress.json next to your settings. To start from scratch, use
+**Settings > Game > Start over** on the title screen (press it twice): it erases unlocks, best scores and totals, and
+keeps your settings and controls.
 
 **Kit bins run out.** When a shift starts, Santa fills the bins once with one kit for every toy the shift's letters
 will ask for (the label says how many are left). Nothing tops them up during the shift. Botch or scrap a kit and that
@@ -72,7 +76,8 @@ Battery Boost can hold games to 30 fps: plug in or turn it off.
 ## Build and run
 
 Requires the .NET 10 SDK. Double-click **`Play Santa Shift.cmd`** (Windows) or **`Play Santa Shift.command`** (Mac) to
-build the latest code and play. On Windows, double-click **`Add Desktop Shortcut.cmd`** once for a Santa Shift
+build the latest code and play. On Windows the build runs in a minimised window that closes when the game starts, and
+the game has no console window; if the build fails, a message says so and the details open in Notepad. On Windows, double-click **`Add Desktop Shortcut.cmd`** once for a Santa Shift
 shortcut on your desktop with the game's candy cane icon. On a Mac, macOS blocks a downloaded script the first time: open System Settings >
 Privacy & Security and click Open Anyway, or run `bash "Play Santa Shift.command"` in Terminal from the game folder.
 If double-clicking says it can't be run, run `chmod +x "Play Santa Shift.command"` once. Tested on an Intel Mac

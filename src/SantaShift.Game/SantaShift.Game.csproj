@@ -2,6 +2,8 @@
   <!-- Views, controllers and the Raylib window. -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- Release builds are a windowed app, so Windows opens no console window next to the game. Debug keeps the console for logs. -->
+    <OutputType Condition="'$(Configuration)' == 'Release'">WinExe</OutputType>
     <RootNamespace>SantaShift.Game</RootNamespace>
     <AssemblyName>SantaShift</AssemblyName>
     <ApplicationIcon>Icon\santa_shift.ico</ApplicationIcon> <!-- Explorer / taskbar icon of SantaShift.exe; drawn by tools/icon/make_icon.py -->

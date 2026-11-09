@@ -34,7 +34,13 @@ public sealed class SantaPanelView
             int secs = (int)Math.Ceiling((double)(e.RibbonWindowEndTick - sim.State.Tick) / sim.Tuning.TicksPerSecond);
             parts.Add($"POLICY: new orders need ribbons ({secs}s)");
         }
-        if (e.PendingRush) parts.Add("POLICY: next new order is RUSH");
+        if (sim.State.RushShift) parts.Add("POLICY: rush shift, every order is RUSH");
+        else if (e.RushActive(sim.State.Tick))
+        {
+            int secs = (int)Math.Ceiling((double)(e.RushWindowEndTick - sim.State.Tick) / sim.Tuning.TicksPerSecond);
+            parts.Add($"POLICY: new orders are RUSH ({secs}s)");
+        }
+        else if (e.PendingRush) parts.Add("POLICY: the next new order is RUSH");
         return string.Join("   ", parts);
     }
 

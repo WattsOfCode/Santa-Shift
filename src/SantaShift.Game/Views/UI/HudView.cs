@@ -50,12 +50,22 @@ public sealed class HudView(GameContent content, IInputService input)
         ui.Text($"{whole / 60}:{whole % 60:00}", 85, 29, 32, secondsLeft <= 30 ? Palette.Berry : Palette.Snow, Align.Center);
         DrawSpirit(ui, sim, 18, 64, 134);
 
+        // Up to three full cards; when more letters are waiting (from round 2 the board holds up to ten), compact cards.
         var orders = state.LiveOrders.OrderBy(o => o.DeadlineTick).ThenBy(o => o.CreatedTick).ThenBy(o => o.Id).ToList();
-        for (int i = 0; i < t.MaxLiveOrders && i < 3; i++)
+        if (orders.Count <= 3)
         {
-            float x = 172 + i * (OrderCardView.Width + 10);
-            if (i < orders.Count) _card.Draw(ui, orders[i], state.Tick, x, 8);
-            else ui.OutlineRounded(x, 8, OrderCardView.Width, OrderCardView.Height, Palette.WithAlpha(Palette.Snow, 70), 2, 0.18f);
+            for (int i = 0; i < t.MaxLiveFor(state.Round) && i < 3; i++)
+            {
+                float x = 172 + i * (OrderCardView.Width + 10);
+                if (i < orders.Count) _card.Draw(ui, orders[i], state.Tick, x, 8);
+                else ui.OutlineRounded(x, 8, OrderCardView.Width, OrderCardView.Height, Palette.WithAlpha(Palette.Snow, 70), 2, 0.18f);
+            }
+        }
+        else
+        {
+            const float left = 172, right = UiCanvas.Width - 10, gap = 6;
+            float w = Math.Min(OrderCardView.CompactMaxWidth, (right - left - gap * (orders.Count - 1)) / orders.Count);
+            for (int i = 0; i < orders.Count; i++) _card.DrawCompact(ui, orders[i], state.Tick, left + i * (w + gap), 8, w);
         }
 
         _santa.Draw(ui, sim, feedback, 10, 84, UiCanvas.Width - 20, 26);
@@ -95,7 +105,7 @@ public sealed class HudView(GameContent content, IInputService input)
         ui.Text($"PICK A RIBBON FOR THE {toy.ToUpperInvariant()}", x + 12, y + 7, 14, Palette.Ice);
         if (wants.Count == 0)
         {
-            ui.Text("No letter asks for a colour: any ribbon will do.", x + 12, y + 32, 16, Palette.Snow);
+            ui.Text("No letter asks for a colour, so any ribbon will do.", x + 12, y + 32, 16, Palette.Snow);
             return;
         }
         float tx = x + 12;

@@ -74,6 +74,18 @@ public sealed class RunState
     public List<Order> LiveOrders { get; } = new();
     public List<Order> ClosedOrders { get; } = new();
     public int NextSpawnIndex { get; set; }
+
+    /// <summary>When each planned letter arrives (ticks), from <see cref="Content.Tuning.SpawnTicksFor"/>.</summary>
+    public long[] SpawnTicks { get; set; } = [];
+
+    /// <summary>When the last letter arrived (early letters keep a gap from it).</summary>
+    public long LastSpawnTick { get; set; } = long.MinValue / 4;
+
+    /// <summary>A rush shift: every order created is RUSH (see <see cref="Content.RoundTuning.IsRushShift"/>).</summary>
+    public bool RushShift { get; init; }
+
+    /// <summary>The toy that has just had its ribbon tied, while the elf is still at the ribbon station.</summary>
+    public int? FreshRibbonRevision { get; set; }
     public int OrdersCreated { get; set; }
     public int SkippedSpawns { get; set; }
     public Dictionary<string, int> LetterCursor { get; } = new();

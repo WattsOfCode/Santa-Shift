@@ -152,6 +152,30 @@ public sealed class SettingsView
             Settings.Unlimited => "Unlimited",
             var fps => $"{fps} fps",
         });
+        DrawStartOver(ui, m);
+    }
+
+    /// <summary>
+    /// Settings > Game > Start over: a red button that erases unlocks, best scores and totals after a second press.
+    /// </summary>
+    private void DrawStartOver(UiCanvas ui, SettingsMenu m)
+    {
+        int row = SettingsMenu.ResetProgressRow;
+        float y = RowsTop + (row - 1) * RowH + 6;
+        bool selected = m.Row == row;
+        string text = m.ResetDone ? "Progress erased. Your next run starts fresh!"
+            : !m.CanResetProgress ? "Start over (only from the title screen)"
+            : m.ResetArmed ? "Are you sure? Press again to erase all progress"
+            : "Start over: erase unlocks, best scores and totals";
+        float w = ui.MeasureText(text, 16) + 40, x = X + W / 2 - w / 2;
+        var fill = m.ResetDone ? Palette.Pine
+            : !m.CanResetProgress ? Palette.WithAlpha(Palette.Snow, 20)
+            : m.ResetArmed ? Palette.Berry
+            : selected ? Palette.Shade(Palette.Berry, 0.8f) : Palette.WithAlpha(Palette.Berry, 90);
+        ui.FillRounded(x, y - 2, w, 24, fill, 0.4f);
+        if (selected) ui.OutlineRounded(x - 2, y - 4, w + 4, 28, Palette.Gold, 2, 0.4f);
+        ui.Text(text, X + W / 2, y + 1, 16, m.CanResetProgress || m.ResetDone ? Palette.Snow : Palette.Shade(Palette.Snow, 0.6f), Align.Center);
+        Hits.Add(RowId(row), x, y - 2, w, 24);
     }
 
     /// <summary>Settings > Credits: credits.json in two columns, with the copyright footer across the bottom.</summary>

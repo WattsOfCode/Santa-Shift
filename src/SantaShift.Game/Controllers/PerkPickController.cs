@@ -86,6 +86,16 @@ public sealed class PerkPickController : IScreen
     {
         var t = _s.Content.Tuning;
         _view.Draw(ui, _s.Content.Dialogue, _run, Offers, _selected, Offers.Count > t.PerkOffers && !BeforeFirstRound,
-            BeforeFirstRound, t.QuotaFor(_run.Mode, BeforeFirstRound ? 1 : _run.Round + 1), _s.Input, Raylib.GetTime(), _s.Settings.ReducedMotion);
+            BeforeFirstRound, t.QuotaFor(_run.Mode, BeforeFirstRound ? 1 : _run.Round + 1), _s.Input, Raylib.GetTime(), _s.Settings.ReducedMotion,
+            AssemblyWarning(t));
     }
+
+    /// <summary>The warning for next round's bench change, if the bench changes.</summary>
+    private string? AssemblyWarning(Core.Content.Tuning t) =>
+        BeforeFirstRound ? null : t.Assembly.PolicyChange(_run.Mode, _run.Round + 1) switch
+        {
+            "assembly_keys" => _s.Content.Dialogue.Message("assembly_warn_keys", _run.Round + 1),
+            "assembly_order" => _s.Content.Dialogue.Message("assembly_warn_order", _run.Round + 1),
+            _ => null,
+        };
 }

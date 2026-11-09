@@ -10,12 +10,17 @@ public class RoundTests
     private static readonly Tuning T = new();
 
     [Fact]
-    public void Quota_rises_by_one_each_round()
+    public void Quota_rises_a_little_in_round_2_then_steeply_from_round_3()
     {
         Assert.Equal(9, T.QuotaFor(GameMode.Standard, 1));
         Assert.Equal(10, T.QuotaFor(GameMode.Standard, 2));
-        Assert.Equal(13, T.QuotaFor(GameMode.Standard, 5));
+        Assert.Equal(13, T.QuotaFor(GameMode.Standard, 3));
+        Assert.Equal(15, T.QuotaFor(GameMode.Standard, 4));
+        Assert.Equal(17, T.QuotaFor(GameMode.Standard, 5));
+        Assert.Equal(6, T.QuotaFor(GameMode.Relaxed, 1));
         Assert.Equal(7, T.QuotaFor(GameMode.Relaxed, 2));
+        Assert.Equal(9, T.QuotaFor(GameMode.Relaxed, 3));
+        Assert.Equal(10, T.QuotaFor(GameMode.Relaxed, 4));
     }
 
     [Fact]
@@ -36,9 +41,9 @@ public class RoundTests
         round3.Wait(1);
 
         Assert.Equal(3, round3.State.Round);
-        Assert.Equal(11, round3.Quota);
-        Assert.True(round3.State.LiveOrders.Single().AllowedDurationTicks < round1.State.LiveOrders.Single().AllowedDurationTicks);
-        Assert.Equal(T.Ticks(55 * 0.95 * 0.95), round3.State.LiveOrders.Single().AllowedDurationTicks);
+        Assert.Equal(13, round3.Quota);
+        Assert.True(round3.State.LiveOrders.First().AllowedDurationTicks < round1.State.LiveOrders.Single().AllowedDurationTicks);
+        Assert.Equal(T.Ticks(55 * 0.95 * 0.95), round3.State.LiveOrders.First().AllowedDurationTicks);
     }
 
     [Fact]

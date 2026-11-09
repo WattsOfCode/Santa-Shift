@@ -53,8 +53,12 @@ public sealed class CameraController
     {
         float step = _shoulder.BlendSeconds > 0 ? dt / _shoulder.BlendSeconds : 1;
         ShoulderBlend = Math.Clamp(ShoulderBlend + (work != null ? step : -step), 0, 1);
-        // A trackpad resting under a finger twitches by a pixel or so: that is not the player taking the camera.
-        bool mouseMoved = mouseDelta.LengthSquared() > JitterPixels * JitterPixels;
+        // Is the player steering the camera? Judged on the movement of the last moment, not one frame: at a high frame
+        // rate a slow, deliberate look is under a pixel or two per frame, and judging each frame alone let the
+        // auto-follow swing the camera back while the elf walked. A resting trackpad's back-and-forth twitch cancels
+        // out in the sum, so it still doesn't count.
+        _lookDrift = _lookDrift * MathF.Exp(-dt / LookWindowSeconds) + mouseDelta;
+        bool mouseMoved = mouseDelta != Vector2.Zero && _lookDrift.LengthSquared() > JitterPixels * JitterPixels;
         if (mouseMoved) _mouseMovedSinceInput = true;
 
         if (work is { } w)
@@ -123,8 +127,12 @@ public sealed class CameraController
     private float _inputYaw;
     private bool _mouseMovedSinceInput = true;
 
-    /// <summary>Pointer movement below this many pixels in a frame is ignored (trackpad jitter).</summary>
-    private const float JitterPixels = 1.5f;
+    /// <summary>Recent look movement summed with direction (decaying over <see cref="LookWindowSeconds"/>).</summary>
+    private Vector2 _lookDrift;
+    private const float LookWindowSeconds = 0.15f;
+
+    /// <summary>Net pointer movement below this many pixels over the last moment is ignored (trackpad jitter).</summary>
+    private const float JitterPixels = 2.5f;
 
     /// <summary>How the camera comes round behind the elf (Settings > Game > Camera follow).</summary>
     public CameraFollow Follow { get; set; } = CameraFollow.AfterAMoment;

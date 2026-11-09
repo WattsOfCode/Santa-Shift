@@ -7,7 +7,8 @@ namespace SantaShift.Game.Views.UI;
 public sealed record ResultsSummary(
     RunProgress Run, bool Passed, string Heading, string ReviewLabel, string SantaLine,
     int Delivered, int Quota, int Missed, int Unfinished, int RoundScore, int BestStreak,
-    int NextQuota, int BestScore, int BestRound, bool NewBest, IReadOnlyList<string> Unlocked, double Spirit);
+    int NextQuota, int BestScore, int BestRound, bool NewBest, IReadOnlyList<string> Unlocked, double Spirit,
+    string NextNote = "");
 
 /// <summary>End of a round: "Round complete" (continue) or "Game over" (run finished).</summary>
 public sealed class ResultsView
@@ -46,7 +47,8 @@ public sealed class ResultsView
 
         if (r.Passed)
         {
-            ui.Text($"Round {r.Run.Round + 1}: quota {r.NextQuota}, shorter deadlines.", 480, y += 34, 18, Palette.Gold, Align.Center);
+            ui.Text(r.NextNote.Length > 0 ? r.NextNote : $"Round {r.Run.Round + 1} needs {r.NextQuota} deliveries.",
+                480, y += 34, 18, Palette.Gold, Align.Center);
             Button(ui, $"{input.Label(InputAction.Confirm)}  Next round", 442, hovered == 0);
             SmallButton(ui, $"{input.Label(InputAction.Back)}  End run and return to title", 492, hovered == 1);
         }

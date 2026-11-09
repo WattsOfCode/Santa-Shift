@@ -24,8 +24,17 @@ public sealed class PerkPickView
         return -1;
     }
 
+    /// <summary>A gold strip warning that the bench works differently next round.</summary>
+    public static void AssemblyWarning(UiCanvas ui, string text, float y)
+    {
+        text = ui.Fit(text, 15, 880);
+        float w = ui.MeasureText(text, 15) + 28;
+        ui.FillRounded(480 - w / 2, y, w, 24, Palette.Gold, 0.5f);
+        ui.Text(text, 480, y + 4, 15, Palette.Ink, Align.Center);
+    }
+
     public void Draw(UiCanvas ui, DialogueBook d, RunProgress run, IReadOnlyList<Perk> offers, int selected, bool extraCard,
-        bool headStart, int nextQuota, IInputService input, double time, bool still)
+        bool headStart, int nextQuota, IInputService input, double time, bool still, string? assemblyWarning = null)
     {
         ui.Fill(0, 0, UiCanvas.Width, UiCanvas.Height, Palette.WithAlpha(Palette.Ink, 200));
         Festive.Snowfall(ui, time, 50, moving: !still);
@@ -37,6 +46,7 @@ public sealed class PerkPickView
         ui.Text(headStart ? $"Round 1 needs {nextQuota} deliveries." : $"Round {run.Round} cleared. Round {run.Round + 1} needs {nextQuota} deliveries.",
             480, 88, 18, Palette.Snow, Align.Center);
         if (extraCard) ui.Text(d.Message("perk_extra"), 480, 114, 16, Palette.Ice, Align.Center);
+        if (assemblyWarning != null) AssemblyWarning(ui, assemblyWarning, CardY + CardH + 6); // under the cards, above "Your perks"
 
         for (int i = 0; i < offers.Count; i++)
         {
@@ -59,7 +69,7 @@ public sealed class PerkPickView
         // The run's perks so far
         var owned = run.Perks.GroupBy(p => p.Id).Select(g => g.Count() > 1 ? $"{g.First().Name} x{g.Count()}" : g.First().Name).ToList();
         ui.Text(owned.Count == 0 ? "Your first perk of the run!" : "Your perks: " + string.Join(",  ", owned),
-            480, 432, 15, Palette.Ice, Align.Center);
+            480, assemblyWarning != null ? 440 : 432, 15, Palette.Ice, Align.Center);
 
         string arrows = input.UsingGamepad ? "D-pad" : "Arrows / mouse";
         ui.Text($"{arrows}  Choose      {input.Label(InputAction.Confirm)}  Take it and start the next round",

@@ -16,6 +16,22 @@ public sealed class AssemblyPanelView
         if (sim.State.Assembly is not { } game) return;
         var toy = sim.Content.FindToy(game.ToyId);
 
+        // Assembly policy notice: the bench isn't the plain 1, 2, 3 any more (mixed-up order, or the parts on new keys).
+        var natural = toy?.Parts.Select(p => p.Id).ToList();
+        bool keysMoved = natural != null && !game.Keys.SequenceEqual(natural);
+        bool orderMixed = natural != null && !game.Order.SequenceEqual(natural);
+        if (keysMoved || orderMixed)
+        {
+            string notice = sim.Content.Dialogue.Message(keysMoved ? "assembly_policy_keys" : "assembly_policy_order");
+            float nw = ui.MeasureText(notice, 13) + 20;
+            // In the round the change arrives, the tag pulses and has a white rim so it is noticed.
+            bool fresh = sim.Tuning.Assembly.PolicyChange(sim.State.Mode, sim.State.Round) != null;
+            var tag = fresh && (sim.State.Tick / 20) % 2 == 0 ? Palette.Shade(Palette.Gold, 1.2f) : Palette.Gold;
+            if (fresh) ui.OutlineRounded(x + (Width - nw) / 2 - 2, y - 26, nw + 4, 24, Palette.WithAlpha(Palette.Snow, 170), 1.5f, 0.5f);
+            ui.FillRounded(x + (Width - nw) / 2, y - 24, nw, 20, tag, 0.5f);
+            ui.Text(notice, x + Width / 2, y - 21, 13, Palette.Ink, Align.Center);
+        }
+
         ui.FillRounded(x, y, Width, Height, Palette.WithAlpha(Palette.Ink, 225), 0.15f);
         ui.Text($"BUILD THE {(toy?.Name ?? game.ToyId).ToUpperInvariant()}", x + 12, y + 7, 14, Palette.Ice);
 

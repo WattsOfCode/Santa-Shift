@@ -29,6 +29,23 @@
 
   "spawnTimes": [0, 18, 36, 54, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 252],
   "maxLiveOrders": 3,
+
+  // From round fromRound the training wheels come off: letters arrive every intervalSeconds (minus
+  // intervalDecreasePerRound each round, down to minIntervalSeconds), the board holds up to maxLiveOrders, and whenever
+  // fewer than minLiveOrders are waiting the next letter comes early (at most one per refillSeconds), drawing on
+  // reserveLetters extra letters if the schedule runs out. Relaxed mode spaces letters relaxedIntervalMultiplier apart.
+  "flow": {
+    "fromRound": 2,
+    "maxLiveOrders": 10,
+    "minLiveOrders": 2,
+    "refillSeconds": 2,
+    "intervalSeconds": 16,
+    "intervalDecreasePerRound": 1.5,
+    "minIntervalSeconds": 10,
+    "relaxedIntervalMultiplier": 1.25,
+    "lastLetterSeconds": 260,
+    "reserveLetters": 6
+  },
   "toySequence": ["train", "bear", "robot"],
   "deadlineSeconds": 55,
   "ribbonDeadlineSeconds": 65,
@@ -79,7 +96,15 @@
   "legendDelivered": 12,
 
   // Rounds: meeting the quota starts the next round; missing it ends the run.
-  "rounds": { "quotaIncrease": 1, "deadlineMultiplierPerRound": 0.95, "minDeadlineMultiplier": 0.7 },
+  // quotaIncreases: extra deliveries needed in round 2, round 3... (round 2 opens the floodgates, round 3 raises the
+  // demands); after the list, quotaIncrease more each round. Standard: 9, 10, 13, 15, 17...  Relaxed: 6, 7, 9, 10, 11...
+  // Rush shifts: from round rushShiftFrom, every rushShiftEvery rounds, every order of the shift is RUSH (0 = never).
+  "rounds": {
+    "quotaIncreases": [1, 3], "quotaIncrease": 2,
+    "relaxedQuotaIncreases": [1, 2], "relaxedQuotaIncrease": 1,
+    "rushShiftFrom": 4, "rushShiftEvery": 3,
+    "deadlineMultiplierPerRound": 0.95, "minDeadlineMultiplier": 0.7
+  },
 
   // World scale shared with the Blender room export: 40 logical pixels = 1 metre, and pixel (480, 300) is the world origin.
   "pixelsPerMetre": 40,

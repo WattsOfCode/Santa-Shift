@@ -86,6 +86,8 @@ public static class ContentLoader
         // Events
         foreach (var e in events.Where(e => e.Type == SantaEventType.RibbonWindow && (e.EndAt == null || e.EndAt <= e.StartAt)))
             throw new ContentException($"Ribbon event '{e.Id}' needs an endAt after its startAt.");
+        foreach (var e in events.Where(e => e.Type == SantaEventType.Rush && e.EndAt != null && e.EndAt <= e.StartAt))
+            throw new ContentException($"Rush event '{e.Id}' has an endAt that is not after its startAt.");
 
         // Letters: skip bad ones rather than failing.
         var goodLetters = new List<ChildLetter>();

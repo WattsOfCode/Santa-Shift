@@ -150,11 +150,13 @@ public sealed class MenuView
         }
     }
 
-    public void DrawReady(UiCanvas ui, float secondsLeft)
+    /// <param name="assemblyWarning">Shown under the countdown when the bench works differently this round.</param>
+    public void DrawReady(UiCanvas ui, float secondsLeft, string? assemblyWarning = null)
     {
         ui.FillRounded(380, 230, 200, 80, Palette.WithAlpha(Palette.Ink, 220), 0.3f);
         ui.Text("READY", 480, 244, 40, Palette.Gold, Align.Center);
         ui.Text($"{Math.Max(0.1f, secondsLeft):0.0}", 480, 286, 16, Palette.Snow, Align.Center);
+        if (assemblyWarning != null) PerkPickView.AssemblyWarning(ui, assemblyWarning, 322);
     }
 
     private const string Title = "SANTA SHIFT", TitleThe = "The";

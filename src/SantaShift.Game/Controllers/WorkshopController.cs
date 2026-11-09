@@ -52,11 +52,24 @@ public sealed class WorkshopController : IScreen
     public static RunProgress NewRunProgress(GameServices services, GameMode mode)
     {
         var content = services.Content;
-        if (DebugNaughty is { } names)
-            return new RunProgress(mode, new NaughtyNiceList(content.Letters.GroupBy(l => l.Child).Select(g => g.First())
-                .Select(l => new ListEntry(l.Child, l.Age, l.ToyId, names.Contains(l.Child)))));
-        return RunProgress.Start(mode, content.Letters, content.HasCoal ? content.Tuning.NaughtyPerRun : 0, Random.Shared.Next());
+        var run = DebugNaughty is { } names
+            ? new RunProgress(mode, new NaughtyNiceList(content.Letters.GroupBy(l => l.Child).Select(g => g.First())
+                .Select(l => new ListEntry(l.Child, l.Age, l.ToyId, names.Contains(l.Child)))))
+            : RunProgress.Start(mode, content.Letters, content.HasCoal ? content.Tuning.NaughtyPerRun : 0, Random.Shared.Next());
+        for (int r = 1; r < DebugRound; r++) // --round N: as if the rounds before it were cleared
+        {
+            int quota = content.Tuning.QuotaFor(mode, r);
+            run.CompleteRound(new RunState { Delivered = quota, Score = quota * 100 }, quota);
+            run.StartNextRound();
+        }
+        return run;
     }
+
+    /// <summary>Debug builds only (--round N): start the run at round N.</summary>
+    public static int DebugRound = 1;
+
+    /// <summary>Debug builds only (--skip S): fast-forward the shift S seconds with no input, for screenshots.</summary>
+    public static double DebugSkip;
 
     /// <summary>The upbeat toy factory jingle while the shift runs.</summary>
     public string? Music => MusicIds.Workshop;
@@ -133,6 +146,8 @@ public sealed class WorkshopController : IScreen
 
     public void Enter()
     {
+        for (long i = 0, n = _sim.Tuning.Ticks(DebugSkip); i < n; i++) _sim.Step(PlayerCommand.None);
+        _sim.DrainEvents();
         if (DebugCarry != null) _sim.State.CarriedItem = DebugCarry;
         if (DebugAssembleParts is { } parts) DebugStartAssembly(parts);
         if (DebugAt != null && DebugAt.Split(',') is [var mx, var mz]
@@ -409,9 +424,21 @@ public sealed class WorkshopController : IScreen
             st.Delivered, quota, st.Missed, st.Unfinished, st.Score, st.BestStreak,
             NextQuota: passed ? _sim.Tuning.QuotaFor(_run.Mode, _run.Round + 1) : 0,
             BestScore: _s.Best.For(_run.Mode), BestRound: _s.Best.RoundFor(_run.Mode), NewBest: newBest,
-            Unlocked: unlocked.Select(u => u.Name).ToList(), Spirit: st.Spirit);
+            Unlocked: unlocked.Select(u => u.Name).ToList(), Spirit: st.Spirit,
+            NextNote: passed ? NextRoundNote(_run.Round + 1) : "");
 
         _s.Scenes.Switch(new ResultsController(_s, summary));
+    }
+
+    /// <summary>What changes next round: the quota, and the steady flow of letters or a rush shift when one starts.</summary>
+    private string NextRoundNote(int next)
+    {
+        var t = _sim.Tuning;
+        var d = _s.Content.Dialogue;
+        int quota = t.QuotaFor(_run.Mode, next);
+        string key = t.Rounds.IsRushShift(next) ? "next_round_rush"
+            : t.Flow.On(next) && !t.Flow.On(next - 1) ? "next_round_flow" : "next_round";
+        return d.Message(key, next, quota);
     }
 
     /// <summary>Shift-clock time as m:ss.</summary>
