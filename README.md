@@ -73,6 +73,24 @@ short of it, the run ends. The door beside it is shut for now (a solid fixture a
 unlimited) while the rules step at 60 Hz, with movement smoothed between steps. On a laptop running on battery, NVIDIA
 Battery Boost can hold games to 30 fps: plug in or turn it off.
 
+## Player downloads (Windows and Mac)
+
+Players don't need this repository or .NET. Double-click **`tools\release\make_player_download.cmd`** (needs the .NET
+10 SDK and Python) to make three zips in `publish\`, about 40 MB each, each with a How to play note and the licence and
+credits files:
+
+| Zip | For | First launch |
+|---|---|---|
+| `SantaShift-Windows.zip` | Windows 10 and 11 | Double-click `SantaShift.exe`; on "Windows protected your PC", More info > Run anyway |
+| `SantaShift-macOS-AppleSilicon.zip` | Macs with M1 or later | Drag the app to Applications, then paste the two Terminal lines from the note (`xattr -cr` and `codesign --sign -`) |
+| `SantaShift-macOS-Intel.zip` | Intel Macs | Drag the app to Applications, open it once, then Privacy & Security > Open Anyway |
+
+None of them is signed: Windows signing needs a code-signing certificate, and Mac signing an Apple Developer ID
+($99 a year) plus notarization. Apple Silicon Macs won't start an app with no signature at all, so that note has the
+player give it a local one. `tools/release/make_mac_apps.py` builds the Mac apps and zips them with Unix permissions
+(a zip made with Windows tools would drop the executable bit). The `publish` folder isn't committed; attach the zips
+to a GitHub release or the jam page.
+
 ## Build and run
 
 Requires the .NET 10 SDK. Double-click **`Play Santa Shift.cmd`** (Windows) or **`Play Santa Shift.command`** (Mac) to
