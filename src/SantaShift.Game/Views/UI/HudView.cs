@@ -55,23 +55,28 @@ public sealed class HudView(GameContent content, IInputService input)
         int whole = (int)Math.Ceiling(secondsLeft);
         ui.FillRounded(10, 8, 150, 72, Palette.WithAlpha(Palette.Ink, 215), 0.2f);
         ui.Text($"ROUND {state.Round}", 20, 13, 14, Palette.Ice);
-        ui.Text($"{whole / 60}:{whole % 60:00}", 85, 29, 32, secondsLeft <= 30 ? Palette.Berry : Palette.Snow, Align.Center);
-        DrawSpirit(ui, sim, 18, 64, 134);
+        ui.Text($"{whole / 60}:{whole % 60:00}", 85, 32, 34, secondsLeft <= 30 ? Palette.Berry : Palette.Snow, Align.Center);
+
+        // The Christmas Spirit wreath in the top-right corner; the letters fill the space between it and the clock.
+        bool spirit = t.Spirit.Enabled;
+        if (spirit) DrawSpirit(ui, sim);
+        float lettersRight = spirit ? WreathX - WreathR - 12 : UiCanvas.Width - 10;
 
         // Up to three full cards; when more letters are waiting (from round 2 the board holds up to ten), compact cards.
         var orders = state.LiveOrders.OrderBy(o => o.DeadlineTick).ThenBy(o => o.CreatedTick).ThenBy(o => o.Id).ToList();
         if (orders.Count <= 3)
         {
+            float cw = Math.Min(OrderCardView.Width, (lettersRight - 172 - 20) / 3);
             for (int i = 0; i < t.MaxLiveFor(state.Round) && i < 3; i++)
             {
-                float x = 172 + i * (OrderCardView.Width + 10);
-                if (i < orders.Count) _card.Draw(ui, orders[i], state.Tick, x, 8);
-                else ui.OutlineRounded(x, 8, OrderCardView.Width, OrderCardView.Height, Palette.WithAlpha(Palette.Snow, 70), 2, 0.18f);
+                float x = 172 + i * (cw + 10);
+                if (i < orders.Count) _card.Draw(ui, orders[i], state.Tick, x, 8, cw);
+                else ui.OutlineRounded(x, 8, cw, OrderCardView.Height, Palette.WithAlpha(Palette.Snow, 70), 2, 0.18f);
             }
         }
         else
         {
-            const float left = 172, right = UiCanvas.Width - 10, gap = 6;
+            float left = 172, right = lettersRight, gap = 6;
             float w = Math.Min(OrderCardView.CompactMaxWidth, (right - left - gap * (orders.Count - 1)) / orders.Count);
             for (int i = 0; i < orders.Count; i++) _card.DrawCompact(ui, orders[i], state.Tick, left + i * (w + gap), 8, w);
         }
@@ -258,23 +263,93 @@ public sealed class HudView(GameContent content, IInputService input)
         ui.Text(line2, x + 12, y + 27, 13, Palette.Ice);
     }
 
+    /// <summary>The spirit wreath's outer radius and centre: in the top-right corner, as tall as the clock panel.</summary>
+    private const float WreathR = 37, WreathX = UiCanvas.Width - 10 - WreathR, WreathY = 8 + WreathR;
+
     /// <summary>
-    /// The Christmas Spirit meter under the clock: a star and a bar. Gold and "JOLLY" when high (bonus points), red and
-    /// pulsing when nearly gone.
+    /// The Christmas Spirit meter, top right: a holly wreath with berries and a red bow, the spirit filling a ring inside
+    /// it clockwise from the top, and the percent in the middle. JOLLY turns the ring and number gold (the bonus shows
+    /// under the number) and the wreath glows; low spirit turns them red and pulses.
     /// </summary>
-    private void DrawSpirit(UiCanvas ui, Simulation sim, float x, float y, float w)
+    private void DrawSpirit(UiCanvas ui, Simulation sim)
     {
         var s = sim.Tuning.Spirit;
-        if (!s.Enabled) return;
-        float frac = (float)(sim.State.Spirit / s.Max);
+        float frac = Math.Clamp((float)(sim.State.Spirit / s.Max), 0f, 1f);
         bool jolly = sim.State.Spirit >= s.JollyAt, low = frac < 0.3f;
-        var colour = jolly ? Palette.Gold : low ? Palette.Berry : Palette.Pine;
-        if (low && (sim.State.Tick / 15) % 2 == 0) colour = Palette.Shade(colour, 1.35f);
-        float bx = x + 16, bw = w - 16;
-        ui.FillRounded(bx, y, bw, 9, Palette.WithAlpha(Palette.Snow, 35), 0.6f);
-        ui.FillRounded(bx, y, bw * frac, 9, colour, 0.6f);
-        DrawStar(ui, x + 5, y + 4, 7, jolly ? Palette.Gold : Palette.Snow);
-        if (jolly) ui.Text(content.Dialogue.Message("spirit_jolly", (int)Math.Round(s.JollyBonus * 100)), 156, 12, 10, Palette.Gold, Align.Right); // top-right of the clock panel
+        bool pulse = low && (sim.State.Tick / 15) % 2 == 0;
+        bool still = WorldEffects.ReducedMotion;
+        float cx = WreathX, cy = WreathY, R = WreathR;
+        var centre = new System.Numerics.Vector2(cx, cy);
+
+        // A dark disc behind, so the wreath reads against the room; a warm glow round it while jolly.
+        if (jolly) ui.Circle(cx, cy, R + 3 + (still ? 0 : 1.5f * MathF.Sin(sim.State.Tick * 0.12f)), Palette.WithAlpha(Palette.Gold, 70));
+        ui.Circle(cx, cy, R, Palette.WithAlpha(Palette.Ink, 225));
+
+        // The wreath: holly leaves all the way round, alternately leaning out and in, darker ones underneath.
+        const int leaves = 22;
+        for (int layer = 0; layer < 2; layer++)
+            for (int i = 0; i < leaves; i++)
+            {
+                float a = (i + layer * 0.5f) / leaves * MathF.Tau;
+                var radial = new System.Numerics.Vector2(MathF.Cos(a), MathF.Sin(a));
+                var tangent = new System.Numerics.Vector2(-radial.Y, radial.X);
+                float lean = (i % 2 == 0 ? 0.45f : -0.45f);
+                var dir = System.Numerics.Vector2.Normalize(tangent + radial * lean);
+                var root = centre + radial * (R - 9) - dir * 6;
+                var leaf = layer == 0 ? Festive.HollyDark : i % 3 == 0 ? Festive.HollyLight : Festive.Holly;
+                Festive.HollyLeaf(ui, root, dir, 14, 4.2f, leaf, Festive.HollyDark);
+            }
+        // Berry clusters round the ring.
+        for (int i = 0; i < 6; i++)
+        {
+            float a = (i + 0.25f) / 6 * MathF.Tau - MathF.PI / 2;
+            var p = centre + new System.Numerics.Vector2(MathF.Cos(a), MathF.Sin(a)) * (R - 7);
+            Festive.Berry(ui, p.X, p.Y, 3f);
+            Festive.Berry(ui, p.X + 3.5f, p.Y + 2.5f, 2.6f);
+        }
+
+        // The meter: a ring inside the wreath, filling clockwise from the top.
+        const float inner = 17, outer = 23;
+        RingArc(ui, cx, cy, inner - 1.5f, outer + 1.5f, 0, MathF.Tau, Palette.Shade(Palette.Ink, 0.55f));
+        RingArc(ui, cx, cy, inner, outer, 0, MathF.Tau, Palette.WithAlpha(Palette.Snow, 28));
+        var fillColour = jolly ? Palette.Gold : low ? (pulse ? Palette.Shade(Palette.Berry, 1.35f) : Palette.Berry) : Festive.CaneRed;
+        if (frac > 0) RingArc(ui, cx, cy, inner, outer, 0, frac * MathF.Tau, fillColour);
+        if (frac > 0.02f) RingArc(ui, cx, cy, outer - 2, outer - 0.5f, 0, frac * MathF.Tau, Palette.WithAlpha(Raylib_cs.Color.White, 90)); // shine
+
+        // The middle: the spirit in percent, with JOLLY's bonus (or "SPIRIT") under it.
+        ui.Circle(cx, cy, inner - 1.5f, Palette.Ink);
+        var number = jolly ? Palette.Gold : low ? Palette.Berry : Palette.Snow;
+        ui.Text($"{sim.State.Spirit:0}%", cx, cy - 10, 14, number, Align.Center);
+        string under = jolly ? $"+{(int)Math.Round(s.JollyBonus * 100)}%" : "SPIRIT";
+        ui.Text(under, cx, cy + 3, 9, jolly ? Palette.Gold : Palette.Ice, Align.Center);
+
+        // A red bow at the bottom, its tails hanging below the wreath.
+        float by = cy + R - 4;
+        var knot = new System.Numerics.Vector2(cx, by);
+        var bow = Festive.CaneRed;
+        var shade = Palette.Shade(bow, 0.75f);
+        ui.Triangle(knot, knot + new System.Numerics.Vector2(-13, -7), knot + new System.Numerics.Vector2(-13, 6), bow);
+        ui.Triangle(knot, knot + new System.Numerics.Vector2(13, -7), knot + new System.Numerics.Vector2(13, 6), bow);
+        ui.Triangle(knot, knot + new System.Numerics.Vector2(-4, 10), knot + new System.Numerics.Vector2(-9, 12), shade);
+        ui.Triangle(knot, knot + new System.Numerics.Vector2(4, 10), knot + new System.Numerics.Vector2(9, 12), shade);
+        ui.Circle(cx, by, 3.5f, Palette.Shade(bow, 0.85f));
+
+        // A star on top that twinkles while jolly.
+        float twinkle = jolly && !still ? 1f + 0.15f * MathF.Sin(sim.State.Tick * 0.15f) : 1f;
+        DrawStar(ui, cx, cy - R + 2, 7 * twinkle, jolly ? Palette.Gold : low ? Palette.Berry : Palette.Shade(Palette.Gold, 0.85f));
+    }
+
+    /// <summary>A filled ring segment from <paramref name="a0"/> to <paramref name="a1"/> radians, clockwise from 12 o'clock.</summary>
+    private static void RingArc(UiCanvas ui, float cx, float cy, float r0, float r1, float a0, float a1, Raylib_cs.Color c)
+    {
+        int steps = Math.Max(2, (int)MathF.Ceiling((a1 - a0) / (MathF.Tau / 48)));
+        System.Numerics.Vector2 P(float a, float r) => new(cx + MathF.Sin(a) * r, cy - MathF.Cos(a) * r);
+        for (int i = 0; i < steps; i++)
+        {
+            float t0 = a0 + (a1 - a0) * i / steps, t1 = a0 + (a1 - a0) * (i + 1) / steps;
+            ui.Triangle(P(t0, r0), P(t0, r1), P(t1, r1), c);
+            ui.Triangle(P(t0, r0), P(t1, r1), P(t1, r0), c);
+        }
     }
 
     private static void DrawStar(UiCanvas ui, float cx, float cy, float r, Raylib_cs.Color c)

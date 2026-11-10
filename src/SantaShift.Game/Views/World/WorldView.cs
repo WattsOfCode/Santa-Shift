@@ -185,9 +185,10 @@ public sealed class WorldView
                 Raylib.DrawCubeWires(new Vector3(0, 0.28f, 0), 0.5f, 0.14f, 0.8f, Palette.Ink);
                 break;
             default:
-                Raylib.DrawCube(new Vector3(0, 0.6f, -0.5f), 0.46f, 0.04f, 0.04f, Palette.Berry);
-                Raylib.DrawCylinderEx(new Vector3(-0.2f, 0.3f, -0.38f), new Vector3(-0.2f, 0.6f, -0.5f), 0.02f, 0.02f, 6, Palette.Berry);
-                Raylib.DrawCylinderEx(new Vector3(0.2f, 0.3f, -0.38f), new Vector3(0.2f, 0.6f, -0.5f), 0.02f, 0.02f, 6, Palette.Berry);
+                // A low push bar where the elf's hands are in its Push pose (see make_models.py cart_handle).
+                Raylib.DrawCube(new Vector3(0, 0.39f, -0.5f), 0.46f, 0.04f, 0.04f, Palette.Berry);
+                Raylib.DrawCylinderEx(new Vector3(-0.2f, 0.3f, -0.38f), new Vector3(-0.2f, 0.39f, -0.5f), 0.02f, 0.02f, 6, Palette.Berry);
+                Raylib.DrawCylinderEx(new Vector3(0.2f, 0.3f, -0.38f), new Vector3(0.2f, 0.39f, -0.5f), 0.02f, 0.02f, 6, Palette.Berry);
                 break;
         }
         Rlgl.PopMatrix();

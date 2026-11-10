@@ -9,7 +9,8 @@ public enum ElfActivity { None, Hammering, Shovelling }
 /// <summary>What the elf is doing this frame, for its animation.</summary>
 /// <param name="Swings">Counts hammer swings; each increase plays one swing.</param>
 /// <param name="Carrying">Holding an item (a kit, a toy or coal): the arms take the Carry pose over the walk.</param>
-public readonly record struct ElfPose(bool Walking, ElfActivity Activity, int Swings, bool Carrying = false)
+/// <param name="Pushing">Pushing the toy cart: both arms take the Push pose (hands on its handle) over the walk.</param>
+public readonly record struct ElfPose(bool Walking, ElfActivity Activity, int Swings, bool Carrying = false, bool Pushing = false)
 {
     public bool Hammering => Activity == ElfActivity.Hammering;
 }
@@ -23,20 +24,24 @@ public readonly record struct ElfPose(bool Walking, ElfActivity Activity, int Sw
 /// </summary>
 public sealed class ElfAnimator
 {
-    private enum Clip { Idle, Walk, Work, Shovel, Carry }
+    private enum Clip { Idle, Walk, Work, Shovel, Carry, Push }
 
     /// <summary>Raylib samples glTF animations at 60 frames per second.</summary>
     private const float FramesPerSecond = 60f;
     private const float BlendSeconds = 0.15f;
     private const string HandBone = "hand.R";
 
-    private readonly ModelAnimation?[] _clips = new ModelAnimation?[5];
+    private readonly ModelAnimation?[] _clips = new ModelAnimation?[6];
     private readonly int _hand = -1;
     private readonly int _chest = -1;
     private readonly bool _gpu;
     private readonly int[] _carryBones = [];
+    private readonly int[] _pushBones = [];
     private readonly Vector3 _wrist;
-    private float _carryWeight;
+    private float _carryWeight, _pushWeight;
+
+    /// <summary>The bones the Push pose takes over: both arms, reaching to the cart's handle. The legs keep walking.</summary>
+    private static readonly string[] PushBones = ["upper_arm.L", "forearm.L", "hand.L", "upper_arm.R", "forearm.R", "hand.R"];
 
     /// <summary>
     /// The bones the Carry pose takes over: the right arm, hoisting the item up beside the head (in front, the elf's big
@@ -71,6 +76,7 @@ public sealed class ElfAnimator
         _hand = Array.IndexOf(names, HandBone);
         _chest = Array.IndexOf(names, "chest");
         _carryBones = CarryBones.Select(b => Array.IndexOf(names, b)).Where(i => i >= 0).ToArray();
+        _pushBones = PushBones.Select(b => Array.IndexOf(names, b)).Where(i => i >= 0).ToArray();
         if (_hand < 0) return;
 
         _wrist = elf.Skeleton.BindPose[_hand].Translation;
@@ -105,9 +111,15 @@ public sealed class ElfAnimator
         _swingTime += dt;
         _blend = Math.Min(1f, _blend + dt / BlendSeconds);
         bool carrying = pose.Carrying && pose.Activity == ElfActivity.None && Has(Clip.Carry);
+        bool pushing = pose.Pushing && pose.Activity == ElfActivity.None && Has(Clip.Push);
         _carryWeight = Math.Clamp(_carryWeight + (carrying ? dt : -dt) / BlendSeconds, 0f, 1f);
-        SkeletonPoser.Overlay? overlay = _carryWeight > 0f && _clips[(int)Clip.Carry] is { } carry
-            ? new SkeletonPoser.Overlay(carry, _time * FramesPerSecond % Math.Max(1, carry.KeyFrameCount - 1), Smooth(_carryWeight), _carryBones, _chest)
+        _pushWeight = Math.Clamp(_pushWeight + (pushing ? dt : -dt) / BlendSeconds, 0f, 1f);
+        // The arms take one layered pose at a time: the cart's handle (pushing means empty hands) or a carried item.
+        SkeletonPoser.Overlay? overlay =
+            _pushWeight > 0f && _pushWeight >= _carryWeight && _clips[(int)Clip.Push] is { } push
+                ? new SkeletonPoser.Overlay(push, _time * FramesPerSecond % Math.Max(1, push.KeyFrameCount - 1), Smooth(_pushWeight), _pushBones, _chest)
+            : _carryWeight > 0f && _clips[(int)Clip.Carry] is { } carry
+                ? new SkeletonPoser.Overlay(carry, _time * FramesPerSecond % Math.Max(1, carry.KeyFrameCount - 1), Smooth(_carryWeight), _carryBones, _chest)
             : null;
 
         if (_clips[(int)_current] is not { } now) return;

@@ -6,18 +6,20 @@ namespace SantaShift.Game.Views.UI;
 /// <summary>One order card: child, toy icon and name, requirement badges and time left (GDD section 9).</summary>
 public sealed class OrderCardView(GameContent content)
 {
+    /// <summary>The widest a full card gets; the top bar may make them narrower (down to about 190).</summary>
     public const float Width = 248, Height = 72;
 
     /// <summary>The widest a compact card gets (they shrink to fit ten on the top bar).</summary>
     public const float CompactMaxWidth = 110;
 
-    public void Draw(UiCanvas ui, Order order, long tick, float x, float y)
+    public void Draw(UiCanvas ui, Order order, long tick, float x, float y, float width = Width)
     {
         var t = content.Tuning;
         var toy = content.FindToy(order.ToyId);
         long remaining = order.RemainingTicks(tick);
         double seconds = (double)remaining / t.TicksPerSecond;
         bool urgent = seconds <= 10;
+        float Width = width; // the card's own width from here on
 
         ui.FillRounded(x, y, Width, Height, order.Naughty ? Palette.Hex("#EBDDBF") : Palette.Snow, 0.18f);
         if (order.IsRush || order.Naughty) ui.OutlineRounded(x, y, Width, Height, Palette.Berry, 3, 0.18f);
@@ -29,13 +31,17 @@ public sealed class OrderCardView(GameContent content)
 
         // Text: what to ship large, child small
         // A variant names itself ("Big-Wheel Train") in pine green, so it stands out from a plain toy.
+        // On a narrow card a long name ("Big-Wheel Train") steps down a size or two before it is cut short.
         string what = order.Naughty ? "Coal" : toy?.NameOf(order.Variant) ?? order.ToyId;
-        ui.Text(ui.Fit(what, 20, Width - 66 - 48), x + 66, y + 8, 20, order.Variant != null && !order.Naughty ? Palette.Pine : Palette.Ink);
+        float nameRoom = Width - 66 - 8, nameSize = 20;
+        while (nameSize > 15 && ui.MeasureText(what, nameSize) > nameRoom) nameSize--;
+        ui.Text(ui.Fit(what, nameSize, nameRoom), x + 66, y + 8 + (20 - nameSize) / 2, nameSize,
+            order.Variant != null && !order.Naughty ? Palette.Pine : Palette.Ink);
         string who = order.Letter != null ? $"for {order.Letter.Child}, {order.Letter.Age}" : $"Order #{order.Id}";
-        ui.Text(ui.Fit(who, 14, 110), x + 66, y + 32, 14, Palette.Shade(Palette.Ink, 1.6f));
+        ui.Text(ui.Fit(who, 14, Width - 66 - 46), x + 66, y + 32, 14, Palette.Shade(Palette.Ink, 1.6f));
 
-        // Badges
-        float bx = x + 66;
+        // Badges (a ribbon badge drops the word RIBBON when the card is too narrow for it)
+        float bx = x + 66, right = x + Width - 6;
         if (order.Naughty) bx = Badge(ui, "NAUGHTY", bx, y + 50, Palette.Ink, Palette.Snow);
         if (order.RequiresRibbon)
         {
@@ -43,13 +49,16 @@ public sealed class OrderCardView(GameContent content)
             var ribbon = t.FindRibbon(order.RibbonColor);
             var bg = ribbon != null ? Palette.Hex(ribbon.Color) : Palette.Gold;
             bool dark = bg.R * 0.3 + bg.G * 0.59 + bg.B * 0.11 < 140;
-            bx = Badge(ui, ribbon != null ? $"{ribbon.Name.ToUpperInvariant()} RIBBON" : "RIBBON", bx, y + 50, bg, dark ? Palette.Snow : Palette.Ink);
+            string label = ribbon != null ? $"{ribbon.Name.ToUpperInvariant()} RIBBON" : "RIBBON";
+            float rush = order.IsRush ? BadgeWidth(ui, "RUSH") + 4 : 0;
+            if (ribbon != null && bx + BadgeWidth(ui, label) + rush > right) label = ribbon.Name.ToUpperInvariant();
+            bx = Badge(ui, label, bx, y + 50, bg, dark ? Palette.Snow : Palette.Ink);
         }
         if (order.IsRush) Badge(ui, "RUSH", bx, y + 50, Palette.Berry, Palette.Snow);
 
-        // Time left
+        // Time left, beside the child's name
         string time = $"{(int)Math.Ceiling(seconds)}s";
-        ui.Text(time, x + Width - 10, y + 8, 22, urgent ? Palette.Berry : Palette.Ink, Align.Right);
+        ui.Text(time, x + Width - 10, y + 29, 18, urgent ? Palette.Berry : Palette.Ink, Align.Right);
 
         // Draining bar along the bottom
         float frac = order.AllowedDurationTicks > 0 ? (float)remaining / order.AllowedDurationTicks : 0;
@@ -108,9 +117,11 @@ public sealed class OrderCardView(GameContent content)
         ui.Fill(x + 6, y + h - 6, (w - 12) * frac, 3, urgent ? Palette.Berry : Palette.Pine);
     }
 
+    private static float BadgeWidth(UiCanvas ui, string text) => ui.MeasureText(text, 12) + 10;
+
     private static float Badge(UiCanvas ui, string text, float x, float y, Raylib_cs.Color bg, Raylib_cs.Color fg)
     {
-        float w = ui.MeasureText(text, 12) + 10;
+        float w = BadgeWidth(ui, text);
         ui.FillRounded(x, y - 2, w, 16, bg, 0.5f);
         ui.Text(text, x + 5, y + 0, 12, fg);
         return x + w + 4;

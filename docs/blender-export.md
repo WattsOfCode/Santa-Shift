@@ -35,8 +35,11 @@ to a grey-box shape (or skips a decoration), so nothing ever breaks.
 
 11. One armature. Actions named exactly **`Idle`** (loops), **`Walk`** (loops), **`Work`** (one hammer swing; its
     first and last frame are the "ready" pose held between swings), **`Shovel`** (one scoop of coal, 0.8 s, played
-    from the start each time) and **`Carry`** (loops; only the right arm counts, see below). Push each to an NLA
-    track so it is exported (`make_models.py` does this). The export warns if Idle, Walk or Work is missing.
+    from the start each time), **`Carry`** (loops; only the right arm counts, see below) and **`Push`** (loops; both
+    arms reach to the toy cart's handle bar, wrists 0.39 m up and 0.25 m ahead, where `cart_handle` puts the bar; laid
+    over Walk / Idle). Push each to an NLA track so it is exported (`make_models.py` does this; to add a new action to
+    an elf.blend edited by hand, run `tools/blender/add_elf_actions.py` on it). The export warns if Idle, Walk or Work
+    is missing.
 12. The right hand bone must be named **`hand.R`**, with its head at the wrist: the game puts the tools in that hand,
     4 cm below the wrist. With the arm hanging down, the hammer points forward (striking face down) and the shovel
     points forward and down. Keep the elf facing -Y.

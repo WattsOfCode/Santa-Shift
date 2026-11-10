@@ -38,7 +38,7 @@ public sealed class PlayerView(IAssetLibrary assets, WorldSpace world, ItemView 
             _modelTop ??= Raylib.GetModelBoundingBox(model).Max.Y; // measured in the rest pose, before any animation
             if (_figure.IsAnimated) bob = 0;                        // the animation has its own bounce
             var at = p + new Vector3(0, bob, 0);
-            _figure.Draw(at, facingDegrees, pose with { Carrying = state.CarriedItem != null && !OnStation(state) },
+            _figure.Draw(at, facingDegrees, pose with { Carrying = state.CarriedItem != null && !OnStation(state), Pushing = state.Cart.Pushing },
                 Raylib.GetFrameTime());
             if (_figure.CanCarry && _figure.TryHoldPoint(at, facingDegrees, out var hand)) held = hand;
             carryHeight = _modelTop.Value + 0.08f; // carry above the hat, whatever height the elf model is

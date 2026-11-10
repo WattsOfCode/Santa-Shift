@@ -287,14 +287,29 @@ ELF_ACTIONS = {
         30: {"upper_arm.R": (14, 0, -97), "forearm.R": (0, 0, -63), "hand.R": (0, 0, 75)},
         60: {"upper_arm.R": (10, 0, -100), "forearm.R": (0, 0, -60), "hand.R": (0, 0, 75)},
     },
+    # Pushing the toy cart: both arms reach forward and down to its handle bar. With the upper arms 35 degrees forward
+    # and the forearms 5 more, the wrists are 0.39 m up, 0.25 m ahead and 0.22 m to each side: cart_handle's bar is
+    # there (0.5 m behind the cart's centre), so tuning.json cart.pushDistance is 0.75 m (30 px). Only the arms are
+    # used: the game lays it over Walk or Idle, so the legs keep stepping. A slight shove; loops every 0.67 s.
+    "Push": {
+        0: {"upper_arm.L": (35, 0, 0), "upper_arm.R": (35, 0, 0), "forearm.L": (5, 0, 0), "forearm.R": (5, 0, 0),
+            "hand.L": (-20, 0, 0), "hand.R": (-20, 0, 0)},
+        10: {"upper_arm.L": (32, 0, 0), "upper_arm.R": (32, 0, 0), "forearm.L": (10, 0, 0), "forearm.R": (10, 0, 0),
+             "hand.L": (-22, 0, 0), "hand.R": (-22, 0, 0)},
+        20: {"upper_arm.L": (35, 0, 0), "upper_arm.R": (35, 0, 0), "forearm.L": (5, 0, 0), "forearm.R": (5, 0, 0),
+             "hand.L": (-20, 0, 0), "hand.R": (-20, 0, 0)},
+    },
 }
 
 
-def animate_elf(arm):
-    """Keys every action and pushes each onto its own NLA track, so the glTF export includes all of them."""
+def animate_elf(arm, only=None):
+    """Keys every action (or just those named in `only`) and pushes each onto its own NLA track, so the glTF export
+    includes all of them."""
     bpy.context.scene.render.fps = 30
     arm.animation_data_create()
     for name, keys in ELF_ACTIONS.items():
+        if only is not None and name not in only:
+            continue
         action = bpy.data.actions.new(name)
         action.use_fake_user = True
         arm.animation_data.action = action
@@ -1064,10 +1079,11 @@ def cart_tray(c):
 
 
 def cart_handle(c):
+    """A low push bar where the elf's hands are in its Push pose: 0.39 m up, 0.5 m behind the cart's centre."""
     for side in (-1, 1):
-        limb(f"Upright.{side}", (side * 0.2, 0.38, 0.3), (side * 0.2, 0.56, 0.66), 0.018, 0.018, "berry", c, verts=8)
-    cyl("Bar", 0, 0.56, 0.66, 0.022, 0.46, "X", "berry", c, verts=10)
-    cyl("Grip", 0, 0.56, 0.66, 0.03, 0.3, "X", "ink", c, verts=10)
+        limb(f"Upright.{side}", (side * 0.2, 0.38, 0.3), (side * 0.2, 0.5, 0.39), 0.018, 0.018, "berry", c, verts=8)
+        cyl(f"Grip.{side}", side * 0.19, 0.5, 0.39, 0.03, 0.09, "X", "ink", c, verts=10)  # under each hand
+    cyl("Bar", 0, 0.5, 0.39, 0.022, 0.46, "X", "berry", c, verts=10)
 
 
 def prop_sled(c):
