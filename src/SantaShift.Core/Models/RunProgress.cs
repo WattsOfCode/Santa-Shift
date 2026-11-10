@@ -59,13 +59,22 @@ public sealed class RunProgress(GameMode mode, NaughtyNiceList? list = null)
         return pool.Where(p => Stacks(p.Id) < p.MaxStacks).OrderBy(_ => random.Next()).Take(count).ToList();
     }
 
+    /// <summary>Toy cart parts built so far this run: one more for each passed round (see <see cref="CartTuning"/>).</summary>
+    public int CartParts { get; private set; }
+
+    /// <summary>The cart part the last passed round added, or null (none earned, or the cart was already complete).</summary>
+    public string? NewCartPart { get; private set; }
+
     public int TotalScore { get; private set; }
     public int TotalDelivered { get; private set; }
     public int RoundsCleared { get; private set; }
     public bool IsOver { get; private set; }
 
-    /// <summary>Records a finished round. Returns true if it was passed (the run continues).</summary>
-    public bool CompleteRound(RunState round, int quota)
+    /// <summary>
+    /// Records a finished round. Returns true if it was passed (the run continues). A passed round also adds the next toy
+    /// cart part, when <paramref name="cart"/> is given and the cart isn't complete yet.
+    /// </summary>
+    public bool CompleteRound(RunState round, int quota, CartTuning? cart = null)
     {
         if (IsOver) throw new InvalidOperationException("The run is already over.");
         TotalScore += round.Score;
@@ -73,6 +82,8 @@ public sealed class RunProgress(GameMode mode, NaughtyNiceList? list = null)
 
         bool passed = round.Delivered >= quota && !round.SpiritOut;
         _spirit = round.Spirit;
+        NewCartPart = null;
+        if (passed && cart != null && CartParts < cart.Parts.Length) NewCartPart = cart.Parts[CartParts++];
         if (passed) RoundsCleared++;
         else IsOver = true;
         LastMargin = passed ? round.Delivered - quota : 0;

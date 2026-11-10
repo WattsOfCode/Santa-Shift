@@ -20,7 +20,7 @@ public enum InputAction
     /// <summary>Left mouse button (clicking a ribbon spool, a perk card).</summary>
     Click,
 
-    /// <summary>Pick a part in the bench minigame. Part1 + (n - 1) is part key n (1 to 3 are rebindable).</summary>
+    /// <summary>Pick a part in the bench minigame. Part1 + (n - 1) is part key n (1 to 4 are rebindable).</summary>
     Part1, Part2, Part3, Part4, Part5, Part6, Part7, Part8, Part9,
 }
 
@@ -104,7 +104,6 @@ public sealed class PlayerInputService : IInputService
         [InputAction.TabNext] = [KeyboardKey.Tab, KeyboardKey.PageDown],
         [InputAction.TabPrev] = [KeyboardKey.PageUp],
         [InputAction.ClearBinding] = [KeyboardKey.Backspace, KeyboardKey.Delete],
-        [InputAction.Part4] = [KeyboardKey.Four, KeyboardKey.Kp4],
         [InputAction.Part5] = [KeyboardKey.Five, KeyboardKey.Kp5],
         [InputAction.Part6] = [KeyboardKey.Six, KeyboardKey.Kp6],
         [InputAction.Part7] = [KeyboardKey.Seven, KeyboardKey.Kp7],
@@ -138,6 +137,7 @@ public sealed class PlayerInputService : IInputService
         (ControlBindings.Part1, [InputAction.Part1]),
         (ControlBindings.Part2, [InputAction.Part2]),
         (ControlBindings.Part3, [InputAction.Part3]),
+        (ControlBindings.Part4, [InputAction.Part4]),
         (ControlBindings.CameraLeft, []), // held, read by Look()
         (ControlBindings.CameraRight, []),
     ];

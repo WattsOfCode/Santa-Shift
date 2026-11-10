@@ -121,8 +121,8 @@ public sealed class PauseController(GameServices s, Simulation sim, Action resta
     /// <summary>During READY: the warning when this round's bench works differently from the last.</summary>
     private string? ReadyWarning() => sim.Tuning.Assembly.PolicyChange(sim.State.Mode, sim.State.Round) switch
     {
-        "assembly_keys" => s.Content.Dialogue.Message("assembly_warn_keys", sim.State.Round),
-        "assembly_order" => s.Content.Dialogue.Message("assembly_warn_order", sim.State.Round),
+        "assembly_variants" => s.Content.Dialogue.Message("assembly_warn_variants", sim.State.Round),
+        "assembly_memory" => s.Content.Dialogue.Message("assembly_warn_memory", sim.State.Round),
         _ => null,
     };
 

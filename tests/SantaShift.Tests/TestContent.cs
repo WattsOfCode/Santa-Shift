@@ -12,9 +12,14 @@ public static class TestContent
 {
     /// <param name="supply">Adds the supply sled, which makes kit bins limited (stocked once per shift from the order plan).</param>
     /// <param name="clock">Adds the punch clock by the door, where the elf can end the shift early.</param>
-    public static GameContent Create(List<ChildLetter>? letters = null, Tuning? tuning = null, bool supply = false, bool clock = false) =>
+    /// <param name="variants">Gives the toys their variants and fixed part keys, as shipped: train 1 2 3 (big wheels 4 2 3),
+    /// bear 2 3 1 (big bear 2 4 3 1), robot 2 1 3 (rocket robot 2 1 4 3, from round 3). Without it each toy is just its
+    /// three parts on keys 1, 2, 3 in order.</param>
+    public static GameContent Create(List<ChildLetter>? letters = null, Tuning? tuning = null, bool supply = false, bool clock = false,
+        bool variants = false) =>
         ContentLoader.Build(
             tuning ?? new Tuning(),
+            variants ? VariantToys() :
             [
                 new Toy { Id = "train", Name = "Train", Parts = Parts("wheels", "boiler", "cab") },
                 new Toy { Id = "bear", Name = "Bear", Parts = Parts("body", "arms", "head") },
@@ -42,6 +47,37 @@ public static class TestContent
             letters ?? []);
 
     public static List<ToyPart> Parts(params string[] ids) => ids.Select(id => new ToyPart { Id = id, Name = id }).ToList();
+
+    /// <summary>A part on a fixed key.</summary>
+    public static ToyPart Part(string id, int key, double lift = 0, double grow = 0, bool inside = false) =>
+        new() { Id = id, Name = id, Key = key, Lift = lift, Grow = grow, Inside = inside };
+
+    public static ToyVariant Recipe(string id, string name, params string[] order) => new() { Id = id, Name = name, Order = order.ToList() };
+
+    private static List<Toy> VariantToys() =>
+    [
+        new Toy
+        {
+            Id = "train", Name = "Train",
+            Parts = [Part("wheels", 1), Part("boiler", 2), Part("cab", 3), Part("big_wheels", 4, lift: 0.035)],
+            Variants = [Recipe("standard", "Train", "wheels", "boiler", "cab"), Recipe("big_wheels", "Big-Wheel Train", "big_wheels", "boiler", "cab"),
+                new ToyVariant { Id = "long", Name = "Long Train", Order = ["wheels", "wheels", "boiler", "cab"], FromRound = 4 }],
+        },
+        new Toy
+        {
+            Id = "bear", Name = "Bear",
+            Parts = [Part("head", 1), Part("body", 2), Part("arms", 3), Part("stuffing", 4, grow: 1.3, inside: true)],
+            Variants = [Recipe("standard", "Bear", "body", "arms", "head"), Recipe("big", "Big Bear", "body", "stuffing", "arms", "head"),
+                new ToyVariant { Id = "giant", Name = "Giant Bear", Order = ["body", "stuffing", "stuffing", "arms", "head"], FromRound = 4 }],
+        },
+        new Toy
+        {
+            Id = "robot", Name = "Robot",
+            Parts = [Part("torso", 1), Part("legs", 2), Part("head", 3), Part("rocket", 4)],
+            Variants = [Recipe("standard", "Robot", "legs", "torso", "head"),
+                new ToyVariant { Id = "rocket", Name = "Rocket Robot", Order = ["legs", "torso", "rocket", "head"], FromRound = 3 }],
+        },
+    ];
 
     private static Station Station(string id, StationType type, double x, double y, double w, double h, double ix, double iy, string? toy = null) =>
         new() { Id = id, Type = type, ToyId = toy, Label = id, Body = new Box2(x, y, w, h), Interact = new Point2(ix, iy) };

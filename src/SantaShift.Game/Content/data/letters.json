@@ -1,6 +1,7 @@
 // Children's letters. Each new order uses the next unused letter for its toy (wrapping if they run out).
 // Add or remove letters freely: a letter naming an unknown toy is skipped with a warning, never a crash.
-// Keep "line" short enough to fit an order card.
+// Keep "line" short enough to fit an order card. "variant" (optional) asks for a toy variant from toys.json; those
+// letters are only used for orders that ask for that variant.
 {
   "schemaVersion": 1,
   "letters": [
@@ -20,6 +21,28 @@
     { "id": "lily_robot",   "child": "Lily",   "age": 8, "toyId": "robot", "line": "Beep boop means thank you." },
     { "id": "ravi_robot",   "child": "Ravi",   "age": 7, "toyId": "robot", "line": "Antenna is very important." },
     { "id": "nora_robot",   "child": "Nora",   "age": 6, "toyId": "robot", "line": "Can it dance? It should dance." },
-    { "id": "theo_robot",   "child": "Theo",   "age": 10,"toyId": "robot", "line": "I have been mostly good." }
+    { "id": "theo_robot",   "child": "Theo",   "age": 10,"toyId": "robot", "line": "I have been mostly good." },
+
+    // Letters asking for a toy variant (toys.json "variants"). They come from round assembly.variantsFromRound on.
+    { "id": "sam_train_big",  "child": "Sam",  "age": 5, "toyId": "train", "variant": "big_wheels", "line": "Big wheels so it can climb the snow!" },
+    { "id": "zoe_train_big",  "child": "Zoe",  "age": 9, "toyId": "train", "variant": "big_wheels", "line": "Monster truck wheels. On a train. Yes." },
+    { "id": "mia_train_big",  "child": "Mia",  "age": 7, "toyId": "train", "variant": "big_wheels", "line": "The BIGGEST wheels you have please." },
+    { "id": "noah_bear_big",  "child": "Noah", "age": 6, "toyId": "bear",  "variant": "big",        "line": "Extra stuffing! As big as me!" },
+    { "id": "ella_bear_big",  "child": "Ella", "age": 7, "toyId": "bear",  "variant": "big",        "line": "A great big bear to guard my room." },
+    { "id": "ivy_bear_big",   "child": "Ivy",  "age": 4, "toyId": "bear",  "variant": "big",        "line": "Bigger bear = bigger hugs." },
+    { "id": "kai_robot_jet",  "child": "Kai",  "age": 9, "toyId": "robot", "variant": "rocket",     "line": "It needs a rocket pack. Obviously." },
+    { "id": "nora_robot_jet", "child": "Nora", "age": 6, "toyId": "robot", "variant": "rocket",     "line": "A robot that can fly to the moon!" },
+    { "id": "theo_robot_jet", "child": "Theo", "age": 10,"toyId": "robot", "variant": "rocket",     "line": "Jetpack robot. I have been VERY good." },
+    { "id": "leo_train_long", "child": "Leo",  "age": 6, "toyId": "train", "variant": "long",       "line": "A train with a carriage for my teddies." },
+    { "id": "ava_train_long", "child": "Ava",  "age": 8, "toyId": "train", "variant": "long",       "line": "Longer! The longest train in the world!" },
+    { "id": "finn_bear_giant","child": "Finn", "age": 3, "toyId": "bear",  "variant": "giant",      "line": "HUGE BEAR (Mum says it won't fit. It will.)" },
+    { "id": "omar_bear_giant","child": "Omar", "age": 5, "toyId": "bear",  "variant": "giant",      "line": "A bear bigger than my dad." },
+
+    // Boats (toys.json "boat") join the line from round 5.
+    { "id": "lily_boat",      "child": "Lily", "age": 8, "toyId": "boat",  "line": "A boat for the bath. A fast one." },
+    { "id": "ravi_boat",      "child": "Ravi", "age": 7, "toyId": "boat",  "line": "Red sails please. Pirate red." },
+    { "id": "ella_boat",      "child": "Ella", "age": 7, "toyId": "boat",  "line": "My duck needs a boat." },
+    { "id": "sam_boat",       "child": "Sam",  "age": 5, "toyId": "boat",  "line": "Can it sail to Grandma's?" },
+    { "id": "kai_boat",       "child": "Kai",  "age": 9, "toyId": "boat",  "line": "A ship. Boats are for babies. A SHIP." }
   ]
 }

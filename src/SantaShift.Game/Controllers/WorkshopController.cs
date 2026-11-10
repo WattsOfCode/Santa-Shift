@@ -27,9 +27,9 @@ public sealed class WorkshopController : IScreen
     {
         _s = services;
         _run = run;
-        _sim = new Simulation(services.Content, run.Mode, run.Round, seed: Random.Shared.Next(), naughty: run.List.NaughtyChildren,
+        _sim = new Simulation(services.Content, run.Mode, run.Round, naughty: run.List.NaughtyChildren,
             modifiers: run.Modifiers, spirit: run.SpiritForNextRound(services.Content.Tuning.Spirit),
-            tutorial: run.Round == 1 && GuideOn(services));
+            tutorial: run.Round == 1 && GuideOn(services), cartParts: DebugCartParts ?? run.CartParts);
         _guideWasActive = TutorialGuide.Active(_sim);
         _player = new PlayerController(services.Input, services.Settings, services.Render.Movement);
         _interaction = new InteractionController(services.Content, services.Input, services.Audio);
@@ -59,7 +59,7 @@ public sealed class WorkshopController : IScreen
         for (int r = 1; r < DebugRound; r++) // --round N: as if the rounds before it were cleared
         {
             int quota = content.Tuning.QuotaFor(mode, r);
-            run.CompleteRound(new RunState { Delivered = quota, Score = quota * 100 }, quota);
+            run.CompleteRound(new RunState { Delivered = quota, Score = quota * 100 }, quota, content.Tuning.Cart);
             run.StartNextRound();
         }
         return run;
@@ -110,6 +110,15 @@ public sealed class WorkshopController : IScreen
     /// <summary>Debug builds only (--assemble N): start at the bench building a train with N parts on.</summary>
     public static int? DebugAssembleParts;
 
+    /// <summary>Debug builds only (--cart N): start with N toy cart parts built, whatever the round.</summary>
+    public static int? DebugCartParts;
+
+    /// <summary>Debug builds only (--cart-load train,bear): these finished toys start in the cart.</summary>
+    public static string[]? DebugCartLoad;
+
+    /// <summary>Debug builds only (--assemble N toy[:variant]): build this toy (following this variant) instead.</summary>
+    public static string? DebugAssembleToy, DebugAssembleVariant;
+
     /// <summary>Debug builds only (--swing-every N): swing the hammer every N frames, for screenshots of the swing.</summary>
     public static int? DebugSwingEvery;
 
@@ -153,7 +162,10 @@ public sealed class WorkshopController : IScreen
         if (DebugAt != null && DebugAt.Split(',') is [var mx, var mz]
             && double.TryParse(mx, System.Globalization.CultureInfo.InvariantCulture, out double x)
             && double.TryParse(mz, System.Globalization.CultureInfo.InvariantCulture, out double z))
+        {
             _sim.PlacePlayer(_s.Content.Tuning.MetresToPixels(x, z)); // --at x,z in metres
+            _debugUsePending = DebugUse;
+        }
         else if (DebugAt != null && _s.Content.Stations.FirstOrDefault(st => st.Id == DebugAt) is { } at)
         {
             _sim.PlacePlayer(at.Interact);
@@ -161,6 +173,8 @@ public sealed class WorkshopController : IScreen
             _player.FaceInstantly(MathF.Atan2(dir.X, dir.Z) * 180f / MathF.PI);
             _debugUsePending = DebugUse; // pressed on the first step after READY
         }
+        foreach (var toy in DebugCartLoad ?? []) // --cart-load train,bear: toys already in the cart
+            _sim.State.Cart.Items.Add(new Item { ToyId = toy, Stage = ItemStage.Assembled });
         _pause.BeginReady();
         _lastPosition = _sim.State.PlayerPosition;
         _lastFacing = _player.FacingDegrees;
@@ -196,13 +210,18 @@ public sealed class WorkshopController : IScreen
 
     private void DebugStartAssembly(int parts)
     {
-        var toy = _s.Content.Toys[0];
+        var toy = _s.Content.FindToy(DebugAssembleToy ?? "") ?? _s.Content.Toys[0];
         var bench = _s.Content.Stations.First(st => st.Type == StationType.Bench);
         _sim.State.CarriedItem = new Item { ToyId = toy.Id };
         _sim.PlacePlayer(bench.Interact);
         _sim.Step(new PlayerCommand(0, 0, Interact: true));
-        for (int i = 0; i < parts && _sim.State.Assembly is { } game && i < game.Order.Count - 1; i++)
-            _sim.Step(new PlayerCommand(0, 0, false, PartKey: game.NextKey));
+        // With a variant named, follow that variant's combination; otherwise whatever the bench suggests.
+        var follow = DebugAssembleVariant != null ? toy.Variant(DebugAssembleVariant) : null;
+        for (int i = 0; i < parts && _sim.State.Assembly is { } game && game.Target is { } target && i < target.Order.Count - 1; i++)
+        {
+            string next = follow != null && i < follow.Order.Count ? follow.Order[i] : game.NextPart!;
+            _sim.Step(new PlayerCommand(0, 0, false, PartKey: game.KeyOf(next)));
+        }
         _sim.DrainEvents();
         var dir = _world.WorkDirection(bench);
         _player.FaceInstantly(MathF.Atan2(dir.X, dir.Z) * 180f / MathF.PI);
@@ -240,10 +259,21 @@ public sealed class WorkshopController : IScreen
         return best;
     }
 
+    /// <summary>The loose piece under the mouse pointer while building at the bench, or null.</summary>
+    private string? PieceUnderPointer()
+    {
+        if (_sim.State.Assembly is not { } game || _s.Input.UsingGamepad || _pause.Blocking) return null;
+        var bench = _s.Content.Stations.FirstOrDefault(st => st.Id == game.StationId);
+        if (bench == null) return null;
+        var pointer = UiCanvas.FromScreen(_s.Input.Pointer(), Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
+        return _world.PieceAt(bench, game, pointer);
+    }
+
     /// <summary>While building, shovelling or tying a ribbon: the floor direction towards that station, so the elf faces it.</summary>
     private (double X, double Y)? FaceWorkDirection()
     {
         var state = _sim.State;
+        if (state.Cart.Pushing) return state.Cart.Direction; // standing still, the elf keeps facing the cart
         string? id = state.Assembly?.StationId ?? state.RibbonPick?.StationId ?? state.CraftingAction?.StationId;
         if (id == null || _s.Content.Stations.FirstOrDefault(st => st.Id == id) is not { } station) return null;
         var dir = _world.WorkDirection(station);
@@ -274,7 +304,7 @@ public sealed class WorkshopController : IScreen
         bool cancel = false;
         // Esc is both Pause and Back: with the recycle prompt open it only closes the prompt.
         bool back = _s.Input.ConsumePressed(InputAction.Back), pause = _s.Input.ConsumePressed(InputAction.Pause);
-        if ((_sim.State.RecyclePromptOpen || _sim.State.PunchPromptOpen) && back) cancel = true;
+        if ((_sim.State.RecyclePromptOpen || _sim.State.PunchPromptOpen || _sim.State.Cart.PickOpen) && back) cancel = true;
         else if (pause) { _pause.Pause(); return; }
 
         var floorMove = _camera.ToFloorDirection(_s.Input.Move());
@@ -302,12 +332,30 @@ public sealed class WorkshopController : IScreen
             if (partKey == 0 && click && _world.HoveredSpool >= 0) partKey = _world.HoveredSpool + 1;
             if (DebugSpool is { } spool && _sim.State.Tick > 30) { partKey = spool; DebugSpool = null; }
         }
-        else if (_sim.State.Assembly == null) { while (_s.Input.ConsumePartKey() != 0) { } partKey = 0; }
-        else if (partKey != 0) _swings++;
+        else if (_sim.State.Assembly is { } build)
+        {
+            // Clicking a loose piece on the bench counts as pressing its key.
+            if (partKey == 0 && click && _world.HoveredPiece is { } piece) partKey = build.KeyOf(piece);
+            if (partKey != 0) _swings++;
+        }
+        else if (_sim.State.Cart.PickOpen)
+        {
+            // The open cart's cards: clicking toy n takes it (like part key n), the push button grabs the handle.
+            _hud.CartHovered = _hud.Hits.At(_mouse.At);
+            if (click && _hud.CartHovered >= HudView.CartSlotHit && _hud.CartHovered < HudView.CartPushHit)
+                partKey = _hud.CartHovered - HudView.CartSlotHit + 1;
+            else if (click && _hud.CartHovered == HudView.CartPushHit) interact = true;
+        }
+        else { while (_s.Input.ConsumePartKey() != 0) { } partKey = 0; }
+        if (!_sim.State.Cart.PickOpen) _hud.CartHovered = -1;
 
         _sim.Step(new PlayerCommand(mx, my, interact, cancel, partKey));
 
-        _interaction.Handle(_sim.DrainEvents());
+        var events = _sim.DrainEvents();
+        // Taking hold of the cart turns the elf to face it at once, so the handle is in their hands.
+        if (events.Any(e => e.Type == SimEventType.CartGrabbed) && _sim.State.Cart.Direction is var (cx, cy))
+            _player.FaceInstantly(MathF.Atan2((float)cx, (float)cy) * 180f / MathF.PI);
+        _interaction.Handle(events);
         PlayShiftSounds();
         if (_guideWasActive && !TutorialGuide.Active(_sim) && _sim.State.Phase == RunPhase.Playing)
             _interaction.Feedback.ShowToast(_s.Content.Dialogue.Message("guide_done"), ToastKind.Success, 200);
@@ -320,16 +368,18 @@ public sealed class WorkshopController : IScreen
     public void FrameUpdate()
     {
         // Mouse look only while actually playing; menus and READY get a normal cursor.
-        // Choosing a ribbon frees the pointer too, so the spools can be clicked (the camera holds still meanwhile).
+        // Choosing a ribbon or building at the bench frees the pointer too, so the spools and the loose pieces can be
+        // clicked (the camera holds still meanwhile).
         bool playing = !_pause.Blocking || _pause.State == PauseState.Ready;
-        bool picking = _sim.State.RibbonPick != null;
+        bool picking = _sim.State.RibbonPick != null || _sim.State.Assembly != null || _sim.State.Cart.PickOpen;
         bool asking = _sim.State.PunchPromptOpen || _sim.State.RecyclePromptOpen; // its buttons can be clicked
         _s.Input.SetMouseCaptured(playing && !picking && !asking && Raylib.IsWindowFocused());
         _camera.Follow = _s.Settings.CameraFollow;
         _camera.Update(_pause.Blocking || picking || asking ? System.Numerics.Vector2.Zero : _s.Input.Look(), DrawnPosition,
             CurrentWork(), Raylib.GetFrameTime(), DrawnFacing);
         _world.PlayerAt = DrawnPosition;
-        _world.HoveredSpool = picking ? SpoolUnderPointer() : -1;
+        _world.HoveredSpool = _sim.State.RibbonPick != null ? SpoolUnderPointer() : -1;
+        _world.HoveredPiece = PieceUnderPointer();
         _world.GuideTarget = _pause.Blocking ? null : TutorialGuide.Next(_sim)?.Station;
 
         _frames++;
@@ -405,7 +455,7 @@ public sealed class WorkshopController : IScreen
         var d = _s.Content.Dialogue;
         int quota = _sim.Quota;
         int round = _run.Round;
-        bool passed = _run.CompleteRound(st, quota);
+        bool passed = _run.CompleteRound(st, quota, _s.Content.Tuning.Cart);
 
         // Lifetime totals and unlocks, saved straight away.
         var unlocked = _s.Progress.RecordRound(st, round, passed, _s.Content.Unlocks);
@@ -429,9 +479,19 @@ public sealed class WorkshopController : IScreen
             NextQuota: passed ? _sim.Tuning.QuotaFor(_run.Mode, _run.Round + 1) : 0,
             BestScore: _s.Best.For(_run.Mode), BestRound: _s.Best.RoundFor(_run.Mode), NewBest: newBest,
             Unlocked: unlocked.Select(u => u.Name).ToList(), Spirit: st.Spirit,
-            NextNote: passed ? NextRoundNote(_run.Round + 1) : "");
+            NextNote: passed ? NextRoundNote(_run.Round + 1) : "", CartNote: CartNote());
 
         _s.Scenes.Switch(new ResultsController(_s, summary));
+    }
+
+    /// <summary>The toy cart part the round just earned ("New toy cart part: Wheels (1 of 3)."), or "".</summary>
+    private string CartNote()
+    {
+        if (_run.NewCartPart is not { } part) return "";
+        var cart = _s.Content.Tuning.Cart;
+        return cart.BuiltWith(_run.CartParts)
+            ? _s.Content.Dialogue.Message("cart_part_ready", part, cart.Capacity)
+            : _s.Content.Dialogue.Message("cart_part_earned", part, _run.CartParts, cart.Parts.Length);
     }
 
     /// <summary>What changes next round: the quota, and the steady flow of letters or a rush shift when one starts.</summary>
@@ -440,6 +500,9 @@ public sealed class WorkshopController : IScreen
         var t = _sim.Tuning;
         var d = _s.Content.Dialogue;
         int quota = t.QuotaFor(_run.Mode, next);
+        // A toy joining the line next round (the boat) is the bigger news.
+        if (_s.Content.Toys.FirstOrDefault(toy => toy.FromRound > 1 && toy.FromRound == next) is { } newToy)
+            return d.Message("next_round_new_toy", next, quota, newToy.Name.ToLowerInvariant());
         string key = t.Rounds.IsRushShift(next) ? "next_round_rush"
             : t.Flow.On(next) && !t.Flow.On(next - 1) ? "next_round_flow" : "next_round";
         return d.Message(key, next, quota);

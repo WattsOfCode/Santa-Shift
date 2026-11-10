@@ -399,10 +399,88 @@ def robot_head(c):
     sphere("Antenna tip", 0, 0, 0.65, 0.025, "berry", c)
 
 
+# Variant parts (toys.json "variants"): pieces that swap in for a plain part or add to the toy. They are not part of the
+# finished toy or botched models below; the game draws a variant from its parts as it was built.
+
+def train_big_wheels(c):
+    """Swaps in for the wheels: bigger wheels on a raised chassis. toys.json lifts the boiler and cab 0.035 m for it."""
+    lift = 0.035
+    box("Chassis", 0, 0, 0.05 + lift, 0.46, 0.2, 0.05, "ink", c)
+    cone("Cowcatcher", -0.25, 0, 0.08 + lift * 0.6, 0.1, 0.0, 0.06, "ink", c, verts=4, rot=(0, math.radians(-90), 0))
+    for x in (-0.12, 0.12):
+        for side in (-1, 1):
+            cyl(f"Wheel.{x}.{side}", x, side * 0.13, 0.1, 0.1, 0.035, "Y", "ink", c, verts=16)
+            cyl(f"Rim.{x}.{side}", x, side * 0.149, 0.1, 0.075, 0.006, "Y", "berry", c, verts=16)
+            cyl(f"Hub.{x}.{side}", x, side * 0.152, 0.1, 0.03, 0.012, "Y", "gold", c)
+    for side in (-1, 1):  # coupling rods joining the wheels
+        box(f"Rod.{side}", 0, side * 0.158, 0.095, 0.26, 0.008, 0.012, "gold", c)
+
+
+def bear_stuffing(c):
+    """Goes inside the bear (it grows 1.3 times): a fluffy tuft of white stuffing, seen only on the bench."""
+    for n, (x, y, z, r) in enumerate([(0, 0, 0.06, 0.06), (0.05, 0.02, 0.05, 0.045), (-0.05, -0.01, 0.05, 0.05),
+                                      (0.01, -0.04, 0.09, 0.04), (-0.02, 0.04, 0.1, 0.042), (0.04, -0.03, 0.03, 0.035)]):
+        sphere(f"Fluff.{n}", x, y, z, r, "snow", c, segments=8, rings=6)
+
+
+def robot_rocket(c):
+    """Straps onto the robot's back (+Y): two tanks with nose cones and nozzles, and a little flame."""
+    box("Strap plate", 0, 0.108, 0.16, 0.18, 0.016, 0.18, "steel", c)
+    for side in (-1, 1):
+        x = side * 0.06
+        cyl(f"Tank.{side}", x, 0.16, 0.25, 0.045, 0.2, "Z", "berry", c, verts=12)
+        cone(f"Nose.{side}", x, 0.16, 0.38, 0.045, 0.0, 0.06, "gold", c, verts=12)
+        cone(f"Nozzle.{side}", x, 0.16, 0.135, 0.022, 0.04, 0.03, "iron", c, verts=10)
+        cone(f"Flame.{side}", x, 0.16, 0.095, 0.0, 0.03, 0.05, "flame", c, verts=8)
+        box(f"Fin.{side}", side * 0.11, 0.16, 0.15, 0.03, 0.01, 0.07, "gold", c)
+
+
+def train_carriage(c):
+    """The train's second set of wheels (toys.json repeatModel): a carriage coupled behind the cab, for the long train."""
+    box("Coupling", 0.27, 0, 0.07, 0.1, 0.04, 0.025, "ink", c)
+    box("Carriage chassis", 0.47, 0, 0.05, 0.32, 0.2, 0.05, "ink", c)
+    for x in (0.38, 0.56):
+        for side in (-1, 1):
+            cyl(f"Carriage wheel.{x}.{side}", x, side * 0.11, 0.065, 0.065, 0.03, "Y", "ink", c, verts=12)
+            cyl(f"Carriage hub.{x}.{side}", x, side * 0.127, 0.065, 0.025, 0.01, "Y", "gold", c)
+    box("Carriage", 0.47, 0, 0.1, 0.3, 0.22, 0.17, "pine", c)
+    box("Carriage trim", 0.47, 0, 0.17, 0.31, 0.225, 0.02, "gold", c)
+    box("Carriage roof", 0.47, 0, 0.27, 0.34, 0.25, 0.025, "berry", c)
+    for x in (0.4, 0.54):
+        box(f"Carriage window.{x}", x, -0.112, 0.2, 0.07, 0.01, 0.05, "glass", c)
+
+
+def boat_hull(c):
+    box("Hull", 0, 0, 0.02, 0.44, 0.2, 0.1, "gift_a", c)
+    box("Keel", 0, 0, 0.0, 0.36, 0.08, 0.03, "ink", c)
+    cone("Bow", -0.26, 0, 0.08, 0.06, 0.0, 0.09, "gift_a", c, verts=4, rot=(0, math.radians(-90), math.radians(45)))
+    box("Deck", 0, 0, 0.12, 0.42, 0.18, 0.015, "plank_a", c)
+    box("Rail", 0, 0, 0.1, 0.45, 0.21, 0.02, "gold", c)
+
+
+def boat_mast(c):
+    cyl("Mast", -0.02, 0, 0.36, 0.014, 0.48, "Z", "frame", c)
+    cyl("Boom", 0.08, 0, 0.18, 0.01, 0.2, "X", "frame", c)
+    box("Flag", -0.005, 0, 0.58, 0.06, 0.006, 0.035, "berry", c)
+
+
+def boat_sail(c):
+    box("Mainsail", 0.085, 0, 0.2, 0.19, 0.008, 0.36, "berry", c)
+    box("Sail stripe", 0.085, -0.005, 0.32, 0.19, 0.004, 0.035, "snow", c)
+    box("Jib", -0.1, 0, 0.18, 0.13, 0.008, 0.24, "gold", c)
+
+
+VARIANT_PARTS = {
+    "toy_train": [("big_wheels", train_big_wheels), ("carriage", train_carriage)],
+    "toy_bear": [("stuffing", bear_stuffing)],
+    "toy_robot": [("rocket", robot_rocket)],
+}
+
 TOY_PARTS = {
     "toy_train": [("wheels", train_wheels), ("boiler", train_boiler), ("cab", train_cab)],
     "toy_bear": [("body", bear_body), ("arms", bear_arms), ("head", bear_head)],
     "toy_robot": [("legs", robot_legs), ("torso", robot_torso), ("head", robot_head)],
+    "toy_boat": [("hull", boat_hull), ("mast", boat_mast), ("sail", boat_sail)],
 }
 
 # How each part ends up on a botched toy: (move in metres, turn in degrees), around the part's own centre.
@@ -416,6 +494,9 @@ BOTCHED = {
     "toy_robot": {"legs": ((0.0, 0.0, 0.5), (180, 0, 0)),           # legs on top
                   "torso": ((0.0, 0.0, 0.0), (0, 18, 0)),
                   "head": ((0.18, 0.0, -0.36), (0, 0, 35))},        # head at the bottom
+    "toy_boat": {"hull": ((0.0, 0.0, 0.0), (0, 160, 0)),             # hull capsized
+                 "mast": ((0.05, 0.12, -0.2), (90, 0, 20)),         # mast snapped flat beside it
+                 "sail": ((0.12, -0.08, -0.12), (0, 70, 40))},      # sail crumpled on top
 }
 
 
@@ -960,6 +1041,35 @@ def prop_barrels(c):
     sphere("Apple", 0.1, -0.5, 0.97, 0.05, "berry", c)
 
 
+# The toy cart, built one part per passed round (tuning.json cart.parts): each model holds just that part, placed where
+# it sits on the finished cart, so the parts stack up. Front (the way it rolls) is -Y; the handle is at the back (+Y),
+# where the elf pushes. About 0.5 m wide and 0.8 m long; the tray floor is at 0.26 m with three compartments.
+
+def cart_wheels(c):
+    box("Chassis", 0, 0, 0.17, 0.42, 0.74, 0.04, "frame", c)
+    for y in (-0.27, 0.27):
+        cyl(f"Axle.{y}", 0, y, 0.1, 0.015, 0.58, "X", "steel", c)
+        for side in (-1, 1):
+            cyl(f"Wheel.{y}.{side}", side * 0.27, y, 0.1, 0.1, 0.04, "X", "ink", c, verts=14)
+            cyl(f"Hub.{y}.{side}", side * 0.295, y, 0.1, 0.035, 0.012, "X", "gold", c)
+
+
+def cart_tray(c):
+    box("Tray floor", 0, 0, 0.21, 0.5, 0.8, 0.05, "bench_top", c)
+    for side in (-1, 1):
+        box(f"Side.{side}", side * 0.24, 0, 0.26, 0.02, 0.8, 0.12, "plank_a", c)
+        box(f"End.{side}", 0, side * 0.39, 0.26, 0.5, 0.02, 0.12, "plank_c", c)
+        box(f"Trim.{side}", side * 0.252, 0, 0.33, 0.006, 0.8, 0.03, "berry", c)
+        box(f"Divider.{side}", 0, side * 0.13, 0.26, 0.46, 0.015, 0.08, "plank_b", c)
+
+
+def cart_handle(c):
+    for side in (-1, 1):
+        limb(f"Upright.{side}", (side * 0.2, 0.38, 0.3), (side * 0.2, 0.56, 0.66), 0.018, 0.018, "berry", c, verts=8)
+    cyl("Bar", 0, 0.56, 0.66, 0.022, 0.46, "X", "berry", c, verts=10)
+    cyl("Grip", 0, 0.56, 0.66, 0.03, 0.3, "X", "ink", c, verts=10)
+
+
 def prop_sled(c):
     for side in (-1, 1):
         box(f"Runner.{side}", side * 0.22, 0, 0, 0.05, 1.4, 0.06, "berry", c)
@@ -1130,8 +1240,12 @@ MODELS = {
     "elf": (elf, True, False),
     **{toy: (whole_toy(toy), True, False) for toy in TOY_PARTS},
     **{f"{toy}_{pid}": (toy_part(fn), True, False) for toy, parts in TOY_PARTS.items() for pid, fn in parts},
+    **{f"{toy}_{pid}": (toy_part(fn), True, False) for toy, parts in VARIANT_PARTS.items() for pid, fn in parts},
     **{f"{toy}_botched": (botched_toy(toy), True, False) for toy in TOY_PARTS},
     "hammer": (hammer, True, False),
+    "cart_wheels": (toy_part(cart_wheels), False, False),
+    "cart_tray": (toy_part(cart_tray), False, False),
+    "cart_handle": (toy_part(cart_handle), False, False),
     "coal_lump": (coal_lump, True, False),
     "shovel": (shovel, True, False),
     "prop_npc_bench": (prop_npc_bench, True, False),

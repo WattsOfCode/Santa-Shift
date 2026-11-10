@@ -26,6 +26,9 @@ public sealed class Item
     /// <summary>How many parts are on the toy so far while it is being built (0 for a fresh kit).</summary>
     public int PartsPlaced { get; set; }
 
+    /// <summary>Which variant was built (see <see cref="Toy.Variants"/>): null for the plain toy, and for kits.</summary>
+    public string? Variant { get; set; }
+
     /// <summary>Changes every time the item changes, so a stale crafting action can never modify it.</summary>
     public int Revision { get; set; }
 

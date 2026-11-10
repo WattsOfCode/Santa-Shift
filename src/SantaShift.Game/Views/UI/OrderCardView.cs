@@ -28,7 +28,9 @@ public sealed class OrderCardView(GameContent content)
         else ToyIcon.Draw(ui, order.ToyId, x + 32, y + 32, 40, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
 
         // Text: what to ship large, child small
-        ui.Text(order.Naughty ? "Coal" : toy?.Name ?? order.ToyId, x + 66, y + 8, 20, Palette.Ink);
+        // A variant names itself ("Big-Wheel Train") in pine green, so it stands out from a plain toy.
+        string what = order.Naughty ? "Coal" : toy?.NameOf(order.Variant) ?? order.ToyId;
+        ui.Text(ui.Fit(what, 20, Width - 66 - 48), x + 66, y + 8, 20, order.Variant != null && !order.Naughty ? Palette.Pine : Palette.Ink);
         string who = order.Letter != null ? $"for {order.Letter.Child}, {order.Letter.Age}" : $"Order #{order.Id}";
         ui.Text(ui.Fit(who, 14, 110), x + 66, y + 32, 14, Palette.Shade(Palette.Ink, 1.6f));
 
@@ -81,6 +83,16 @@ public sealed class OrderCardView(GameContent content)
             ui.FillRounded(x + 4, y + 4, rw, 13, Palette.Berry, 0.5f);
             ui.Text("RUSH", x + 7, y + 5, 10, Palette.Snow);
         }
+        // A variant gets its short tag ("BIG", "ROCKET") in pine green under the icon, and the time moves down a little.
+        bool tagged = false;
+        if (!order.Naughty && order.Variant != null && toy?.Variant(order.Variant) is { } variant)
+        {
+            string tag = ui.Fit(variant.Tag.Length > 0 ? variant.Tag : variant.Name.ToUpperInvariant(), 10, w - 14);
+            float tw = ui.MeasureText(tag, 10) + 6;
+            ui.FillRounded(cx - tw / 2, y + 35, tw, 13, Palette.Pine, 0.5f);
+            ui.Text(tag, cx, y + 36, 10, Palette.Snow, Align.Center);
+            tagged = true;
+        }
         if (order.RequiresRibbon)
         {
             var ribbon = t.FindRibbon(order.RibbonColor);
@@ -89,7 +101,7 @@ public sealed class OrderCardView(GameContent content)
             ui.OutlineRounded(x + w - 20, y + 4, 16, 13, Palette.WithAlpha(Palette.Ink, 90), 1, 0.5f);
         }
 
-        ui.Text($"{(int)Math.Ceiling(seconds)}s", cx, y + 46, 16, urgent ? Palette.Berry : Palette.Ink, Align.Center);
+        ui.Text($"{(int)Math.Ceiling(seconds)}s", cx, y + (tagged ? 50 : 46), 16, urgent ? Palette.Berry : Palette.Ink, Align.Center);
 
         float frac = order.AllowedDurationTicks > 0 ? (float)remaining / order.AllowedDurationTicks : 0;
         ui.Fill(x + 6, y + h - 6, w - 12, 3, Palette.WithAlpha(Palette.Ink, 40));

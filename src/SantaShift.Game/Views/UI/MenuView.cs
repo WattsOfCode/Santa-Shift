@@ -98,8 +98,8 @@ public sealed class MenuView
             ("Move", $"{K(ControlBindings.MoveUp)} {K(ControlBindings.MoveLeft)} {K(ControlBindings.MoveDown)} {K(ControlBindings.MoveRight)}", "Left stick"),
             ("Look around", "Mouse", "Right stick"),
             ("Use / pick up", K(ControlBindings.Interact), B(ControlBindings.Interact)),
-            ("Hammer parts", $"{K(ControlBindings.Part1)} {K(ControlBindings.Part2)} {K(ControlBindings.Part3)}",
-                $"{B(ControlBindings.Part1)} {B(ControlBindings.Part2)} {B(ControlBindings.Part3)}"),
+            ("Hammer parts", string.Join(" ", ControlBindings.PartActions.Select(K)) + " or click",
+                string.Join(" ", ControlBindings.PartActions.Select(B))),
             ("Pause", "Esc", "Start"),
         ];
         float ry = py + 80;

@@ -25,7 +25,7 @@ public sealed class SettingsView
         [ControlBindings.MoveUp] = "Move up", [ControlBindings.MoveDown] = "Move down",
         [ControlBindings.MoveLeft] = "Move left", [ControlBindings.MoveRight] = "Move right",
         [ControlBindings.Interact] = "Use / pick up", [ControlBindings.Part1] = "Part 1",
-        [ControlBindings.Part2] = "Part 2", [ControlBindings.Part3] = "Part 3",
+        [ControlBindings.Part2] = "Part 2", [ControlBindings.Part3] = "Part 3", [ControlBindings.Part4] = "Part 4",
         [ControlBindings.CameraLeft] = "Turn camera left", [ControlBindings.CameraRight] = "Turn camera right",
     };
 
@@ -225,7 +225,7 @@ public sealed class SettingsView
         for (int i = 0; i < 3; i++) ui.Text(heads[i], colX[i] + cellW / 2, RowsTop - 22, 13, Palette.Ice, Align.Center);
 
         var actions = ControlBindings.Actions;
-        const float rowH = 23;
+        const float rowH = 22;
         for (int r = 0; r < actions.Length; r++)
         {
             int row = r + 1;

@@ -68,7 +68,8 @@ Tagline candidate: *You make the toys. Santa takes the credit.*
   5-second warning and never touch the carried item.
 
 **Theme: SHIFT.** Three connected readings: the elf works a scheduled *shift*; Santa *shifts* production rules during
-it; and each round *shifts* the work itself (the bench parts change order, then change keys). Shown through the shift
+it; and each round *shifts* the work itself (letters start asking for toy variants with their own build combinations,
+then the instruction sheets go and the elf builds from memory). Shown through the shift
 clock, policy banners, requirement badges, the round counter and the review. Keyboard Shift is not a control.
 
 ---
@@ -150,7 +151,7 @@ choices.
 | Look | Mouse; Z / C turn | Right stick; LT / RT turn | Camera orbits behind the elf; swings round on its own after 2 s facing one way |
 | Move | WASD / arrows | Left stick / D-pad | Relative to the camera; same speed in all directions |
 | Interact | E / Space | A | One contextual action on the highlighted fixture |
-| Bench parts / ribbon colours | 1 / 2 / 3 (or click a spool) | X / Y / RB | Hammer the shown part; pick a spool |
+| Bench parts / ribbon colours | 1 / 2 / 3 / 4 (or click a piece or a spool) | X / Y / RB / LB | Hammer that part on; pick a spool |
 | Pause / back | Esc | Start / B | Pauses the simulation; opens the pause menu or closes the current menu |
 | Menus | Arrows, Enter, Esc | D-pad, A, B | Visible focus; all menus usable without a mouse |
 
@@ -199,12 +200,25 @@ silhouette on a white card framed in the toy's colour. They are painted when the
 cards use, so a toy added to `toys.json` gets its picture without an image file. Crates are also tinted the toy's colour,
 so shape and colour both say which kit it is.
 
-**Assembly bench (minigame).** Interact with a kit to start. The camera moves in over the elf's shoulder and the three
-parts are shown in order, each on a key. Hammer them on in that order before the time limit runs out.
-- Time limit: 6.0 s in round 1, 0.5 s less each round, never below 2.5 s.
-- From round 2 the part order is random each build; from round 4 the parts also move to different keys.
+**Assembly bench (minigame).** Interact with a kit to start. The camera moves in over the elf's shoulder, the cursor
+is freed, and the toy's pieces lie loose on the bench, each with its key. Every toy has a **fixed build combination**:
+each part is always on the same key, so the combination is learnable. Press the keys in order (or click the pieces)
+before the time limit runs out.
+- Combinations (keys / controller): Train 1 2 3 (X Y RB); Bear 2 3 1; Robot 2 1 3.
+- **Variants** (from round 2): some letters ask for a variant, shown on the order card, and each has its own
+  combination. Big-Wheel Train 4 2 3 (big wheels swap in and lift the train); Big Bear 2 4 3 1 (extra stuffing grows
+  the bear); Rocket Robot 2 1 4 3 (a rocket pack, from round 3). From round 4: Long Train 1 1 2 3 (a second set of
+  wheels brings a carriage) and Giant Bear 2 4 4 3 1 (stuffing twice). Key 4 is LB on a controller. The kit is the
+  same; the keys pressed decide which version gets built, and only the version asked for fills the letter.
+- **The boat** joins the line in round 5, once the cart is ready: Boat 3 1 2 (hull, mast, sail), with its own kit bin
+  between the train and bear bins (shut and labelled "from round 5" until then).
+- The bench panel lists the toy's combinations as key chips, marks the one the most urgent letter wants, and greys out
+  the ones the parts so far no longer fit. From round 5 it lists only their names: build from memory.
+- Time limit: 6.0 s for three parts in round 1, 0.5 s less each round, never below 2.5 s; a four-part combination gets
+  a third more.
 - Relaxed mode plays one round behind with 1.5× the time.
-- A wrong part or running out of time **botches** the toy (it must be recycled; Christmas Spirit −8).
+- A key that continues no combination, or running out of time, **botches** the toy (it must be recycled; Christmas
+  Spirit −8). A key with no piece on it does nothing.
 - Walking away cancels with the kit intact. Pause stops the timer.
 
 **Ribbon station.** Accepts an assembled toy with no ribbon. The camera leans in over the spools (red, gold, green;
@@ -215,6 +229,14 @@ toy intact. Ribbons are unlimited.
 order.
 
 **Supply sled.** Empty-handed, take a supply crate; carry it to a kit bin to add 2 kits (`resupplyKits`).
+
+**Toy cart.** Built over each run, one part per passed round (wheels, toy tray, push handle), so it works from round 4;
+it stands between the tree and the robot bin at the start of each shift, labelled with its progress until then.
+- Use with a finished toy puts it in (up to 3). Kits, coal and botched toys stay out.
+- Use with empty hands opens it: part key n (or a click on its card) takes toy n into the elf's hands; use again grabs
+  the handle. An empty cart is grabbed at once. Moving closes it.
+- Pushing, the elf walks at 3/4 speed with empty hands; the cart rolls ahead and swings round to where they walk. Use
+  lets go, leaving it there. Toys come out by hand and are shipped as usual; any left in it when the shift ends are lost.
 
 **Shipping.** Accepts an assembled toy (or coal) matching a live order: same toy, the required ribbon colour if any (an
 extra ribbon is fine). If several match: earliest deadline, then oldest, then smallest ID. No manual order choice.
@@ -289,10 +311,10 @@ created order, and does not carry past shift end. Rush deliveries earn +25.
 announces it a second into the shift, the policy strip says so throughout, and the results screen warns about it the
 round before (`rounds.rushShiftFrom`, `rounds.rushShiftEvery`).
 
-**Assembly policy updates.** When the bench changes from the round before (the parts go on in a mixed-up order from
-round 2; they move to different keys from round 4), the player is warned before it starts: a gold strip on the perk
-pick and on the READY countdown, then Santa announces it a second into the shift. While building, a
-gold "ASSEMBLY POLICY UPDATE" tag over the bench panel says what is different whenever it isn't the plain 1, 2, 3.
+**Assembly policy updates.** When the bench changes from the round before (letters start asking for toy variants
+from round 2; the combinations stop being listed from round 5), the player is warned before it starts: a gold strip on
+the perk pick and on the READY countdown, then Santa announces it a second into the shift. In that round a pulsing gold
+"ASSEMBLY POLICY UPDATE" tag over the bench panel says what is different.
 
 The warning states the exact effect 5 s ahead; the active banner is compact, with a captioned chime. Flavour lines fade
 after 5 s; the requirement stays on the card.
@@ -319,7 +341,7 @@ pool, seeded per run, with harder ones unlocking in later rounds. Each round's d
 | 2 | **Toy craze** | For 30 s, every new order is the same toy | Bin for that toy glows; tests kit stock and the sled | 2 | Small: override the toy sequence |
 | 3 | **Coal audit** | The next 2 new orders are coal (any child) | Coal badge on the card; scuttle highlighted | 2 | Small: a coal token like the rush token |
 | 4 | **VIP letter** | The next new order is VIP: 40 s deadline, double points | Gold VIP badge on the card | 3 | Small: new order flag and score rule |
-| 5 | **Retooled bench** | For 30 s, the bench parts move to different keys (as round 4+ does) | Banner; the bench panel already shows each key | 2 (before round 4) | Small: existing key-shuffle switch |
+| 5 | **Retooled bench** | For 30 s, the bench stops listing the build combinations (as round 5+ does) | Banner; the parts still show their keys | 2 (before round 5) | Small: existing show-combinations switch |
 | 6 | **Sled delayed** | For 30 s, the supply sled is closed | Sled dark with a "BACK AT 2:10" sign; carried crates still work | 3 | Small: station-disabled flag |
 | 7 | **Chute relocated** | For 40 s, shipping moves to a second chute across the room | Old chute shows "MOVED →" with a guide arrow; held toys are unaffected | 4 | Medium: second shipping fixture and model |
 | 8 | **Cocoa break** | Clock and deadlines freeze for 10 s; the elf can still work | Relief beat; the banner counts down | 3 | Small: freeze order timers |
@@ -453,8 +475,8 @@ companies, no required profanity.
 | final_rush | One last tiny favour. It's only Christmas at stake. | Rush orders start in 5 seconds. |
 | rush_final | Last push! Think of the bonus I'll get. | New orders are RUSH for 30 seconds. |
 | rush_shift | Big news: this whole shift is a rush job. I believe in you. Mostly. | Rush shift: every order is RUSH. |
-| assembly_order | A memo from Engineering: we've reorganised the parts. Again. | Assembly policy update: new part order |
-| assembly_keys | Efficiency consultants rearranged the bench. Don't ask me why. | Assembly policy update: parts on new keys |
+| assembly_variants | Market research says children want MORE. Big wheels, big bears, rockets. | Assembly policy update: some letters ask for a toy variant |
+| assembly_memory | Engineering has recalled the instruction sheets. You know them by now. Surely. | Assembly policy update: build from memory |
 | quota_met | Excellent. I shall mention my leadership in the newsletter. | Quota reached! Keep going for a higher score. |
 | review_pass | Another successful Christmas. My system works beautifully. | Shift complete. |
 | review_miss | Let's call this a development opportunity. | Quota missed. Try another shift. |
@@ -483,7 +505,8 @@ any missing model falls back to a grey-box shape.
 - **Palette** (UI and badges): snow #F4F0DC, ink #202934, pine #225E4C, berry #B94146, gold #E8BB57, wood #8C6043,
   ice #8EC9CF. Colour reinforces, never carries meaning alone: every requirement also has a shape, icon or label.
 - **Characters:** an animated elf (idle, walk, work, hammer, carry) with selectable hat colours; Santa as a HUD portrait.
-- **Toys:** train, bear and robot, each with three part models, an assembled form, a botched form and a ribbon bow.
+- **Toys:** train, bear and robot, each with three part models, an assembled form, a botched form and a ribbon bow,
+  plus one variant part each (big wheels, stuffing, rocket pack); a variant is drawn from its parts.
 - **Promotion:** a cover image and three gameplay screenshots or a GIF, captured from the finished game.
 
 ---

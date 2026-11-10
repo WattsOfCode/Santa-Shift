@@ -23,6 +23,12 @@ public sealed class HudView(GameContent content, IInputService input)
     /// <summary>The question button under the mouse (0 or 1), drawn gold.</summary>
     public int ConfirmHovered { get; set; } = -1;
 
+    /// <summary>Hit ids of the open toy cart: <see cref="CartSlotHit"/> + n for toy n (0-based), then the push button.</summary>
+    public const int CartSlotHit = 10, CartPushHit = 20;
+
+    /// <summary>The open cart's card or button under the mouse (a hit id above), or -1.</summary>
+    public int CartHovered { get; set; } = -1;
+
     /// <param name="earlierRoundsScore">Score carried over from previous rounds of this run.</param>
     /// <param name="controls">The player's bindings, for the guided round's controls card (null: no card).</param>
     public void Draw(UiCanvas ui, Simulation sim, Feedback feedback, WorldView world, int earlierRoundsScore = 0,
@@ -32,10 +38,12 @@ public sealed class HudView(GameContent content, IInputService input)
         var t = sim.Tuning;
         Hits.Clear();
 
-        if (!state.IsWorking) world.DrawLabels(ui, sim.SelectedStation(), state); // labels would cover the close-up work
+        if (!state.IsWorking) world.DrawLabels(ui, sim.SelectedStation(), state, sim.CartSelected()); // labels would cover the close-up work
         DrawProgressBar(ui, sim, world);
-        _assembly.Draw(ui, sim, input, (UiCanvas.Width - AssemblyPanelView.Width) / 2, 486 - AssemblyPanelView.Height - 8);
+        _assembly.Draw(ui, sim, input, (UiCanvas.Width - AssemblyPanelView.Width) / 2, 486 - 8);
+        if (sim.State.Assembly != null) world.DrawPieceLabels(ui, sim.State, i => input.Label(InputAction.Part1 + i));
         DrawRibbonPick(ui, sim);
+        DrawCartPick(ui, sim);
         DrawGuide(ui, sim);
         bool asking = state.PunchPromptOpen || state.RecyclePromptOpen;
         if (controls != null && !asking) DrawControlsCard(ui, sim, controls);
@@ -73,14 +81,30 @@ public sealed class HudView(GameContent content, IInputService input)
         // Bottom band
         ui.Fill(0, 486, UiCanvas.Width, 54, Palette.WithAlpha(Palette.Ink, 170));
 
-        ui.Text("CARRYING", 16, 492, 12, Palette.Ice);
         var item = state.CarriedItem;
-        if (item != null)
+        if (state.Cart.Pushing)
         {
-            var toy = content.FindToy(item.ToyId);
-            ToyIcon.Draw(ui, item.ToyId, 30, 520, 22, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
+            // Pushing: the toys riding in the cart, as small icons.
+            ui.Text("PUSHING THE TOY CART", 16, 492, 12, Palette.Ice);
+            var ridden = state.Cart.Items;
+            for (int i = 0; i < t.Cart.Capacity; i++)
+            {
+                float ix = 30 + i * 34;
+                if (i < ridden.Count && content.FindToy(ridden[i].ToyId) is { } toy) ToyIcon.Draw(ui, toy.Id, ix, 520, 22, Palette.Hex(toy.Color));
+                else ui.OutlineRounded(ix - 11, 509, 22, 22, Palette.WithAlpha(Palette.Snow, 70), 1.5f, 0.3f);
+            }
+            ui.Text($"{ridden.Count}/{t.Cart.Capacity}", 30 + t.Cart.Capacity * 34 - 6, 509, 20, Palette.Snow);
         }
-        ui.Text(ui.Fit(sim.ItemName(item), 20, 180), 50, 509, 20, item == null ? Palette.Shade(Palette.Snow, 0.7f) : Palette.Snow);
+        else
+        {
+            ui.Text("CARRYING", 16, 492, 12, Palette.Ice);
+            if (item != null)
+            {
+                var toy = content.FindToy(item.ToyId);
+                ToyIcon.Draw(ui, item.ToyId, 30, 520, 22, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
+            }
+            ui.Text(ui.Fit(sim.ItemName(item), 20, 180), 50, 509, 20, item == null ? Palette.Shade(Palette.Snow, 0.7f) : Palette.Snow);
+        }
 
         _prompt.Draw(ui, sim.Prompt()?.Replace("[use]", input.Label(InputAction.Interact)), feedback, UiCanvas.Width / 2, 497);
 
@@ -121,6 +145,58 @@ public sealed class HudView(GameContent content, IInputService input)
             ui.Text(text, tx + 21, y + 32, 16, Palette.Snow);
             tx += tw + 8;
         }
+    }
+
+    /// <summary>
+    /// The open toy cart: a card per slot (key, toy icon, name; click or press its key to take it), and a button to grab
+    /// the handle and push the cart.
+    /// </summary>
+    private void DrawCartPick(UiCanvas ui, Simulation sim)
+    {
+        var cart = sim.State.Cart;
+        if (!cart.PickOpen) return;
+        var d = content.Dialogue;
+        int slots = sim.Tuning.Cart.Capacity;
+        const float w = 440, h = 112, x = (UiCanvas.Width - w) / 2, y = 486 - h - 8, gap = 8;
+        ui.FillRounded(x, y, w, h, Palette.WithAlpha(Palette.Ink, 225), 0.15f);
+        ui.Text($"{d.Message("cart_title")}  {cart.Items.Count}/{slots}", x + 12, y + 7, 14, Palette.Ice);
+
+        float cw = (w - 24 - gap * (slots - 1)) / slots, ch = 40, cy = y + 28;
+        for (int i = 0; i < slots; i++)
+        {
+            float cx = x + 12 + i * (cw + gap);
+            if (i >= cart.Items.Count)
+            {
+                ui.OutlineRounded(cx, cy, cw, ch, Palette.WithAlpha(Palette.Snow, 60), 1.5f, 0.25f);
+                ui.Text("empty", cx + cw / 2, cy + 11, 15, Palette.Shade(Palette.Snow, 0.5f), Align.Center);
+                continue;
+            }
+            var item = cart.Items[i];
+            bool hot = CartHovered == CartSlotHit + i;
+            ui.FillRounded(cx, cy, cw, ch, hot ? Palette.Gold : Palette.Snow, 0.25f);
+            Hits.Add(CartSlotHit + i, cx, cy, cw, ch);
+            string key = input.Label(InputAction.Part1 + i);
+            float kw = Math.Max(24, ui.MeasureText(key, 18) + 10);
+            ui.FillRounded(cx + 4, cy + 4, kw, ch - 8, Palette.Ink, 0.3f);
+            ui.Text(key, cx + 4 + kw / 2, cy + 9, 18, Palette.Gold, Align.Center);
+            var toy = content.FindToy(item.ToyId);
+            ToyIcon.Draw(ui, item.ToyId, cx + kw + 20, cy + ch / 2, 22, toy != null ? Palette.Hex(toy.Color) : Palette.Wood);
+            string name = toy?.NameOf(item.Variant) ?? item.ToyId;
+            float tx = cx + kw + 34;
+            if (item.HasRibbon) // a ribbon shows as a little tab in its colour
+            {
+                var r = sim.Tuning.FindRibbon(item.RibbonColor);
+                ui.FillRounded(cx + cw - 14, cy + 6, 8, ch - 12, r != null ? Palette.Hex(r.Color) : Palette.Gold, 0.4f);
+            }
+            ui.Text(ui.Fit(name, 15, cw - (tx - cx) - 16), tx, cy + 12, 15, Palette.Ink);
+        }
+
+        bool pushHot = CartHovered == CartPushHit;
+        float by = cy + ch + 8;
+        ui.FillRounded(x + 12, by, w - 24, 26, pushHot ? Palette.Gold : Palette.WithAlpha(Palette.Snow, 35), 0.4f);
+        Hits.Add(CartPushHit, x + 12, by, w - 24, 26);
+        ui.Text($"{input.Label(InputAction.Interact)}  {d.Message("cart_push_button")}", x + w / 2, by + 4, 16,
+            pushHot ? Palette.Ink : Palette.Snow, Align.Center);
     }
 
     /// <summary>The guided first round: which lesson this is and what to do now, under the Santa strip.</summary>

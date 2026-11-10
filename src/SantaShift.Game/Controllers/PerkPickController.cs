@@ -94,8 +94,8 @@ public sealed class PerkPickController : IScreen
     private string? AssemblyWarning(Core.Content.Tuning t) =>
         BeforeFirstRound ? null : t.Assembly.PolicyChange(_run.Mode, _run.Round + 1) switch
         {
-            "assembly_keys" => _s.Content.Dialogue.Message("assembly_warn_keys", _run.Round + 1),
-            "assembly_order" => _s.Content.Dialogue.Message("assembly_warn_order", _run.Round + 1),
+            "assembly_variants" => _s.Content.Dialogue.Message("assembly_warn_variants", _run.Round + 1),
+            "assembly_memory" => _s.Content.Dialogue.Message("assembly_warn_memory", _run.Round + 1),
             _ => null,
         };
 }

@@ -6,6 +6,7 @@ public enum SimEventType
     RibbonPickStarted, RibbonStarted, RibbonComplete, ActionCancelled,
     Delivered, Rejected, RecyclePrompt, Recycled, PunchPrompt,
     OrderCreated, OrderExpired, PolicyWarning, PolicyStarted, QuotaMet, ShiftEnded,
+    CartLoaded, CartTaken, CartGrabbed, CartParked, CartPickOpened,
 }
 
 /// <summary>

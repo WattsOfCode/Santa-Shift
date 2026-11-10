@@ -50,7 +50,12 @@ public sealed class OrderSystem(GameContent content)
         state.LetterCursor.Clear();
         state.SpawnTicks = _t.SpawnTicksFor(state.Mode, state.Round);
         var tut = _t.Tutorial;
-        string[] sequence = _t.ToySequence;
+        string[] shiftToys = ToysFor(state.Round); // a toy with a later first round (the boat) isn't asked for yet
+        string[] sequence = shiftToys;
+        // From the round variants start, an even share of the letters ask for one (see AssemblyTuning.VariantShare),
+        // each toy's variants taking turns. The round shifts the pattern so it isn't the same letters every shift.
+        double share = _t.Assembly.VariantShareFor(state.Mode, state.Round);
+        var variantTurn = new Dictionary<string, int>();
         for (int i = 0; i < state.SpawnTicks.Length; i++)
         {
             // Lesson round with a short kit: after the lesson, the last lesson order's toy isn't asked for again, so its
@@ -60,8 +65,21 @@ public sealed class OrderSystem(GameContent content)
                 string shortToy = state.OrderPlan[tut.Orders - 1].ToyId;
                 if (sequence.Length > 1) sequence = sequence.Where(t => t != shortToy).ToArray();
             }
-            int index = state.Tutorial && i >= tut.Orders && sequence != _t.ToySequence ? i - tut.Orders : i;
-            state.OrderPlan.Add(PlanOrder(state, i + 1, sequence[index % sequence.Length]));
+            int index = state.Tutorial && i >= tut.Orders && sequence != shiftToys ? i - tut.Orders : i;
+            string toyId = sequence[index % sequence.Length];
+            string? variant = null;
+            if (share > 0 && Math.Floor((i + 1 + state.Round) * share) > Math.Floor((i + state.Round) * share)
+                && content.FindToy(toyId) is { } toy)
+            {
+                var open = toy.Recipes.Skip(1).Where(r => _t.Assembly.VariantOpen(r, state.Mode, state.Round, state.Tutorial)).ToList();
+                if (open.Count > 0)
+                {
+                    int turn = variantTurn.GetValueOrDefault(toyId);
+                    variantTurn[toyId] = turn + 1;
+                    variant = open[turn % open.Count].Id;
+                }
+            }
+            state.OrderPlan.Add(PlanOrder(state, i + 1, toyId, variant));
         }
 
         if (!state.LimitedKits) return;
@@ -75,31 +93,42 @@ public sealed class OrderSystem(GameContent content)
         }
     }
 
+    /// <summary>The toy sequence for a round: tuning.json toySequence without toys whose first round hasn't come.</summary>
+    public string[] ToysFor(int round)
+    {
+        var toys = _t.ToySequence.Where(id => content.FindToy(id)?.InRound(round) ?? false).ToArray();
+        return toys.Length > 0 ? toys : _t.ToySequence;
+    }
+
     /// <summary>The lesson ends on a plain toy whose bin can start one kit short (needs a sled and a full lesson).</summary>
     private bool LessonShortKit(RunState state) =>
         _t.Tutorial.ShortKit && content.HasSupply && _t.Tutorial.Orders >= 1 && _t.Tutorial.Orders <= state.SpawnTicks.Length
         && state.OrderPlan.Count >= _t.Tutorial.Orders && !state.OrderPlan[_t.Tutorial.Orders - 1].Naughty;
 
-    /// <summary>The <paramref name="n"/>-th order of the shift (1-based): its toy, letter and whether the child is naughty.</summary>
-    private PlannedOrder PlanOrder(RunState state, int n, string toyId)
+    /// <summary>
+    /// The <paramref name="n"/>-th order of the shift (1-based): its toy, the variant asked for, the letter and whether
+    /// the child is naughty.
+    /// </summary>
+    private PlannedOrder PlanOrder(RunState state, int n, string toyId, string? variant = null)
     {
-        var letter = NextLetter(state, toyId);
+        var letter = NextLetter(state, toyId, variant);
         // A child on the naughty list gets coal instead (only if there is a coal station to get it from).
         bool naughty = letter != null && content.HasCoal && state.NaughtyChildren.Contains(letter.Child);
 
         // The guided first orders show every job once: one is coal, the rest are plain toys (one needs a ribbon).
         if (state.Tutorial && n <= _t.Tutorial.Orders)
         {
-            var naughtyLetter = content.Letters.FirstOrDefault(l => state.NaughtyChildren.Contains(l.Child));
+            variant = null;
+            var naughtyLetter = content.Letters.Where(l => state.NaughtyChildren.Contains(l.Child)).OrderBy(l => l.Variant != null).FirstOrDefault();
             if (n == _t.Tutorial.CoalOrder && content.HasCoal && naughtyLetter != null)
                 (letter, toyId, naughty) = (naughtyLetter, naughtyLetter.ToyId, true);
             else if (naughty) // a naughty child would turn this lesson into coal: write it from a nice child instead
             {
-                letter = content.Letters.FirstOrDefault(l => l.ToyId == toyId && !state.NaughtyChildren.Contains(l.Child));
+                letter = content.Letters.FirstOrDefault(l => l.ToyId == toyId && l.Variant == null && !state.NaughtyChildren.Contains(l.Child));
                 naughty = false;
             }
         }
-        return new PlannedOrder(toyId, letter, naughty);
+        return new PlannedOrder(toyId, letter, naughty, naughty ? null : variant);
     }
 
     public Order Create(RunState state)
@@ -107,8 +136,8 @@ public sealed class OrderSystem(GameContent content)
         // Past the end of the plan (only when orders are created by hand, as in tests), keep the usual sequence going.
         var plan = state.OrdersCreated < state.OrderPlan.Count
             ? state.OrderPlan[state.OrdersCreated]
-            : PlanOrder(state, state.OrdersCreated + 1, _t.ToySequence[state.OrdersCreated % _t.ToySequence.Length]);
-        var (toyId, letter, naughty) = (plan.ToyId, plan.Letter, plan.Naughty);
+            : PlanOrder(state, state.OrdersCreated + 1, ToysFor(state.Round)[state.OrdersCreated % ToysFor(state.Round).Length]);
+        var (toyId, letter, naughty, variant) = (plan.ToyId, plan.Letter, plan.Naughty, plan.Variant);
         bool ribbon = state.Events.RibbonActive(state.Tick);
         bool rush = state.RushShift || state.Events.RushActive(state.Tick) || state.Events.PendingRush;
         state.Events.PendingRush = false;
@@ -132,6 +161,7 @@ public sealed class OrderSystem(GameContent content)
         {
             Id = state.NextId(),
             ToyId = toyId,
+            Variant = naughty ? null : variant,
             RequiresRibbon = ribbon,
             // Colours take turns, shifted each round so the pattern isn't the same every shift.
             RibbonColor = ribbon && _t.RibbonColors.Length > 0
@@ -151,7 +181,8 @@ public sealed class OrderSystem(GameContent content)
 
     /// <summary>
     /// The order a carried item would go to: earliest deadline, then oldest, then smallest id.
-    /// Coal goes to any naughty child's order; a toy only to a nice child who asked for it.
+    /// Coal goes to any naughty child's order; a toy only to a nice child who asked for that toy, built that way (the
+    /// plain toy or the variant in the letter).
     /// </summary>
     public Order? FindMatch(RunState state, Item item)
     {
@@ -160,7 +191,7 @@ public sealed class OrderSystem(GameContent content)
             .Where(o => o.DeadlineTick >= state.Tick)
             .Where(o => item.IsCoal
                 ? o.Naughty
-                : !o.Naughty && o.ToyId == item.ToyId && RibbonOk(o, item))
+                : !o.Naughty && o.ToyId == item.ToyId && o.Variant == item.Variant && RibbonOk(o, item))
             .OrderBy(o => o.DeadlineTick).ThenBy(o => o.CreatedTick).ThenBy(o => o.Id)
             .FirstOrDefault();
     }
@@ -188,7 +219,15 @@ public sealed class OrderSystem(GameContent content)
                 output.Add(Reject(d.Message("naughty_no_toy", naughtyAsker.Letter?.Child ?? "That child"), item.ToyId));
                 return;
             }
-            var wrongColour = state.LiveOrders.FirstOrDefault(o => !o.Naughty && o.ToyId == item.ToyId && o.RequiresRibbon
+            // Built the plain way when the letter wanted a variant (or the other way round).
+            if (!state.LiveOrders.Any(o => !o.Naughty && o.ToyId == item.ToyId && o.Variant == item.Variant)
+                && state.LiveOrders.FirstOrDefault(o => !o.Naughty && o.ToyId == item.ToyId) is { } otherBuild)
+            {
+                output.Add(Reject(d.Message("wrong_variant", otherBuild.Letter?.Child ?? "That child",
+                    content.Toy(item.ToyId).NameOf(otherBuild.Variant)), item.ToyId));
+                return;
+            }
+            var wrongColour = state.LiveOrders.FirstOrDefault(o => !o.Naughty && o.ToyId == item.ToyId && o.Variant == item.Variant && o.RequiresRibbon
                 && item.HasRibbon && o.RibbonColor != null && o.RibbonColor != item.RibbonColor);
             if (wrongColour != null)
             {
@@ -196,7 +235,7 @@ public sealed class OrderSystem(GameContent content)
                     _t.FindRibbon(wrongColour.RibbonColor)?.Name ?? wrongColour.RibbonColor!), item.ToyId));
                 return;
             }
-            bool needsRibbon = state.LiveOrders.Any(o => !o.Naughty && o.ToyId == item.ToyId && o.RequiresRibbon && !item.HasRibbon);
+            bool needsRibbon = state.LiveOrders.Any(o => !o.Naughty && o.ToyId == item.ToyId && o.Variant == item.Variant && o.RequiresRibbon && !item.HasRibbon);
             output.Add(Reject(d.Message(needsRibbon ? "ribbon_needed" : "no_matching_order"), item.ToyId));
             return;
         }
@@ -213,7 +252,7 @@ public sealed class OrderSystem(GameContent content)
 
         string text = item.IsCoal
             ? d.Message("coal_delivered", order.Letter?.Child ?? "", points)
-            : d.Message("delivered", content.Toy(item.ToyId).Name, points);
+            : d.Message("delivered", content.Toy(item.ToyId).NameOf(item.Variant), points);
         output.Add(new SimEvent(SimEventType.Delivered, text, ToyId: item.ToyId, OrderId: order.Id, Points: points));
 
         if (!state.QuotaMetAnnounced && state.Delivered >= _t.QuotaFor(state.Mode, state.Round))
@@ -253,12 +292,19 @@ public sealed class OrderSystem(GameContent content)
         state.ClosedOrders.Add(order);
     }
 
-    private ChildLetter? NextLetter(RunState state, string toyId)
+    /// <summary>
+    /// The next letter for a toy: one asking for that variant (plain letters for the plain toy). With no letter written
+    /// for a variant, a plain letter for the toy stands in (the order card still names the variant).
+    /// </summary>
+    private ChildLetter? NextLetter(RunState state, string toyId, string? variant = null)
     {
-        var letters = content.Letters.Where(l => l.ToyId == toyId).ToList();
+        var letters = content.Letters.Where(l => l.ToyId == toyId && l.Variant == variant).ToList();
+        if (letters.Count == 0 && variant != null) return NextLetter(state, toyId);
+        if (letters.Count == 0) letters = content.Letters.Where(l => l.ToyId == toyId).ToList();
         if (letters.Count == 0) return null;
-        int cursor = state.LetterCursor.GetValueOrDefault(toyId);
-        state.LetterCursor[toyId] = cursor + 1;
+        string key = variant == null ? toyId : $"{toyId}/{variant}";
+        int cursor = state.LetterCursor.GetValueOrDefault(key);
+        state.LetterCursor[key] = cursor + 1;
         return letters[cursor % letters.Count]; // wraps around if the shift needs more letters than exist
     }
 

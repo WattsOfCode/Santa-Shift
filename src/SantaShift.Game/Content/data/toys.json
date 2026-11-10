@@ -1,34 +1,75 @@
 // Toys the workshop can build. Add a toy here, add it to toySequence in tuning.json,
 // and give it a dispenser in stations.json. Missing model files fall back to grey-box shapes.
 //
-// parts: what the elf hammers together at the bench, in the toy's natural order (used in the early rounds;
-// later rounds shuffle it, see "assembly" in tuning.json). Each part model holds just that piece, placed
-// where it sits on the finished toy, so the pieces stack up into the toy on the bench.
-// botchedModel: the jumbled toy you get from the wrong order or running out of time. It can only be scrapped.
+// parts: every piece that can go on the toy at the bench. Each sits on its own part key ("key": 1 = key 1 / X,
+// 2 = key 2 / Y, 3 = key 3 / RB, 4 = key 4 / LB), the same key every build. Each part model holds just that piece,
+// placed where it sits on the finished toy, so the pieces stack up into the toy on the bench.
+//   lift:   raises the toy's other pieces by this many metres once it is on (big wheels lift the boiler and cab)
+//   grow:   scales the whole toy by this once it is on (extra stuffing makes a bigger bear)
+//   inside: goes inside the toy, so it isn't drawn once it is on
+//   repeatModel: the model for a second copy of the part (the train's second wheels come with the carriage)
+// variants: the build combinations, the plain toy FIRST. "order" lists the parts in the order they go on, so the
+//   key combination is fixed (the plain train is 1 2 3). A part can go on more than once (the giant bear takes the
+//   stuffing twice: 2 4 4 3 1), and the bench lays out one piece per use. Letters ask for the other variants from
+//   round assembly.variantsFromRound in tuning.json ("fromRound" can start one later). No combination may be the
+//   start of another one, or the bench couldn't tell them apart.
+// fromRound (on a toy): letters ask for it from that round of a run; its bin is shut before.
+//   tag: a short word for the small order cards.
+// botchedModel: the jumbled toy you get from a wrong part or running out of time. It can only be scrapped.
 {
   "toys": [
     {
       "id": "train", "name": "Train", "model": "toy_train.glb", "botchedModel": "toy_train_botched.glb", "color": "#B94146",
       "parts": [
-        { "id": "wheels", "name": "Wheels", "model": "toy_train_wheels.glb" },
-        { "id": "boiler", "name": "Boiler", "model": "toy_train_boiler.glb" },
-        { "id": "cab",    "name": "Cab",    "model": "toy_train_cab.glb" }
+        { "id": "wheels",     "name": "Wheels",     "key": 1, "model": "toy_train_wheels.glb", "repeatModel": "toy_train_carriage.glb" },
+        { "id": "boiler",     "name": "Boiler",     "key": 2, "model": "toy_train_boiler.glb" },
+        { "id": "cab",        "name": "Cab",        "key": 3, "model": "toy_train_cab.glb" },
+        { "id": "big_wheels", "name": "Big Wheels", "key": 4, "model": "toy_train_big_wheels.glb", "lift": 0.035 }
+      ],
+      "variants": [
+        { "id": "standard",   "name": "Train",           "order": ["wheels", "boiler", "cab"] },
+        { "id": "big_wheels", "name": "Big-Wheel Train", "tag": "BIG WHEELS", "order": ["big_wheels", "boiler", "cab"] },
+        { "id": "long",       "name": "Long Train",      "tag": "LONG", "order": ["wheels", "wheels", "boiler", "cab"], "fromRound": 4 }
       ]
     },
     {
       "id": "bear", "name": "Bear", "model": "toy_bear.glb", "botchedModel": "toy_bear_botched.glb", "color": "#8C6043",
       "parts": [
-        { "id": "body", "name": "Body", "model": "toy_bear_body.glb" },
-        { "id": "arms", "name": "Arms", "model": "toy_bear_arms.glb" },
-        { "id": "head", "name": "Head", "model": "toy_bear_head.glb" }
+        { "id": "head",     "name": "Head",     "key": 1, "model": "toy_bear_head.glb" },
+        { "id": "body",     "name": "Body",     "key": 2, "model": "toy_bear_body.glb" },
+        { "id": "arms",     "name": "Arms",     "key": 3, "model": "toy_bear_arms.glb" },
+        { "id": "stuffing", "name": "Stuffing", "key": 4, "model": "toy_bear_stuffing.glb", "grow": 1.3, "inside": true }
+      ],
+      "variants": [
+        { "id": "standard", "name": "Bear",     "order": ["body", "arms", "head"] },
+        { "id": "big",      "name": "Big Bear", "tag": "BIG", "order": ["body", "stuffing", "arms", "head"] },
+        { "id": "giant",    "name": "Giant Bear", "tag": "GIANT", "order": ["body", "stuffing", "stuffing", "arms", "head"], "fromRound": 4 }
       ]
     },
     {
       "id": "robot", "name": "Robot", "model": "toy_robot.glb", "botchedModel": "toy_robot_botched.glb", "color": "#8EC9CF",
       "parts": [
-        { "id": "legs",  "name": "Legs",  "model": "toy_robot_legs.glb" },
-        { "id": "torso", "name": "Torso", "model": "toy_robot_torso.glb" },
-        { "id": "head",  "name": "Head",  "model": "toy_robot_head.glb" }
+        { "id": "torso",  "name": "Torso",       "key": 1, "model": "toy_robot_torso.glb" },
+        { "id": "legs",   "name": "Legs",        "key": 2, "model": "toy_robot_legs.glb" },
+        { "id": "head",   "name": "Head",        "key": 3, "model": "toy_robot_head.glb" },
+        { "id": "rocket", "name": "Rocket Pack", "key": 4, "model": "toy_robot_rocket.glb" }
+      ],
+      "variants": [
+        { "id": "standard", "name": "Robot",        "order": ["legs", "torso", "head"] },
+        { "id": "rocket",   "name": "Rocket Robot", "tag": "ROCKET", "order": ["legs", "torso", "rocket", "head"], "fromRound": 3 }
+      ]
+    },
+    {
+      // Joins the line in round 5 ("fromRound"), once the toy cart is ready. Its bin is shut until then.
+      "id": "boat", "name": "Boat", "model": "toy_boat.glb", "botchedModel": "toy_boat_botched.glb", "color": "#3F7FB5",
+      "fromRound": 5,
+      "parts": [
+        { "id": "mast", "name": "Mast", "key": 1, "model": "toy_boat_mast.glb" },
+        { "id": "sail", "name": "Sail", "key": 2, "model": "toy_boat_sail.glb" },
+        { "id": "hull", "name": "Hull", "key": 3, "model": "toy_boat_hull.glb" }
+      ],
+      "variants": [
+        { "id": "standard", "name": "Boat", "order": ["hull", "mast", "sail"] }
       ]
     }
   ]

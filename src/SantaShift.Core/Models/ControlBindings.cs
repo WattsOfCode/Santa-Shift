@@ -11,11 +11,14 @@ public sealed class ControlBindings
     public const int KeySlots = 2;
 
     public const string MoveUp = "MoveUp", MoveDown = "MoveDown", MoveLeft = "MoveLeft", MoveRight = "MoveRight";
-    public const string Interact = "Interact", Part1 = "Part1", Part2 = "Part2", Part3 = "Part3";
+    public const string Interact = "Interact", Part1 = "Part1", Part2 = "Part2", Part3 = "Part3", Part4 = "Part4";
     public const string CameraLeft = "CameraLeft", CameraRight = "CameraRight";
 
+    /// <summary>The bench part keys, key 1 first.</summary>
+    public static readonly string[] PartActions = [Part1, Part2, Part3, Part4];
+
     /// <summary>Every action the player can rebind, in the order the settings screen lists them.</summary>
-    public static readonly string[] Actions = [MoveUp, MoveDown, MoveLeft, MoveRight, Interact, Part1, Part2, Part3, CameraLeft, CameraRight];
+    public static readonly string[] Actions = [MoveUp, MoveDown, MoveLeft, MoveRight, Interact, Part1, Part2, Part3, Part4, CameraLeft, CameraRight];
 
     /// <summary>Keyboard keys by action; each array has <see cref="KeySlots"/> entries ("" = empty slot).</summary>
     public Dictionary<string, string[]> Keys { get; set; } = new();
@@ -29,14 +32,14 @@ public sealed class ControlBindings
         {
             [MoveUp] = ["W", "Up"], [MoveDown] = ["S", "Down"], [MoveLeft] = ["A", "Left"], [MoveRight] = ["D", "Right"],
             [Interact] = ["E", "Space"],
-            [Part1] = ["One", "Kp1"], [Part2] = ["Two", "Kp2"], [Part3] = ["Three", "Kp3"],
+            [Part1] = ["One", "Kp1"], [Part2] = ["Two", "Kp2"], [Part3] = ["Three", "Kp3"], [Part4] = ["Four", "Kp4"],
             [CameraLeft] = ["Z", "Comma"], [CameraRight] = ["C", "Period"],
         },
         Pad = new()
         {
             [MoveUp] = "LeftFaceUp", [MoveDown] = "LeftFaceDown", [MoveLeft] = "LeftFaceLeft", [MoveRight] = "LeftFaceRight",
             [Interact] = "RightFaceDown",
-            [Part1] = "RightFaceLeft", [Part2] = "RightFaceUp", [Part3] = "RightTrigger1",
+            [Part1] = "RightFaceLeft", [Part2] = "RightFaceUp", [Part3] = "RightTrigger1", [Part4] = "LeftTrigger1",
             [CameraLeft] = "LeftTrigger2", [CameraRight] = "RightTrigger2",
         },
     };

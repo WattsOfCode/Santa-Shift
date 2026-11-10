@@ -15,15 +15,16 @@ public sealed class Simulation
 
     private readonly PlayerMotion _motion;
     private readonly CraftingSystem _crafting;
+    private readonly CartSystem _cart;
     private readonly OrderSystem _orders;
     private readonly EventSystem _events;
     private readonly List<SimEvent> _pending = new();
 
-    /// <param name="seed">Seeds the shuffled part orders. Leave it out for a repeatable shift (tests); the game passes a fresh one.</param>
     /// <param name="naughty">Children on the run's naughty list: their orders want coal from the fireplace.</param>
     /// <param name="modifiers">The run's perks, combined (see <see cref="RunProgress.Modifiers"/>).</param>
-    public Simulation(GameContent content, GameMode mode, int round = 1, int? seed = null, IEnumerable<string>? naughty = null,
-        RunModifiers? modifiers = null, double? spirit = null, bool tutorial = false)
+    /// <param name="cartParts">Toy cart parts built so far this run (see <see cref="RunProgress.CartParts"/>); the cart works with all of them.</param>
+    public Simulation(GameContent content, GameMode mode, int round = 1, IEnumerable<string>? naughty = null,
+        RunModifiers? modifiers = null, double? spirit = null, bool tutorial = false, int cartParts = 0)
     {
         Content = content;
         State = new RunState
@@ -35,9 +36,11 @@ public sealed class Simulation
             Tutorial = tutorial,
             RushShift = !tutorial && content.Tuning.Rounds.IsRushShift(Math.Max(1, round)),
             Spirit = Math.Clamp(spirit ?? content.Tuning.Spirit.Start, 0, content.Tuning.Spirit.Max),
+            Cart = CartSystem.NewCart(content.Tuning, cartParts),
         };
         _motion = new PlayerMotion(content);
-        _crafting = new CraftingSystem(content, new Random(seed ?? State.Round * 7919 + (int)mode));
+        _crafting = new CraftingSystem(content);
+        _cart = new CartSystem(content);
         _orders = new OrderSystem(content);
         _events = new EventSystem(content);
         _orders.PlanShift(State); // Santa's sack for the shift: decides the letters and fills the kit bins once
@@ -65,6 +68,7 @@ public sealed class Simulation
 
         _motion.Move(State, cmd.MoveX, cmd.MoveY);
         _crafting.Update(State, cmd.IsMoving, cmd.PartKey, _pending);
+        _cart.Update(State, cmd.MoveX, cmd.MoveY, cmd.Cancel, cmd.PartKey, _pending);
         // "Ribbon applied" lasts while the elf stays at the ribbon station with that toy; coming back later says it already has one.
         if (State.FreshRibbonRevision is { } fresh && (State.CarriedItem?.Revision != fresh || SelectedStation()?.Type != StationType.Ribbon))
             State.FreshRibbonRevision = null;
@@ -92,6 +96,7 @@ public sealed class Simulation
         if (State.Phase != RunPhase.Playing) return;
         CraftingSystem.CancelSilently(State, includeAssembly: false);
         State.RecyclePromptOpen = State.PunchPromptOpen = false;
+        State.Cart.PickOpen = false;
         State.Phase = RunPhase.Paused;
     }
 
@@ -100,8 +105,21 @@ public sealed class Simulation
         if (State.Phase == RunPhase.Paused) State.Phase = RunPhase.Playing;
     }
 
-    /// <summary>The nearest station within reach; ties go to the smaller id so selection never flickers.</summary>
+    /// <summary>
+    /// The nearest station within reach; ties go to the smaller id so selection never flickers. Null when nothing is in
+    /// reach, while pushing the cart, or when the parked toy cart is nearer (see <see cref="CartSelected"/>).
+    /// </summary>
     public Station? SelectedStation()
+    {
+        if (State.Cart.Pushing) return null;
+        var (station, distance) = NearestStation();
+        return _cart.Reach(State) is { } cart && cart < distance ? null : station;
+    }
+
+    /// <summary>True when the parked, built toy cart is the nearest thing in reach (use then works on the cart).</summary>
+    public bool CartSelected() => _cart.Reach(State) is { } cart && cart < NearestStation().Distance;
+
+    private (Station? Station, double Distance) NearestStation()
     {
         Station? best = null;
         double bestDistance = double.MaxValue;
@@ -115,7 +133,7 @@ public sealed class Simulation
                 bestDistance = distance;
             }
         }
-        return best;
+        return (best, bestDistance);
     }
 
     /// <summary>The prompt for the selected station, naming the actual action ("E  Assemble Train").</summary>
@@ -124,6 +142,16 @@ public sealed class Simulation
         var d = Content.Dialogue;
         var item = State.CarriedItem;
         var station = SelectedStation();
+        var cart = State.Cart;
+
+        if (cart.PickOpen) return d.Message("cart_pick");
+        if (cart.Pushing) return d.Message("prompt_cart_let_go", cart.Items.Count, Tuning.Cart.Capacity);
+        if (CartSelected())
+            return item == null
+                ? d.Message(cart.Items.Count == 0 ? "prompt_cart_push" : "prompt_cart_open", cart.Items.Count, Tuning.Cart.Capacity)
+                : item.Stage != ItemStage.Assembled ? d.Message("cart_toys_only")
+                : cart.Items.Count >= Tuning.Cart.Capacity ? d.Message("cart_full", Tuning.Cart.Capacity)
+                : d.Message("prompt_cart_load", ItemName(item), cart.Items.Count, Tuning.Cart.Capacity);
 
         if (State.Assembly != null) return d.Message("working_assemble", ToyName(item));
         if (State.RibbonPick != null) return d.Message("picking_ribbon");
@@ -143,6 +171,8 @@ public sealed class Simulation
 
         return station.Type switch
         {
+            StationType.Dispenser when item is not { IsSupply: true } && !Content.Toy(station.ToyId!).InRound(State.Round) =>
+                d.Message("toy_not_yet", Content.Toy(station.ToyId!).Name, Content.Toy(station.ToyId!).FromRound),
             StationType.Dispenser => item is { IsSupply: true } ? d.Message("prompt_restock", Content.Toy(station.ToyId!).Name)
                 : item != null ? d.Message("hands_full")
                 : State.KitsLeft(station.ToyId!) is <= 0 ? d.Message("bin_empty", Content.Toy(station.ToyId!).Name)
@@ -192,11 +222,16 @@ public sealed class Simulation
     /// <summary>"Wheels", for a toy part id.</summary>
     public string PartName(string toyId, string partId) => _crafting.PartName(toyId, partId);
 
-    private string ToyName(Item? item) => item == null ? "" : Content.FindToy(item.ToyId)?.Name ?? item.ToyId;
+    /// <summary>The toy's name, or its variant's once built ("Big-Wheel Train").</summary>
+    private string ToyName(Item? item) => item == null ? "" : Content.FindToy(item.ToyId)?.NameOf(item.Variant) ?? item.ToyId;
+
+    /// <summary>The combinations a toy can be built with this round (the plain toy, plus any variants letters can ask for).</summary>
+    public IReadOnlyList<ToyVariant> RecipesFor(Toy toy) => _crafting.RecipesFor(toy, State);
 
     private void Interact()
     {
         if (State.IsWorking) return; // already busy; ignore extra presses
+        if (_cart.TryInteract(State, CartSelected(), _pending)) return;
         var station = SelectedStation();
         if (station == null) return;
         var d = Content.Dialogue;
@@ -259,6 +294,12 @@ public sealed class Simulation
         var d = Content.Dialogue;
         string toyId = bin.ToyId!;
         string name = Content.FindToy(toyId)?.Name ?? toyId;
+        // A toy that comes later in the run (the boat): its bin gives no kits until then, but takes supply crates.
+        if (State.CarriedItem is not { IsSupply: true } && Content.FindToy(toyId) is { } later && !later.InRound(State.Round))
+        {
+            _pending.Add(new SimEvent(SimEventType.Rejected, d.Message("toy_not_yet", name, later.FromRound), ToyId: toyId));
+            return;
+        }
         if (State.CarriedItem is { IsSupply: true })
         {
             State.CarriedItem = null;

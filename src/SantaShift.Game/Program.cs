@@ -51,7 +51,8 @@ public static class Program
     {
 #if DEBUG
         // Debug-only automation: --screenshot <file.png> [--frame N] [--workshop] [--yaw deg] [--pitch deg] [--profile]
-        //   [--list] [--carry toy[:assembled|:botched][:ribbon] | coal | supply] [--assemble partsPlaced] [--swing-every frames]
+        //   [--list] [--carry toy[:assembled|:botched][:ribbon][:v=variant] | coal | supply]
+        //   [--assemble partsPlaced [toy[:variant]]] [--cart partsBuilt] [--swing-every frames]
         string? shot = null;
         int frame = 90;
         bool workshop = false, list = false, perks = false;
@@ -87,9 +88,23 @@ public static class Program
                     Stage = parts.Contains("botched") ? Core.Models.ItemStage.Botched
                         : parts.Contains("assembled") ? Core.Models.ItemStage.Assembled : Core.Models.ItemStage.Kit,
                     HasRibbon = parts.Contains("ribbon"),
+                    // toy:assembled:v=rocket carries that variant
+                    Variant = parts.FirstOrDefault(p => p.StartsWith("v="))?[2..],
                 };
             }
-            else if (args[i] == "--assemble" && i + 1 < args.Length && int.TryParse(args[++i], out int placed)) Controllers.WorkshopController.DebugAssembleParts = placed;
+            else if (args[i] == "--assemble" && i + 1 < args.Length && int.TryParse(args[++i], out int placed))
+            {
+                Controllers.WorkshopController.DebugAssembleParts = placed;
+                // --assemble N toy[:variant]: build that toy, following that variant's combination.
+                if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
+                {
+                    var which = args[++i].Split(':');
+                    Controllers.WorkshopController.DebugAssembleToy = which[0];
+                    Controllers.WorkshopController.DebugAssembleVariant = which.Length > 1 ? which[1] : null;
+                }
+            }
+            else if (args[i] == "--cart" && i + 1 < args.Length && int.TryParse(args[++i], out int cartParts)) Controllers.WorkshopController.DebugCartParts = cartParts;
+            else if (args[i] == "--cart-load" && i + 1 < args.Length) Controllers.WorkshopController.DebugCartLoad = args[++i].Split(',');
             else if (args[i] == "--swing-every" && i + 1 < args.Length && int.TryParse(args[++i], out int every)) Controllers.WorkshopController.DebugSwingEvery = every;
             else if (args[i] == "--yaw" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float yaw)) Controllers.CameraController.DebugStartYaw = yaw;
             else if (args[i] == "--pitch" && i + 1 < args.Length && float.TryParse(args[++i], System.Globalization.CultureInfo.InvariantCulture, out float pitch)) Controllers.CameraController.DebugStartPitch = pitch;

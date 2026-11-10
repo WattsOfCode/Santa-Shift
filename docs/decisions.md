@@ -454,3 +454,50 @@ Format (GDD section 28): date, decision, reason, affected systems, validation, s
 - **Mac:** unchanged, a zip with `Santa Shift.app` and the How to play note (the Apple Silicon note's Terminal lines
   are needed).
 
+
+## 2026-11-10: Fixed build combinations and toy variants replace the shuffled bench
+- **Decision:** the bench no longer shuffles. Each toy has a fixed key combination (each part always on the same key):
+  Train 1 2 3, Bear 2 3 1, Robot 2 1 3. From round 2 some letters ask for a variant with its own combination:
+  Big-Wheel Train 4 2 3, Big Bear 2 4 3 1 (stuffing grows it), Rocket Robot 2 1 4 3 (from round 3). Only the version
+  asked for fills the letter. From round 5 the bench lists only the combinations' names (build from memory).
+  The loose pieces lie on the bench and can be clicked in order instead of pressing keys.
+- **Reason:** developer request: learnable per-toy combinations instead of random ones, variants that change the
+  combination, and mouse assembly. The "shift" in the work is now variants and then working from memory.
+- **Affects:** toys.json (part keys, variants, lift / grow / inside), letters.json (variant letters), tuning.json
+  assembly (variantsFromRound, variantShare..., hideRecipesFromRound, baseParts; shuffle settings removed), a fourth
+  rebindable part key (4 / LB), the bench panel, order cards, delivery matching, three new part models
+  (toy_train_big_wheels, toy_bear_stuffing, toy_robot_rocket). GDD sections on the theme, controls, bench, policy
+  updates and art.
+- **Validation:** 218 unit tests pass (new: combinations per toy, variants by round, wanted-variant hint, delivery
+  match, content checks); screenshots of each variant at the bench and carried.
+- **Supersedes:** "From round 2 the part order is random each build; from round 4 the parts also move to different
+  keys" and the assembly_order / assembly_keys policy cues.
+## 2026-11-10: The toy cart
+- **Decision:** a toy cart built over each run: every passed round adds a part (wheels, toy tray, push handle), so it
+  works from round 4; a new run starts without it. It stands between the tree and the robot bin at the start of each
+  shift. Use with a finished toy puts it in (up to 3; no kits, coal or botched toys). Use with empty hands opens it:
+  part key n (or a click on its card) takes toy n into the elf's hands, use again grabs the handle (an empty cart is
+  grabbed at once). Pushing, the elf walks at 3/4 speed with empty hands, and use lets go wherever the cart is. Toys
+  come out by hand and are shipped as usual. Toys left in the cart at the end of a shift are lost with the shift.
+- **Reason:** developer request; it rewards planning a run (loading several finished toys for one trip) and gives the
+  run a goal to build towards.
+- **Affects:** RunProgress.CartParts, RunState.Cart / ToyCart, CartSystem, Simulation selection (the cart competes with
+  stations by distance), PlayerMotion speed, tuning.json "cart", the results screen, HUD (cart panel, pushing band),
+  three models (cart_wheels, cart_tray, cart_handle). The parked cart is not solid, so it can never trap the elf.
+- **Validation:** 9 new unit tests (227 pass); screenshots at 1/3, 2/3 and 3/3 parts, loaded, and the open cart.
+## 2026-11-10: Third toy variants and a fourth toy, the boat
+- **Decision:** from round 4 (with the cart) two more variants: Long Train 1 1 2 3 (the second set of wheels comes with a
+  carriage, `repeatModel`) and Giant Bear 2 4 4 3 1 (stuffing twice, 1.3 x 1.3 = 1.69 times the size). A combination
+  may now use a part more than once; the bench lays out one piece per use. The boat (3 1 2: hull, mast, sail) joins
+  the letters from round 5 (`fromRound` on the toy) with its own bin between the train and bear bins, shut before then.
+- **Why "wheels twice" for the long train:** the plain train is 1 2 3, so a longer train can't just add parts at the
+  end (the plain one would finish first), and key 4 is the big wheels. A repeat needs no fifth key or control.
+- **Affects:** toys.json (long, giant, boat, repeatModel, toy fromRound), letters.json (+4 variant, +5 boat letters from
+  existing children, so the naughty list keeps its size), stations.json (kits_boat; not in room_layout.json, so it
+  keeps its stations.json position), tuning.json toySequence, ToyIcon (boat), seven new models.
+- **Validation:** 229 unit tests pass; screenshots of the long train and giant bear mid-build and the boat at the bench.
+## 2026-11-10: Kit bins evenly spaced
+- **Decision:** the four kit bins along the back wall are 4 m (160 px) apart: train -7.5 m, boat -3.5 m, bear 0.5 m,
+  robot 4.5 m; the outer two stayed put and the bear and boat bins moved. Supply crates go in the boat bin in any
+  round (it gives no kits before round 5).
+- **Affects:** room.blend layout markers (bear moved, boat marker added), room_layout.json (re-exported), stations.json.

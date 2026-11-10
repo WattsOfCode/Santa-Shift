@@ -13,16 +13,22 @@
 
   "ribbonSeconds": 1.0,
 
-  // The bench minigame: hammer the toy's parts on in the order shown before time runs out.
-  // Round 1 uses each toy's natural order on keys 1, 2, 3. From shuffleOrderFromRound the order is random
-  // every build; from shuffleKeysFromRound the parts also move to different keys. The time limit shrinks each round.
+  // The bench minigame: enter the toy's build combination (toys.json "variants") before time runs out. The time
+  // limit is for a toy of baseParts parts (a longer combination gets more in proportion) and shrinks each round.
+  // From variantsFromRound some letters ask for a toy variant (big wheels, a big bear, a rocket pack), each with its
+  // own combination: variantShare of the letters that round, plus variantSharePerRound each round after, up to
+  // maxVariantShare. From hideRecipesFromRound the bench stops listing the combinations (0 = always list them).
   // Relaxed mode plays relaxedRoundOffset rounds behind, with relaxedTimeMultiplier times as long.
   "assembly": {
     "timeLimitSeconds": 6.0,
     "timeLimitDecreasePerRound": 0.5,
     "minTimeLimitSeconds": 2.5,
-    "shuffleOrderFromRound": 2,
-    "shuffleKeysFromRound": 4,
+    "baseParts": 3,
+    "variantsFromRound": 2,
+    "variantShare": 0.25,
+    "variantSharePerRound": 0.1,
+    "maxVariantShare": 0.5,
+    "hideRecipesFromRound": 5,
     "relaxedRoundOffset": 1,
     "relaxedTimeMultiplier": 1.5
   },
@@ -46,7 +52,8 @@
     "lastLetterSeconds": 260,
     "reserveLetters": 6
   },
-  "toySequence": ["train", "bear", "robot"],
+  // The toys letters ask for, in turn. A toy with a later "fromRound" (toys.json) joins the turn from that round.
+  "toySequence": ["train", "bear", "robot", "boat"],
   "deadlineSeconds": 55,
   "ribbonDeadlineSeconds": 65,
   "rushDeadlineSeconds": 45,
@@ -72,6 +79,20 @@
     { "id": "gold",  "name": "Gold",  "color": "#E8BB57" },
     { "id": "green", "name": "Green", "color": "#2F8A52" }
   ],
+
+  // The toy cart, built over each run: every passed round adds the next of its parts, so with three parts it works from
+  // round 4. Then it holds up to `capacity` finished toys (put in and taken out one at a time at the parked cart), and
+  // the elf can push it at speedMultiplier times walking speed. It starts every shift at `home` (logical pixels,
+  // between the tree and the robot bin). pushDistance: how far ahead of the elf it rolls; turnRate: how fast it swings
+  // round (0..1 per step). Remove all parts for no cart.
+  "cart": {
+    "parts": ["Wheels", "Toy tray", "Push handle"],
+    "capacity": 3,
+    "speedMultiplier": 0.75,
+    "home": { "x": 780, "y": 172 },
+    "pushDistance": 30,
+    "turnRate": 0.12
+  },
 
   // Perk cards offered after a passed round (perks.json), plus one more when the round beat its quota by bonusPerkMargin.
   "perkOffers": 3,

@@ -6,13 +6,19 @@ namespace SantaShift.Core.Rules;
 /// <summary>
 /// Building toys at the bench (a quick minigame) and tying ribbons (a timed action). The elf keeps the item the whole time.
 ///
-/// Assembly: the bench shows the toy's parts, each on a number key, and the order they must go on. Each correct key
-/// hammers the next part on. A wrong key, or running out of time, botches the toy: it can only be scrapped.
-/// Early rounds use the toy's natural order; later rounds shuffle the order, then the keys too (see AssemblyTuning).
+/// Assembly: every toy has fixed build combinations (toys.json): the plain toy, and from a later round its variants
+/// (a big-wheel train, a big bear, a rocket robot). Each part always sits on the same part key for that toy, so a
+/// combination is a fixed key sequence the player can learn. Each key that continues a combination hammers that part
+/// on; the parts pressed decide which version gets built. A key that fits no combination, or running out of time,
+/// botches the toy: it can only be scrapped.
 /// </summary>
-public sealed class CraftingSystem(GameContent content, Random random)
+public sealed class CraftingSystem(GameContent content)
 {
     private readonly Tuning _t = content.Tuning;
+
+    /// <summary>The combinations a toy can be built with in this round: the plain toy, plus the variants letters can ask for.</summary>
+    public IReadOnlyList<ToyVariant> RecipesFor(Toy toy, RunState state) =>
+        toy.Recipes.Where((r, i) => i == 0 || _t.Assembly.VariantOpen(r, state.Mode, state.Round, state.Tutorial)).ToList();
 
     public void TryAssemble(RunState state, Station bench, List<SimEvent> output)
     {
@@ -23,16 +29,22 @@ public sealed class CraftingSystem(GameContent content, Random random)
         if (item.IsCoal) { output.Add(Reject(d.Message("coal_not_a_kit"))); return; }
         if (item.Stage != ItemStage.Kit) { output.Add(Reject(d.Message("already_assembled"))); return; }
 
-        var parts = content.Toy(item.ToyId).Parts.Select(p => p.Id).ToList();
-        var a = _t.Assembly;
-        var order = a.ShuffleOrder(state.Mode, state.Round) ? Shuffled(parts) : parts;
-        var keys = parts;
-        if (a.ShuffleKeys(state.Mode, state.Round))
-        {
-            // New key layout, but never one where the keys simply go 1, 2, 3 again.
-            for (int tries = 0; tries < 10 && (keys == parts || keys.SequenceEqual(order)); tries++) keys = Shuffled(parts);
-        }
+        var toy = content.Toy(item.ToyId);
+        var recipes = RecipesFor(toy, state);
+        // The parts used by this round's combinations, each on its own key (a key no combination uses stays empty).
+        var used = recipes.SelectMany(r => r.Order).ToHashSet();
+        int keyCount = used.Count == 0 ? 0 : used.Max(toy.KeyOf);
+        var keys = new string[keyCount];
+        for (int k = 0; k < keyCount; k++) keys[k] = "";
+        foreach (var id in used) keys[toy.KeyOf(id) - 1] = id;
 
+        // The most urgent nice letter for this toy decides which combination the bench suggests.
+        var letter = state.LiveOrders.Where(o => !o.Naughty && o.ToyId == item.ToyId)
+            .OrderBy(o => o.DeadlineTick).ThenBy(o => o.Id).FirstOrDefault();
+        var wanted = letter?.Variant;
+        if (wanted != null && !recipes.Any(r => r.Id == wanted && r != toy.Standard)) wanted = null;
+
+        int longest = recipes.Max(r => r.Order.Count);
         item.PartsPlaced = 0;
         state.Assembly = new AssemblyState
         {
@@ -40,9 +52,11 @@ public sealed class CraftingSystem(GameContent content, Random random)
             ToyId = item.ToyId,
             ItemRevision = item.Revision,
             Keys = keys,
-            Order = order,
+            Recipes = recipes,
+            Wanted = wanted,
+            LetterWaiting = letter != null,
             StartTick = state.Tick,
-            DeadlineTick = state.Tick + _t.Ticks(a.TimeLimitFor(state.Mode, state.Round) + state.Modifiers.BenchSeconds),
+            DeadlineTick = state.Tick + _t.Ticks(_t.Assembly.TimeLimitFor(state.Mode, state.Round, longest) + state.Modifiers.BenchSeconds),
         };
         output.Add(new SimEvent(SimEventType.AssemblyStarted, ToyId: item.ToyId));
     }
@@ -110,21 +124,25 @@ public sealed class CraftingSystem(GameContent content, Random random)
             return;
         }
 
-        if (partKey >= 1 && partKey <= game.Keys.Count)
+        // A key with no part on it (e.g. 4 on a toy with three parts) does nothing.
+        if (partKey >= 1 && partKey <= game.Keys.Count && game.Keys[partKey - 1] is { Length: > 0 } pressed)
         {
-            string pressed = game.Keys[partKey - 1];
-            if (pressed != game.NextPart) { Botch(state, item, d.Message("botched_wrong_part", PartName(item.ToyId, pressed)), output); return; }
+            // The part must continue at least one combination: what has gone on so far, then this part.
+            var fitting = game.Recipes.Where(r => game.Fits(r) && r.Order[game.Placed] == pressed).ToList();
+            if (fitting.Count == 0) { Botch(state, item, d.Message("botched_wrong_part", PartName(item.ToyId, pressed)), output); return; }
 
-            game.Placed++;
+            game.PlacedParts.Add(pressed);
             item.PartsPlaced = game.Placed;
             output.Add(new SimEvent(SimEventType.PartAdded, PartName(item.ToyId, pressed), ToyId: item.ToyId, Points: game.Placed));
 
-            if (game.NextPart == null)
+            // No combination is the start of another (checked when content loads), so at most one is now complete.
+            if (fitting.FirstOrDefault(r => r.Order.Count == game.Placed) is { } built)
             {
                 state.Assembly = null;
                 item.Stage = ItemStage.Assembled;
+                item.Variant = game.StoredId(built);
                 item.Revision = state.NextId();
-                output.Add(new SimEvent(SimEventType.AssemblyComplete, ToyId: item.ToyId));
+                output.Add(new SimEvent(SimEventType.AssemblyComplete, built.Name, ToyId: item.ToyId));
             }
             return;
         }
@@ -230,23 +248,6 @@ public sealed class CraftingSystem(GameContent content, Random random)
         item.Stage = ItemStage.Botched;
         item.Revision = state.NextId();
         output.Add(new SimEvent(SimEventType.AssemblyBotched, text, ToyId: item.ToyId));
-    }
-
-    /// <summary>A random order that differs from the natural one whenever there is more than one part.</summary>
-    private List<string> Shuffled(List<string> parts)
-    {
-        if (parts.Count < 2) return parts.ToList();
-        List<string> result;
-        do
-        {
-            result = parts.ToList();
-            for (int i = result.Count - 1; i > 0; i--)
-            {
-                int j = random.Next(i + 1);
-                (result[i], result[j]) = (result[j], result[i]);
-            }
-        } while (result.SequenceEqual(parts));
-        return result;
     }
 
     private static SimEvent Reject(string text) => new(SimEventType.Rejected, text);

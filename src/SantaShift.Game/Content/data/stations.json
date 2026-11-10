@@ -5,9 +5,13 @@
     { "id": "kits_train", "type": "dispenser", "toyId": "train", "label": "TRAIN KITS",
       "body": { "x": 180, "y": 145, "w": 90, "h": 40 }, "interact": { "x": 180, "y": 180 }, "model": "station_bin.glb" },
     { "id": "kits_bear", "type": "dispenser", "toyId": "bear", "label": "BEAR KITS",
-      "body": { "x": 420, "y": 145, "w": 90, "h": 40 }, "interact": { "x": 420, "y": 180 }, "model": "station_bin.glb" },
+      "body": { "x": 500, "y": 145, "w": 90, "h": 40 }, "interact": { "x": 500, "y": 180 }, "model": "station_bin.glb" },
     { "id": "kits_robot", "type": "dispenser", "toyId": "robot", "label": "ROBOT KITS",
       "body": { "x": 660, "y": 145, "w": 90, "h": 40 }, "interact": { "x": 660, "y": 180 }, "model": "station_bin.glb" },
+    // Boats join the line in round 5 (toys.json fromRound); the bin gives no kits until then. Between the train and
+    // bear bins: the four bins are evenly spaced, 160 px (4 m) apart.
+    { "id": "kits_boat", "type": "dispenser", "toyId": "boat", "label": "BOAT KITS",
+      "body": { "x": 340, "y": 145, "w": 90, "h": 40 }, "interact": { "x": 340, "y": 180 }, "model": "station_bin.glb" },
 
     { "id": "bench", "type": "bench", "label": "ASSEMBLY BENCH",
       "body": { "x": 300, "y": 255, "w": 120, "h": 40 }, "interact": { "x": 300, "y": 285 }, "model": "station_bench.glb" },

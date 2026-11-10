@@ -34,6 +34,15 @@ public static class ToyIcon
                 ui.Fill(cx + s * 0.18f, cy - s * 0.25f, s * 0.22f, s * 0.22f, Palette.Ink);
                 ui.Fill(cx - s * 0.35f, cy + s * 0.3f, s * 0.7f, s * 0.12f, Palette.Ink);
                 break;
+            case "boat": // a hull with a mast, a red mainsail and a gold jib (they read on the white kit card too)
+                ui.Line(cx, cy - s * 0.95f, cx, cy + s * 0.25f, s * 0.1f, Palette.Ink);
+                ui.Triangle(new(cx + s * 0.06f, cy - s * 0.9f), new(cx + s * 0.06f, cy + s * 0.15f), new(cx + s * 0.72f, cy + s * 0.15f), Palette.Berry);
+                ui.Triangle(new(cx - s * 0.06f, cy - s * 0.6f), new(cx - s * 0.06f, cy + s * 0.15f), new(cx - s * 0.5f, cy + s * 0.15f), Palette.Gold);
+                ui.Fill(cx - s * 0.7f, cy + s * 0.3f, s * 1.4f, s * 0.35f, color);
+                ui.Triangle(new(cx - s * 0.95f, cy + s * 0.3f), new(cx - s * 0.7f, cy + s * 0.3f), new(cx - s * 0.7f, cy + s * 0.65f), color);
+                ui.Triangle(new(cx + s * 0.95f, cy + s * 0.3f), new(cx + s * 0.7f, cy + s * 0.3f), new(cx + s * 0.7f, cy + s * 0.65f), color);
+                ui.Fill(cx - s * 0.7f, cy + s * 0.3f, s * 1.4f, s * 0.08f, Palette.Gold);
+                break;
             case "coal": // a heap of black lumps with a glint
                 ui.Circle(cx - s * 0.4f, cy + s * 0.25f, s * 0.42f, Palette.Hex("#26262B"));
                 ui.Circle(cx + s * 0.42f, cy + s * 0.3f, s * 0.36f, Palette.Hex("#303036"));

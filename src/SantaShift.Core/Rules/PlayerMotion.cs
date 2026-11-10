@@ -16,6 +16,7 @@ public sealed class PlayerMotion(GameContent content)
         if (length > 1) { moveX /= length; moveY /= length; } // same speed in every direction
 
         double step = _t.PlayerSpeed * state.Modifiers.SpeedMultiplier / _t.TicksPerSecond;
+        if (state.Cart.Pushing) step *= _t.Cart.SpeedMultiplier; // pushing the toy cart is slower than walking
         var p = state.PlayerPosition;
 
         var tryX = p with { X = p.X + moveX * step };

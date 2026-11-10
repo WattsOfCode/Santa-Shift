@@ -60,38 +60,106 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
             return;
         }
 
-        if (toy?.Model != null && assets.TryGetModel(toy.Model, out var model))
+        // A variant (big wheels, a big bear, a rocket pack) is drawn from its parts, as it was built on the bench.
+        var variant = item.Variant != null ? toy?.Variant(item.Variant) : null;
+        if (variant != null)
+            DrawBuild(item.ToyId, variant.Order, Vector3.Zero);
+        else if (toy?.Model != null && assets.TryGetModel(toy.Model, out var model))
             Raylib.DrawModel(model, Vector3.Zero, 1f, Color.White);
         else
             DrawToyShape(item.ToyId, Vector3.Zero, color);
 
-        if (item.HasRibbon) DrawRibbon(new Vector3(0, ToyHeight(item.ToyId), 0), RibbonTint(item.RibbonColor));
+        if (item.HasRibbon)
+        {
+            var (grow, lift) = toy != null && variant != null ? Shape(toy, variant.Order) : (1f, 0f);
+            DrawRibbon(new Vector3(0, (ToyHeight(item.ToyId) + lift) * grow, 0), RibbonTint(item.RibbonColor));
+        }
     }
 
     /// <summary>
-    /// A toy being built on the bench: the parts hammered on so far, each from its own model (they stack up into
-    /// the finished toy). Grey-box fallback: the toy shape growing taller part by part.
+    /// How the parts on so far change the toy: the scale from parts that make it grow (extra stuffing), and how far
+    /// the parts that lift the others raise them (big wheels raise the boiler and cab).
+    /// </summary>
+    private static (float Grow, float Lift) Shape(Toy toy, IReadOnlyList<string> placed)
+    {
+        float grow = 1f, lift = 0f;
+        foreach (var id in placed)
+            if (toy.Part(id) is { } p)
+            {
+                if (p.Grow > 0) grow *= (float)p.Grow;
+                lift += (float)p.Lift;
+            }
+        return (grow, lift);
+    }
+
+    /// <summary>
+    /// A toy being built on the bench: the parts hammered on so far, each from its own model (they stack up into the
+    /// finished toy). A part with a lift raises the others; one that grows the toy scales all of it; one that goes
+    /// inside isn't drawn. Grey-box fallback: the toy shape growing taller part by part.
     /// </summary>
     public void DrawBuild(string toyId, IEnumerable<string> placedParts, Vector3 basePos)
     {
         var toy = content.FindToy(toyId);
         if (toy == null) return;
         var placed = placedParts.ToList();
-        bool allModels = toy.Parts.All(p => assets.TryGetModel(p.Model, out _));
+        var (grow, _) = Shape(toy, placed);
+        bool allModels = placed.All(id => toy.Part(id) is { } p && (p.Inside || assets.TryGetModel(p.Model, out _)));
         if (allModels)
         {
-            foreach (var id in placed)
-                if (assets.TryGetModel(toy.Parts.First(p => p.Id == id).Model, out var model))
-                    Raylib.DrawModel(model, basePos, 1f, Color.White);
+            var seen = new Dictionary<string, int>();
+            for (int i = 0; i < placed.Count; i++)
+            {
+                var part = toy.Part(placed[i])!;
+                int copy = seen[part.Id] = seen.GetValueOrDefault(part.Id) + 1; // a second set of wheels is the carriage
+                if (part.Inside || !assets.TryGetModel(ModelOf(part, copy), out var model)) continue;
+                float lift = 0;
+                for (int o = 0; o < placed.Count; o++) if (o != i) lift += (float)(toy.Part(placed[o])?.Lift ?? 0);
+                Raylib.DrawModelEx(model, basePos + new Vector3(0, lift * grow, 0), Vector3.UnitY, 0, new Vector3(grow), Color.White);
+            }
             return;
         }
         if (placed.Count == 0) return;
-        float fraction = (float)placed.Count / Math.Max(1, toy.Parts.Count);
+        float fraction = (float)placed.Count / Math.Max(1, toy.Standard.Order.Count);
         Rlgl.PushMatrix();
         Rlgl.Translatef(basePos.X, basePos.Y, basePos.Z);
-        Rlgl.Scalef(1, fraction, 1);
+        Rlgl.Scalef(grow, Math.Min(1, fraction) * grow, grow);
         DrawToyShape(toyId, Vector3.Zero, Palette.Hex(toy.Color));
         Rlgl.PopMatrix();
+    }
+
+    private readonly Dictionary<string, BoundingBox> _bounds = new();
+
+    /// <summary>A part's model for its <paramref name="copy"/>-th use in a combination (its repeat model after the first).</summary>
+    private static string? ModelOf(ToyPart part, int copy) => copy > 1 && part.RepeatModel != null ? part.RepeatModel : part.Model;
+
+    /// <summary>
+    /// One loose piece lying on the bench, waiting to go on: the part's model moved down onto <paramref name="p"/> and
+    /// centred over it (part models are placed where they sit on the finished toy, often well off the floor).
+    /// Grey-box fallback: a small block in the toy's colour.
+    /// </summary>
+    /// <param name="copy">Which copy of the part this is (1 = the first; a second set of wheels lies there as the carriage).</param>
+    public void DrawPiece(string toyId, string partId, Vector3 p, float yawDegrees, float scale, int copy = 1)
+    {
+        var toy = content.FindToy(toyId);
+        var part = toy?.Part(partId);
+        string? file = part == null ? null : ModelOf(part, copy);
+        if (file != null && assets.TryGetModel(file, out var model))
+        {
+            if (!_bounds.TryGetValue(file, out var box)) _bounds[file] = box = Raylib.GetModelBoundingBox(model);
+            var centre = (box.Min + box.Max) / 2;
+            Rlgl.PushMatrix();
+            Rlgl.Translatef(p.X, p.Y, p.Z);
+            Rlgl.Rotatef(yawDegrees, 0, 1, 0);
+            Rlgl.Scalef(scale, scale, scale);
+            Rlgl.Translatef(-centre.X, -box.Min.Y, -centre.Z);
+            Raylib.DrawModel(model, Vector3.Zero, 1f, Color.White);
+            Rlgl.PopMatrix();
+            return;
+        }
+        var colour = toy != null ? Palette.Hex(toy.Color) : Palette.Wood;
+        var c = p + new Vector3(0, 0.06f * scale, 0);
+        Raylib.DrawCube(c, 0.16f * scale, 0.12f * scale, 0.16f * scale, colour);
+        Raylib.DrawCubeWires(c, 0.16f * scale, 0.12f * scale, 0.16f * scale, Palette.Ink);
     }
 
     /// <summary>The hammer lying on its side, e.g. on the bench while nobody is using it.</summary>
@@ -150,7 +218,7 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
         Raylib.DrawModel(quad, Vector3.Zero, 1f, Color.White);
     }
 
-    private static float ToyHeight(string toyId) => toyId switch { "train" => 0.42f, "bear" => 0.55f, "robot" => 0.62f, _ => 0.4f };
+    private static float ToyHeight(string toyId) => toyId switch { "train" => 0.42f, "bear" => 0.55f, "robot" => 0.62f, "boat" => 0.6f, _ => 0.4f };
 
     private static void DrawToyShape(string toyId, Vector3 p, Color color)
     {
@@ -179,6 +247,12 @@ public sealed class ItemView(GameContent content, IAssetLibrary assets)
                 Raylib.DrawCubeWires(p + new Vector3(0, 0.42f, 0), 0.22f, 0.18f, 0.2f, Palette.Ink);
                 Raylib.DrawCylinder(p + new Vector3(0, 0.51f, 0), 0.012f, 0.012f, 0.08f, 6, Palette.Ink); // antenna
                 Raylib.DrawSphere(p + new Vector3(0, 0.6f, 0), 0.03f, Palette.Berry);
+                break;
+
+            case "boat":
+                Raylib.DrawCube(p + new Vector3(0, 0.08f, 0), 0.5f, 0.14f, 0.2f, color);                  // hull
+                Raylib.DrawCylinder(p + new Vector3(0, 0.15f, 0), 0.012f, 0.012f, 0.45f, 6, Palette.Ink);  // mast
+                Raylib.DrawCube(p + new Vector3(0.09f, 0.36f, 0), 0.16f, 0.3f, 0.01f, Palette.Berry);      // sail
                 break;
 
             default:

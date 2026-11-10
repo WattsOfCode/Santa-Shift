@@ -84,12 +84,12 @@
       "interactZ": -3.0
     },
     "kits_bear": {
-      "x": -1.5,
+      "x": 0.5,
       "z": -3.875,
       "w": 2.25,
       "d": 1.0,
       "yaw": 0.0,
-      "interactX": -1.5,
+      "interactX": 0.5,
       "interactZ": -3.0
     },
     "kits_robot": {
@@ -163,6 +163,15 @@
       "yaw": 90.0,
       "interactX": -10.45,
       "interactZ": -3.4
+    },
+    "kits_boat": {
+      "x": -3.5,
+      "z": -3.875,
+      "w": 2.25,
+      "d": 1.0,
+      "yaw": 0.0,
+      "interactX": -3.5,
+      "interactZ": -3.0
     }
   },
   "floor": {

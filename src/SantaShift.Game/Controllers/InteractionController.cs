@@ -35,6 +35,18 @@ public sealed class InteractionController(GameContent content, IInputService inp
                 case SimEventType.RibbonStarted:
                     audio.Play(SoundIds.RibbonPick);
                     break;
+                case SimEventType.CartLoaded:
+                case SimEventType.CartTaken:
+                    audio.Play(SoundIds.KitPickup, pitch: e.Type == SimEventType.CartLoaded ? 0.9f : 1.1f);
+                    if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Info, 70);
+                    break;
+                case SimEventType.CartGrabbed:
+                case SimEventType.CartParked:
+                    audio.Play(SoundIds.CratePickup, pitch: e.Type == SimEventType.CartGrabbed ? 1f : 0.85f);
+                    break;
+                case SimEventType.CartPickOpened:
+                    audio.Play(SoundIds.UiMove);
+                    break;
                 case SimEventType.Restocked:
                     audio.Play(SoundIds.BinRestock);
                     if (e.Text != null) Feedback.ShowToast(e.Text, ToastKind.Success, 90);
@@ -101,7 +113,7 @@ public sealed class InteractionController(GameContent content, IInputService inp
     {
         var order = _sim?.State.LiveOrders.FirstOrDefault(o => o.Id == orderId);
         if (order?.Letter is not { } letter) return;
-        string toy = content.FindToy(order.ToyId)?.Name ?? order.ToyId;
+        string toy = content.FindToy(order.ToyId)?.NameOf(order.Variant) ?? order.ToyId;
         if (content.Tuning.FindRibbon(order.RibbonColor) is { } ribbon) toy += $", {ribbon.Name.ToLowerInvariant()} ribbon";
         Feedback.ShowLetter($"New letter from {letter.Child}, {letter.Age} ({toy}): \"{letter.Line}\"");
         if (order.Naughty)

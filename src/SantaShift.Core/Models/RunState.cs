@@ -29,6 +29,9 @@ public sealed class RunState
     /// <summary>Choosing a ribbon colour at the ribbon station, before tying.</summary>
     public RibbonPickState? RibbonPick { get; set; }
 
+    /// <summary>The toy cart (built over the run; it only works once every part is on).</summary>
+    public ToyCart Cart { get; init; } = new();
+
     /// <summary>True while the elf is busy at a station (building, choosing or tying a ribbon, shovelling).</summary>
     public bool IsWorking => CraftingAction != null || Assembly != null || RibbonPick != null;
 
@@ -113,5 +116,8 @@ public sealed class RunState
     public int NextId() => _nextId++;
 }
 
-/// <summary>One entry of a shift's <see cref="RunState.OrderPlan"/>: what the n-th order will ask for.</summary>
-public sealed record PlannedOrder(string ToyId, ChildLetter? Letter, bool Naughty);
+/// <summary>
+/// One entry of a shift's <see cref="RunState.OrderPlan"/>: what the n-th order will ask for, including the toy variant
+/// (null = the plain toy; never set for a naughty child, who gets coal).
+/// </summary>
+public sealed record PlannedOrder(string ToyId, ChildLetter? Letter, bool Naughty, string? Variant = null);

@@ -23,12 +23,12 @@ public class ContentLoaderTests : IDisposable
         var content = ContentLoader.LoadFromDirectory(ShippedData);
 
         Assert.Empty(content.Warnings);
-        Assert.Equal(3, content.Toys.Count);
-        Assert.Equal(10, content.Stations.Count); // 7 GDD stations + the coal scuttle, the supply sled and the punch clock
+        Assert.Equal(4, content.Toys.Count); // train, bear, robot, and the boat from round 5
+        Assert.Equal(11, content.Stations.Count); // 7 GDD stations + the coal scuttle, supply sled, punch clock and boat bin
         Assert.True(content.HasCoal);
         Assert.True(content.HasSupply);
         Assert.Equal(4, content.Events.Count);
-        Assert.Equal(15, content.Letters.Count);
+        Assert.Equal(33, content.Letters.Count); // 15 plain letters, 13 asking for toy variants, 5 for boats
         Assert.Equal(300, content.Tuning.ShiftSeconds);
         Assert.Equal(StationType.Dispenser, content.Stations[0].Type);
         Assert.Equal(new Point2(180, 180), content.Stations[0].Interact);

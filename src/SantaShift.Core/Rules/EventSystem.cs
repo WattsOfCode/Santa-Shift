@@ -32,6 +32,14 @@ public sealed class EventSystem(GameContent content)
         }
 
         // Notices at the start of a shift, a moment after the first letters (so a naughty letter doesn't hide them).
+        // The first shift with the finished toy cart says so, after the others.
+        if (state.Cart.Built && state.Round == _t.Cart.Parts.Length + 1 && tick >= _t.Ticks(state.RushShift ? 13 : 7)
+            && fired.Add("cart_ready"))
+            output.Add(CueEvent(SimEventType.PolicyStarted, "cart_ready"));
+        // A toy's first round (the boat): Santa introduces it, with its own cue ("new_toy_boat") when dialogue.json has one.
+        foreach (var toy in content.Toys.Where(t => t.FromRound > 1 && t.FromRound == state.Round))
+            if (tick >= _t.Ticks(7) && fired.Add("new_toy_" + toy.Id) && content.Dialogue.Cue("new_toy_" + toy.Id) != null)
+                output.Add(CueEvent(SimEventType.PolicyStarted, "new_toy_" + toy.Id));
         if (state.RushShift && tick >= _t.Ticks(1) && fired.Add("rush_shift"))
             output.Add(CueEvent(SimEventType.PolicyStarted, "rush_shift"));
         if (tick >= _t.Ticks(state.RushShift ? 7 : 1) && fired.Add("assembly_policy")

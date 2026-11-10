@@ -45,7 +45,7 @@ public class CraftingTests
         sim.Use("bench");
 
         var game = sim.State.Assembly!;
-        Assert.Equal(["wheels", "boiler", "cab"], game.Order);
+        Assert.Equal(["wheels", "boiler", "cab"], game.Target!.Order);
         Assert.Equal(["wheels", "boiler", "cab"], game.Keys);
 
         Assert.Contains(sim.PressPart(1), e => e.Type == SimEventType.PartAdded && e.Text == "wheels");

@@ -8,7 +8,7 @@ public sealed record ResultsSummary(
     RunProgress Run, bool Passed, string Heading, string ReviewLabel, string SantaLine,
     int Delivered, int Quota, int Missed, int Unfinished, int RoundScore, int BestStreak,
     int NextQuota, int BestScore, int BestRound, bool NewBest, IReadOnlyList<string> Unlocked, double Spirit,
-    string NextNote = "");
+    string NextNote = "", string CartNote = "");
 
 /// <summary>End of a round: "Round complete" (continue) or "Game over" (run finished).</summary>
 public sealed class ResultsView
@@ -27,12 +27,12 @@ public sealed class ResultsView
 
         float y = 180;
         Row(ui, "Delivered", $"{r.Delivered} / {r.Quota}", y);
-        Row(ui, "Missed", r.Missed.ToString(), y += 27);
-        Row(ui, "Unfinished", r.Unfinished.ToString(), y += 27);
-        Row(ui, "Best streak", r.BestStreak.ToString(), y += 27);
-        Row(ui, "Round score", r.RoundScore.ToString(), y += 27);
-        Row(ui, "Run total", r.Run.TotalScore.ToString(), y += 27);
-        Row(ui, "Christmas spirit", $"{r.Spirit:0}%", y += 27);
+        Row(ui, "Missed", r.Missed.ToString(), y += 25);
+        Row(ui, "Unfinished", r.Unfinished.ToString(), y += 25);
+        Row(ui, "Best streak", r.BestStreak.ToString(), y += 25);
+        Row(ui, "Round score", r.RoundScore.ToString(), y += 25);
+        Row(ui, "Run total", r.Run.TotalScore.ToString(), y += 25);
+        Row(ui, "Christmas spirit", $"{r.Spirit:0}%", y += 25);
 
         // New unlocks this round, in a gold ribbon across the screen.
         if (r.Unlocked.Count > 0)
@@ -48,7 +48,9 @@ public sealed class ResultsView
         if (r.Passed)
         {
             ui.Text(r.NextNote.Length > 0 ? r.NextNote : $"Round {r.Run.Round + 1} needs {r.NextQuota} deliveries.",
-                480, y += 34, 18, Palette.Gold, Align.Center);
+                480, y += 30, 18, Palette.Gold, Align.Center);
+            // The toy cart part this round earned (one per passed round until the cart is built).
+            if (r.CartNote.Length > 0) ui.Text(r.CartNote, 480, y + 24, 16, Palette.Ice, Align.Center);
             Button(ui, $"{input.Label(InputAction.Confirm)}  Next round", 442, hovered == 0);
             SmallButton(ui, $"{input.Label(InputAction.Back)}  End run and return to title", 492, hovered == 1);
         }

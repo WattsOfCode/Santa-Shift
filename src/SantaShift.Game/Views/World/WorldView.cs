@@ -97,6 +97,7 @@ public sealed class WorldView
             }
 
         using (App.FrameProfiler.Time("npcs")) DrawNpcs();
+        DrawCart(state, highlight: sim.CartSelected());
         using (App.FrameProfiler.Time("player")) _player.Draw(state, ElfAt(state), facingDegrees, bob, pose);
         if (GuideTarget != null)
             (_guide ??= new GuideArrowView(_content, _assets, _world)).Draw(ElfAt(state), GuideTarget, Raylib.GetTime(), WorldEffects.ReducedMotion);
@@ -105,8 +106,9 @@ public sealed class WorldView
     }
 
     /// <summary>
-    /// While a toy is built here: its kit crate and the parts hammered on so far. Otherwise the hammer lies on the bench
-    /// (the elf picks it up while building).
+    /// While a toy is built here: its kit crate, the parts hammered on so far, and the loose pieces still to go on,
+    /// laid out in a row behind the toy (the one under the mouse lifts). Otherwise the hammer lies on the bench (the elf
+    /// picks it up while building).
     /// </summary>
     private void DrawBenchTop(Station bench, AssemblyState? game, Item? item)
     {
@@ -116,11 +118,166 @@ public sealed class WorldView
         if (game != null && item != null)
         {
             _items.DrawKit(spot - along * 0.65f + dir * 0.1f, game.ToyId);
-            _items.DrawBuild(game.ToyId, game.Order.Take(game.Placed), spot);
+            _items.DrawBuild(game.ToyId, game.PlacedParts, spot);
+            float yaw = MathF.Atan2(-dir.X, -dir.Z) * 180f / MathF.PI; // pieces face the elf
+            foreach (var (part, at, copy) in Pieces(bench, game))
+            {
+                bool hot = part == HoveredPiece;
+                _items.DrawPiece(game.ToyId, part, at + new Vector3(0, hot ? 0.05f : 0, 0), yaw, hot ? PieceScale * 1.15f : PieceScale, copy);
+            }
             return;
         }
-        float yaw = MathF.Atan2(along.X, along.Z) * 180f / MathF.PI;
-        _items.DrawHammerLying(spot + along * 0.55f + dir * 0.05f, yaw + 90);
+        float hammerYaw = MathF.Atan2(along.X, along.Z) * 180f / MathF.PI;
+        _items.DrawHammerLying(spot + along * 0.55f + dir * 0.05f, hammerYaw + 90);
+    }
+
+    private const float PieceScale = 0.85f, PieceGap = 0.25f;
+
+    /// <summary>
+    /// The toy cart: as many of its parts as are built (it grows round by round at its home), and the toys riding in it.
+    /// While pushed it rolls just ahead of where the elf is drawn, pointing the way the rules have it.
+    /// </summary>
+    private void DrawCart(RunState state, bool highlight)
+    {
+        var cart = state.Cart;
+        if (cart.Parts <= 0) return;
+        var dir = cart.Direction;
+        var p = _world.ToWorld(CartAt(state));
+        float yaw = MathF.Atan2((float)dir.X, (float)dir.Y) * 180f / MathF.PI;
+
+        Raylib.DrawCylinder(p + new Vector3(0, 0.01f, 0), 0.42f, 0.42f, 0.01f, 16, Palette.Shadow);
+        for (int i = 0; i < cart.Parts && i < AssetLibrary.CartModels.Length; i++)
+        {
+            if (_assets.TryGetModel(AssetLibrary.CartModels[i], out var model))
+                Raylib.DrawModelEx(model, p, Vector3.UnitY, yaw, Vector3.One, Color.White);
+            else DrawGreyBoxCartPart(i, p, yaw);
+        }
+        if (highlight) // a gold ring on the floor, like a selected station's outline
+            Raylib.DrawCircle3D(p + new Vector3(0, 0.02f, 0), 0.5f, Vector3.UnitX, 90, Palette.Gold);
+
+        // The toys ride in a row along the tray, turned side-on.
+        var forward = new Vector3((float)dir.X, 0, (float)dir.Y);
+        for (int i = 0; i < cart.Items.Count; i++)
+        {
+            float along = (i - 1) * CartSlotGap;
+            _items.Draw(cart.Items[i], p + forward * along + new Vector3(0, CartTrayTop, 0), CartToyScale, yaw + 90);
+        }
+    }
+
+    // The tray floor and its three compartments in cart_tray.glb (tools/blender/make_models.py: cart_tray).
+    private const float CartTrayTop = 0.26f, CartSlotGap = 0.26f, CartToyScale = 0.5f;
+
+    /// <summary>Grey-box cart pieces for when the models are missing: wheels and axles, the tray, the handle.</summary>
+    private static void DrawGreyBoxCartPart(int part, Vector3 p, float yaw)
+    {
+        Rlgl.PushMatrix();
+        Rlgl.Translatef(p.X, p.Y, p.Z);
+        Rlgl.Rotatef(yaw, 0, 1, 0);
+        switch (part)
+        {
+            case 0:
+                foreach (float z in new[] { -0.28f, 0.28f })
+                    Raylib.DrawCylinderEx(new Vector3(-0.3f, 0.1f, z), new Vector3(0.3f, 0.1f, z), 0.1f, 0.1f, 12, Palette.Ink);
+                Raylib.DrawCube(new Vector3(0, 0.2f, 0), 0.4f, 0.04f, 0.7f, Palette.WoodDark);
+                break;
+            case 1:
+                Raylib.DrawCube(new Vector3(0, 0.28f, 0), 0.5f, 0.14f, 0.8f, Palette.Wood);
+                Raylib.DrawCubeWires(new Vector3(0, 0.28f, 0), 0.5f, 0.14f, 0.8f, Palette.Ink);
+                break;
+            default:
+                Raylib.DrawCube(new Vector3(0, 0.6f, -0.5f), 0.46f, 0.04f, 0.04f, Palette.Berry);
+                Raylib.DrawCylinderEx(new Vector3(-0.2f, 0.3f, -0.38f), new Vector3(-0.2f, 0.6f, -0.5f), 0.02f, 0.02f, 6, Palette.Berry);
+                Raylib.DrawCylinderEx(new Vector3(0.2f, 0.3f, -0.38f), new Vector3(0.2f, 0.6f, -0.5f), 0.02f, 0.02f, 6, Palette.Berry);
+                break;
+        }
+        Rlgl.PopMatrix();
+    }
+
+    /// <summary>Where to draw the cart: where it stands, or while pushed, just ahead of where the elf is drawn.</summary>
+    private Point2 CartAt(RunState state)
+    {
+        var c = state.Cart;
+        if (!c.Pushing) return c.Position;
+        var elf = ElfAt(state);
+        double d = _content.Tuning.Cart.PushDistance;
+        return new Point2(elf.X + c.Direction.X * d, elf.Y + c.Direction.Y * d);
+    }
+
+    /// <summary>Where the cart's label goes: above it.</summary>
+    private Vector3 CartAnchor(RunState state) => _world.ToWorld(CartAt(state), 0.95f);
+
+    /// <summary>The part under the mouse while building (null for none); set by the workshop controller.</summary>
+    public string? HoveredPiece { get; set; }
+
+    /// <summary>
+    /// The pieces still lying on the bench (every part on a key that isn't on the toy yet), in key order, and where each
+    /// lies: a row behind the toy and off to the elf's right, clear of the kit crate, the elf's arm and a growing toy.
+    /// </summary>
+    public IEnumerable<(string Part, Vector3 At, int Copy)> Pieces(Station bench, AssemblyState game)
+    {
+        var spot = _stations.WorkSpot(bench);
+        var dir = _stations.WorkDirection(bench);
+        var along = new Vector3(-dir.Z, 0, dir.X);
+        // One piece per use of a part in this round's combinations (two sets of wheels when the long train is open),
+        // each keeping its own place by key, so the row doesn't shuffle as pieces go on. The first copies go on first.
+        var slots = new List<(string Part, int Copy)>();
+        foreach (var part in game.Keys.Where(k => k.Length > 0))
+        {
+            int copies = Math.Max(1, game.Recipes.Max(r => r.Order.Count(p => p == part)));
+            for (int c = 1; c <= copies; c++) slots.Add((part, c));
+        }
+        for (int i = 0; i < slots.Count; i++)
+        {
+            var (part, copy) = slots[i];
+            if (copy <= game.PlacedParts.Count(p => p == part)) continue; // already on the toy
+            float gap = slots.Count > 4 ? PieceGap * 4 / slots.Count + 0.03f : PieceGap;
+            // The row's left end stays clear of even the giant bear (1.7 times the size) on the build spot.
+            float left = 0.5f, mid = left + (slots.Count - 1) / 2f * gap;
+            yield return (part, spot + dir * 0.38f + along * (mid + (i - (slots.Count - 1) / 2f) * gap), copy);
+        }
+    }
+
+    /// <summary>Where a loose piece is on screen (UI coordinates), or null when it is out of view.</summary>
+    public Vector2? PieceOnScreen(Vector3 at, float height = 0.08f)
+    {
+        var p = at + new Vector3(0, height, 0);
+        return _world.InFront(p) ? _world.ToUi(p) : null;
+    }
+
+    /// <summary>The loose piece nearest the pointer (UI coordinates), within reach, or null.</summary>
+    public string? PieceAt(Station bench, AssemblyState game, Vector2 pointer, float reach = 48)
+    {
+        string? best = null;
+        float bestDistance = reach;
+        foreach (var (part, at, _) in Pieces(bench, game))
+        {
+            if (PieceOnScreen(at) is not { } p) continue;
+            float d = Vector2.Distance(p, pointer);
+            if (d < bestDistance) (best, bestDistance) = (part, d);
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// While building: a key chip over each loose piece, so the key for every piece shows on the bench itself. The
+    /// hovered piece's chip turns gold and names the part.
+    /// </summary>
+    public void DrawPieceLabels(UiCanvas ui, RunState state, Func<int, string> keyFor)
+    {
+        if (state.Assembly is not { } game || _content.Stations.FirstOrDefault(s => s.Id == game.StationId) is not { } bench) return;
+        var toy = _content.FindToy(game.ToyId);
+        foreach (var (part, at, _) in Pieces(bench, game))
+        {
+            if (PieceOnScreen(at, 0.3f) is not { } p) continue;
+            bool hot = part == HoveredPiece;
+            string key = keyFor(game.KeyOf(part) - 1);
+            string text = hot ? $"{key}  {toy?.Part(part)?.Name ?? part}" : key;
+            const float size = 16, h = 22;
+            float w = Math.Max(24, ui.MeasureText(text, size) + 12);
+            float y = p.Y - h - (hot ? 6 : 0);
+            ui.FillRounded(p.X - w / 2, y, w, h, hot ? Palette.Gold : Palette.WithAlpha(Palette.Ink, 225), 0.45f);
+            ui.Text(text, p.X, y + 3, size, hot ? Palette.Ink : Palette.Gold, Align.Center);
+        }
     }
 
     /// <summary>The spool under the mouse while choosing a ribbon (-1 for none); set by the workshop controller.</summary>
@@ -212,9 +369,24 @@ public sealed class WorldView
     /// bin shows how many kits are left. A bin that is empty while a letter still needs its toy (more orders than the elf
     /// is holding) is labelled in red from anywhere in the room: time to fetch a supply crate.
     /// </summary>
-    public void DrawLabels(UiCanvas ui, Station? selected, RunState? state = null)
+    public void DrawLabels(UiCanvas ui, Station? selected, RunState? state = null, bool cartSelected = false)
     {
         var d = _content.Dialogue;
+        // The toy cart: its parts so far while it is being built over the run, then its name (not while pushing it).
+        if (state is { Cart: { Pushing: false } cart } && _content.Tuning.Cart.Parts.Length > 0)
+        {
+            var anchor = CartAnchor(state);
+            if (_world.InFront(anchor) && (cartSelected || _world.DistanceFromCamera(anchor) <= LabelRange))
+            {
+                var at = _world.ToUi(anchor);
+                string label = cart.Built ? d.Message("cart_label")
+                    : d.Message("cart_label_building", cart.Parts, _content.Tuning.Cart.Parts.Length);
+                if (cart.Built && cart.Items.Count > 0) label += $"  {cart.Items.Count}/{_content.Tuning.Cart.Capacity}";
+                float w = ui.MeasureText(label, 14) + 12;
+                ui.FillRounded(at.X - w / 2, at.Y - 20, w, 20, cartSelected ? Palette.Gold : Palette.WithAlpha(Palette.Ink, 200), 0.5f);
+                ui.Text(label, at.X, at.Y - 17, 14, cartSelected ? Palette.Ink : Palette.Snow, Align.Center);
+            }
+        }
         foreach (var s in _content.Stations)
         {
             var anchor = _stations.LabelAnchor(s);
@@ -225,6 +397,15 @@ public sealed class WorldView
 
             var at = _world.ToUi(anchor);
             string label = left is { } n ? $"{s.Label}  {(empty ? d.Message("bin_stock_empty") : d.Message("bin_stock", n))}" : s.Label;
+            // A toy that joins later in the run (the boat): its bin says when.
+            if (state != null && s.ToyId != null && _content.FindToy(s.ToyId) is { } later && !later.InRound(state.Round))
+            {
+                // Restocked early with a supply crate, it says how many are waiting too.
+                label = left is > 0
+                    ? $"{s.Label}  {d.Message("bin_stock", left)}, {d.Message("bin_from_round", later.FromRound)}"
+                    : $"{s.Label}  {d.Message("bin_from_round", later.FromRound)}";
+                empty = false;
+            }
             float w = ui.MeasureText(label, 14) + 12;
             var bg = s == selected ? Palette.Gold : empty ? Palette.Berry : Palette.WithAlpha(Palette.Ink, 200);
             var fg = s == selected ? Palette.Ink : Palette.Snow;

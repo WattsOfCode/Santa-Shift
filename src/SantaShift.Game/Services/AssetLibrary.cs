@@ -35,6 +35,9 @@ public sealed class AssetLibrary : IAssetLibrary
     public const string SpoolModel = "ribbon_spool.glb";
     public const string GuideArrowModel = "guide_arrow.glb";
 
+    /// <summary>The toy cart's parts, in the order they are built (tuning.json cart.parts): each holds just that piece.</summary>
+    public static readonly string[] CartModels = ["cart_wheels.glb", "cart_tray.glb", "cart_handle.glb"];
+
     private readonly string _modelDirectory;
     private readonly Dictionary<string, Model> _models = new();
     private readonly Dictionary<string, (nint Pointer, ModelAnimation[] List)> _animations = new();
@@ -75,11 +78,16 @@ public sealed class AssetLibrary : IAssetLibrary
     {
         _prepare = prepare;
         var names = new HashSet<string> { ElfModel, KitModel, RibbonModel, RoomModel, HammerModel, CoalModel, ShovelModel, SupplyCrateModel, SpoolModel, GuideArrowModel };
+        names.UnionWith(CartModels);
         foreach (var toy in content.Toys)
         {
             if (toy.Model != null) names.Add(toy.Model);
             if (toy.BotchedModel != null) names.Add(toy.BotchedModel);
-            foreach (var part in toy.Parts) if (part.Model != null) names.Add(part.Model);
+            foreach (var part in toy.Parts)
+            {
+                if (part.Model != null) names.Add(part.Model);
+                if (part.RepeatModel != null) names.Add(part.RepeatModel);
+            }
         }
         foreach (var station in content.Stations) if (station.Model != null) names.Add(station.Model);
         foreach (var prop in content.Props) names.Add(PropFile(prop.Model));

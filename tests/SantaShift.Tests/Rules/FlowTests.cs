@@ -116,14 +116,15 @@ public class FlowTests
         for (int i = 0; i < t.Ticks(30); i++) { sim.Step(PlayerCommand.None); events.AddRange(sim.DrainEvents()); }
         Assert.True(sim.State.RushShift);
         Assert.All(sim.State.LiveOrders.Concat(sim.State.ClosedOrders), o => Assert.True(o.IsRush));
-        // Two notices: the rush shift, then the keys moving (round 4 is also where the parts change keys).
-        Assert.Equal(2, events.Count(e => e.Type == SimEventType.PolicyStarted));
+        // One notice: the rush shift (the bench works as in round 3).
+        Assert.Equal(1, events.Count(e => e.Type == SimEventType.PolicyStarted));
     }
 
     [Theory]
     [InlineData(1, 0)]
-    [InlineData(2, 1)] // parts go on in a new order from round 2
+    [InlineData(2, 1)] // letters start asking for toy variants
     [InlineData(3, 0)] // nothing new
+    [InlineData(5, 1)] // the bench stops listing the combinations
     public void Santa_announces_an_assembly_policy_change_at_the_start_of_the_round(int round, int notices)
     {
         var sim = new Simulation(TestContent.Create(), GameMode.Standard, round: round);
@@ -137,10 +138,11 @@ public class FlowTests
     {
         var a = new Tuning().Assembly;
         Assert.Null(a.PolicyChange(GameMode.Standard, 1));
-        Assert.Equal("assembly_order", a.PolicyChange(GameMode.Standard, 2));
+        Assert.Equal("assembly_variants", a.PolicyChange(GameMode.Standard, 2));
         Assert.Null(a.PolicyChange(GameMode.Standard, 3));
-        Assert.Equal("assembly_keys", a.PolicyChange(GameMode.Standard, 4));
-        Assert.Null(a.PolicyChange(GameMode.Standard, 5));
-        Assert.Equal("assembly_order", a.PolicyChange(GameMode.Relaxed, 3)); // relaxed plays a round behind
+        Assert.Null(a.PolicyChange(GameMode.Standard, 4));
+        Assert.Equal("assembly_memory", a.PolicyChange(GameMode.Standard, 5));
+        Assert.Null(a.PolicyChange(GameMode.Standard, 6));
+        Assert.Equal("assembly_variants", a.PolicyChange(GameMode.Relaxed, 3)); // relaxed plays a round behind
     }
 }

@@ -60,6 +60,7 @@ public static class ContentLoader
             if (toy.Parts.Count == 0) throw new ContentException($"Toy '{toy.Id}' needs at least one part to build at the bench.");
             if (toy.Parts.Count > 9) throw new ContentException($"Toy '{toy.Id}' has {toy.Parts.Count} parts; the bench has keys 1-9.");
             RequireUniqueIds(toy.Parts.Select(p => p.Id), $"part of toy '{toy.Id}'");
+            CheckRecipes(toy);
         }
         foreach (var id in tuning.ToySequence)
             if (!toyIds.Contains(id)) throw new ContentException($"tuning.json toySequence names unknown toy '{id}'.");
@@ -95,6 +96,11 @@ public static class ContentLoader
         {
             if (!toyIds.Contains(letter.ToyId)) { warnings.Add($"Letter '{letter.Id}' names unknown toy '{letter.ToyId}' and was skipped."); continue; }
             if (string.IsNullOrWhiteSpace(letter.Child)) { warnings.Add($"Letter '{letter.Id}' has no child name and was skipped."); continue; }
+            if (letter.Variant != null && toys.First(t => t.Id == letter.ToyId).Variant(letter.Variant) == null)
+            {
+                warnings.Add($"Letter '{letter.Id}' asks for unknown variant '{letter.Variant}' of toy '{letter.ToyId}' and was skipped.");
+                continue;
+            }
             goodLetters.Add(letter);
         }
 
@@ -181,6 +187,33 @@ public static class ContentLoader
         if (!File.Exists(path)) { warnings.Add($"{file} not found; using defaults."); return null; }
         try { return JsonSerializer.Deserialize<T>(File.ReadAllText(path), JsonDefaults.Options); }
         catch (JsonException ex) { warnings.Add($"{file} is not valid JSON ({ex.Message}); using defaults."); return null; }
+    }
+
+    /// <summary>
+    /// A toy's part keys and build combinations: every part on its own key from 1 to 9, every combination naming known
+    /// parts (a part may go on more than once, e.g. stuffing twice), and no combination the start of another (or the
+    /// bench couldn't tell them apart).
+    /// </summary>
+    private static void CheckRecipes(Toy toy)
+    {
+        var keys = new HashSet<int>();
+        foreach (var p in toy.Parts)
+        {
+            int key = toy.KeyOf(p.Id);
+            if (key is < 1 or > 9) throw new ContentException($"Part '{p.Id}' of toy '{toy.Id}' is on key {key}; the bench has keys 1-9.");
+            if (!keys.Add(key)) throw new ContentException($"Toy '{toy.Id}' has two parts on key {key}.");
+        }
+        RequireUniqueIds(toy.Recipes.Select(r => r.Id), $"variant of toy '{toy.Id}'");
+        foreach (var r in toy.Recipes)
+        {
+            if (r.Order.Count == 0) throw new ContentException($"Variant '{r.Id}' of toy '{toy.Id}' has no parts.");
+            foreach (var id in r.Order)
+                if (toy.Part(id) == null) throw new ContentException($"Variant '{r.Id}' of toy '{toy.Id}' names unknown part '{id}'.");
+        }
+        foreach (var a in toy.Recipes)
+            foreach (var b in toy.Recipes)
+                if (a != b && a.Order.Count <= b.Order.Count && b.Order.Take(a.Order.Count).SequenceEqual(a.Order))
+                    throw new ContentException($"Toy '{toy.Id}': variant '{a.Id}' is the start of variant '{b.Id}', so the bench can't tell them apart. Change one's order.");
     }
 
     private static void RequireUniqueIds(IEnumerable<string> ids, string kind)

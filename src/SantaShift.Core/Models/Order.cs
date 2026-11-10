@@ -7,6 +7,9 @@ public sealed class Order
 {
     public int Id { get; init; }
     public required string ToyId { get; init; }
+
+    /// <summary>The variant asked for ("big_wheels"), or null for the plain toy. Only that build fills the order.</summary>
+    public string? Variant { get; init; }
     public bool RequiresRibbon { get; init; }
 
     /// <summary>The ribbon colour asked for (a <see cref="RibbonColor"/> id), or null if any ribbon will do.</summary>
