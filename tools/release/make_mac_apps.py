@@ -84,7 +84,7 @@ STEPS_INTEL = """   Double-click it once; macOS says it can't be opened. Then op
 
 def version() -> str:
     """The app's version number (set SANTASHIFT_VERSION to override)."""
-    return os.environ.get("SANTASHIFT_VERSION", "4.0")
+    return os.environ.get("SANTASHIFT_VERSION", "5.0")
 
 
 def publish(rid: str, out: Path) -> None:
